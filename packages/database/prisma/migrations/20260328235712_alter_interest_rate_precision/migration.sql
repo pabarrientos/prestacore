@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Loan" ALTER COLUMN "interestRate" SET DATA TYPE DECIMAL(7,4);

@@ -1,0 +1,30 @@
+{
+  "name": "prestamos",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "pnpm --parallel run dev",
+    "build": "pnpm --recursive run build",
+    "lint": "pnpm --recursive run lint",
+    "test": "pnpm --recursive run test",
+    "test:e2e": "pnpm --filter @prestamos/web run test:e2e",
+    "db:generate": "pnpm --filter @prestamos/database run generate",
+    "db:migrate": "pnpm --filter @prestamos/database run migrate",
+    "db:seed": "pnpm --filter @prestamos/database run seed",
+    "db:studio": "pnpm --filter @prestamos/database run studio"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3"
+  }
+}

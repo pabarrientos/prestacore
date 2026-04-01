@@ -1,0 +1,26 @@
+version: '3.8'
+
+# Development environment with PostgreSQL only
+# Run apps locally: pnpm dev
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: prestamos-db
+    environment:
+      POSTGRES_USER: prestamos
+      POSTGRES_PASSWORD: prestamos_dev
+      POSTGRES_DB: prestamos
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U prestamos"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
