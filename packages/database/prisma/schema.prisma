@@ -26,6 +26,7 @@ enum LoanStatus {
   PAID        // Cancelado/pagado
   DEFAULTED   // En mora/incumplido
   CANCELLED   // Cancelado por el cliente
+  REFINANCIADO // Refinanciado (origen de nueva operación)
 }
 
 enum PaymentStatus {
@@ -46,6 +47,7 @@ enum InstallmentStatus {
   PAID      // Pagado
   OVERDUE   // Vencido
   PARTIAL   // Pago parcial
+  CANCELADA_POR_REFINANCIACION // Cancelada por refinanciación
 }
 
 enum CollectionActionType {
@@ -55,6 +57,15 @@ enum CollectionActionType {
   REFINANCING // Refinanciación
   LEGAL       // Acción legal
   PROMISE     // Promesa de pago
+}
+
+enum PaymentMethod {
+  EFECTIVO
+  TRANSFERENCIA
+  DEPOSITO
+  CHEQUE
+  TARJETA
+  MOVIMIENTO_REFINANCIACION // Movimiento generado por refinanciación
 }
 
 // ============================================
@@ -126,6 +137,12 @@ model Loan {
   totalPayment     Decimal       @db.Decimal(12, 2)
   installmentAmount Decimal       @db.Decimal(12, 2)
 
+  // Refinancing fields
+  prestamo_origen_id      String?   @unique // ID del préstamo original (si este es el nuevo préstamo refinanciado)
+  prestamo_refinanciado   Loan?    @relation("Refinanciacion", fields: [prestamo_origen_id], references: [id])
+  prestamo_origen         Loan?    @relation("Refinanciacion")
+  prestamo_nuevo_id       String?   // ID del nuevo préstamo (si este es el préstamo original refinanciado)
+
   // Relations
   client           Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
   assignedVendor   User?         @relation("AssignedLoans", fields: [assignedVendorId], references: [id])
@@ -136,6 +153,8 @@ model Loan {
   @@index([clientId])
   @@index([status])
   @@index([assignedVendorId])
+  @@index([prestamo_origen_id])
+  @@index([prestamo_nuevo_id])
 }
 
 model Installment {
@@ -171,6 +190,7 @@ model Payment {
   installmentId   String?
   amount          Decimal       @db.Decimal(12, 2)
   type            String        // MANUAL, AUTOMATIC, BATCH
+  method          PaymentMethod? // EFECTIVO, TRANSFERENCIA, etc.
   status          PaymentStatus @default(PENDING)
   reference       String?       // Número de transacción, comprobante
   notes           String?

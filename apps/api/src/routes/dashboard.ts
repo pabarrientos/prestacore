@@ -1,5 +1,5 @@
 import Router, { Response } from 'express';
-import { PrismaClient, Role, LoanStatus, InstallmentStatus } from '@prisma/client';
+import { PrismaClient, Role, LoanStatus, InstallmentStatus, PaymentStatus } from '@prisma/client';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { requireVendor } from '../middleware/rbac';
 import { MoraService } from '../services/mora';
@@ -32,7 +32,7 @@ router.get('/', authMiddleware, requireVendor, async (req: AuthRequest, res: Res
       // Total loans count
       prisma.loan.count({ where: whereClause }),
       
-      // Active loans
+      // Active loans - EXCLUDE REFINANCIADO (old loan stops counting)
       prisma.loan.count({
         where: { ...whereClause, status: LoanStatus.ACTIVE },
       }),
@@ -49,27 +49,37 @@ router.get('/', authMiddleware, requireVendor, async (req: AuthRequest, res: Res
         where: whereClause,
       }),
       
-      // Total disbursed (approved/active loans)
+      // Total disbursed - sum of original loans (including refinanced ones)
+      // Include: ACTIVE, PAID, DEFAULTED, REFINANCIADO loans that are NOT new loans from refinancing
+      // A "new loan from refinancing" has status = ACTIVE and prestamo_origen_id is not null
+      // Original loans (REFINANCIADO) should be included as money was disbursed
       prisma.loan.aggregate({
         _sum: { amount: true },
         where: {
           ...whereClause,
-          status: { in: [LoanStatus.ACTIVE, LoanStatus.PAID] },
+          status: { in: [LoanStatus.ACTIVE, LoanStatus.PAID, LoanStatus.DEFAULTED, LoanStatus.REFINANCIADO] },
+          // Include only loans that are NOT new loans from refinancing (those without prestamo_origen_id)
+          prestamo_origen_id: null,
         },
       }),
       
       // Total collected (completed payments)
       prisma.payment.aggregate({
         _sum: { amount: true },
-        where: { status: 'COMPLETED' },
+        where: { 
+          status: PaymentStatus.COMPLETED,
+        },
       }),
 
-      // Overdue installments - dynamic calculation based on dueDate
+      // Overdue installments - dynamic calculation based on dueDate - EXCLUDE DEFAULTED and REFINANCIADO loans
       prisma.installment.findMany({
         where: {
           status: { not: InstallmentStatus.PAID },
           dueDate: { lt: now }, // All installments with dueDate < now
-          loan: whereClause,
+          loan: {
+            ...whereClause,
+            status: { notIn: [LoanStatus.DEFAULTED, LoanStatus.REFINANCIADO] }, // Exclude DEFAULTED and REFINANCIADO loans
+          },
         },
         select: {
           balance: true,
@@ -107,11 +117,15 @@ router.get('/', authMiddleware, requireVendor, async (req: AuthRequest, res: Res
       amount: Math.round(data.amount * 100) / 100,
     }));
 
-    // Calculate future collection amount - sum of all installments with balance > 0 (pending + overdue)
+    // Calculate future collection amount - sum of all installments with balance > 0 - EXCLUDE DEFAULTED and REFINANCIADO loans
     const allInstallmentsWithBalance = await prisma.installment.findMany({
       where: {
         ...whereClause,
         balance: { gt: 0 },
+        loan: {
+          ...whereClause,
+          status: { notIn: [LoanStatus.DEFAULTED, LoanStatus.REFINANCIADO] }, // Exclude DEFAULTED and REFINANCIADO loans
+        },
       },
       select: { balance: true },
     });
@@ -209,17 +223,26 @@ router.get('/overdue', authMiddleware, requireVendor, async (req: AuthRequest, r
     const { vendorId, from, to } = req.query;
     const now = new Date();
 
-    // Base where clause - NO filter by status, we calculate dynamically
+    // Base where clause - NO filter by status, we calculate dynamically - EXCLUDE DEFAULTED and REFINANCIADO loans
     const whereClause: any = {
       status: { not: InstallmentStatus.PAID }, // Exclude paid only
       dueDate: { lt: now }, // Overdue based on date
+      loan: {
+        status: { notIn: [LoanStatus.DEFAULTED, LoanStatus.REFINANCIADO] }, // Exclude DEFAULTED and REFINANCIADO loans
+      },
     };
 
-    // Filter by vendor
+    // Filter by vendor - combined with exclusion
     if (req.user!.role === Role.VENDEDOR) {
-      whereClause.loan = { assignedVendorId: req.user!.userId };
+      whereClause.loan = { 
+        assignedVendorId: req.user!.userId,
+        status: { notIn: [LoanStatus.DEFAULTED, LoanStatus.REFINANCIADO] },
+      };
     } else if (vendorId) {
-      whereClause.loan = { assignedVendorId: vendorId as string };
+      whereClause.loan = { 
+        assignedVendorId: vendorId as string,
+        status: { notIn: [LoanStatus.DEFAULTED, LoanStatus.REFINANCIADO] },
+      };
     }
 
     // Filter by date range

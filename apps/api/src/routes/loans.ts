@@ -1,9 +1,10 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { PrismaClient, Role, LoanStatus } from '@prisma/client';
+import { PrismaClient, Role, LoanStatus, PaymentFrequency } from '@prisma/client';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { requireAdmin, requireVendor } from '../middleware/rbac';
 import { AmortizationService } from '../services/amortization';
+import { RefinancingService } from '../services/refinancing';
 
 const router: ReturnType<typeof Router> = Router();
 const prisma = new PrismaClient();
@@ -485,7 +486,7 @@ router.delete('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res
 router.patch('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { amount, interestRate, termMonths, frequency, purpose, notes, startDate, schedule } = req.body;
+    const { amount, interestRate, termMonths, frequency, purpose, notes, startDate, schedule, status } = req.body;
 
     const loan = await prisma.loan.findUnique({ where: { id } });
 
@@ -497,6 +498,47 @@ router.patch('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res:
       return;
     }
 
+    // Handle status change separately
+    if (status) {
+      // Allow status changes: PENDING -> ACTIVE, ACTIVE -> DEFAULTED, DEFAULTED -> ACTIVE
+      if (status === 'DEFAULTED' && loan.status === 'ACTIVE') {
+        const updated = await prisma.loan.update({
+          where: { id },
+          data: { status: LoanStatus.DEFAULTED },
+        });
+        res.json({ success: true, data: updated });
+        return;
+      }
+      
+      if (status === 'ACTIVE' && (loan.status === 'DEFAULTED' || loan.status === 'PENDING')) {
+        const updated = await prisma.loan.update({
+          where: { id },
+          data: { status: LoanStatus.ACTIVE },
+        });
+        res.json({ success: true, data: updated });
+        return;
+      }
+
+      if (status === 'ACTIVE' && loan.status === 'PENDING') {
+        const updated = await prisma.loan.update({
+          where: { id },
+          data: { 
+            status: LoanStatus.ACTIVE,
+            approvedAt: new Date(),
+          },
+        });
+        res.json({ success: true, data: updated });
+        return;
+      }
+
+      res.status(400).json({
+        success: false,
+        error: `Cannot change status from ${loan.status} to ${status}`,
+      });
+      return;
+    }
+
+    // Original edit logic for PENDING loans
     if (loan.status !== LoanStatus.PENDING) {
       res.status(400).json({
         success: false,
@@ -624,6 +666,197 @@ router.get('/:id/schedule', authMiddleware, async (req: AuthRequest, res: Respon
     });
   } catch (error) {
     console.error('Get schedule error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+    });
+  }
+});
+
+// ============================================
+// Refinancing Endpoints
+// ============================================
+
+// Validation schema for execute refinancing
+const executeRefinancingSchema = z.object({
+  nuevaTasaInteres: z.number().min(0),
+  cantidadCuotas: z.number().int().min(1).max(60),
+  nuevaFrecuencia: z.enum(['WEEKLY', 'BIWEEKLY', 'MONTHLY']),
+  fechaInicio: z.string(),
+  pagoInicial: z.number().min(0).optional(),
+  interesesVencidosManual: z.number().min(0).optional(),
+});
+
+// GET /api/loans/:id/preview-refinancing - Preview refinancing (PUBLIC - no auth)
+router.get('/:id/preview-refinancing', async (req, res): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { nuevaTasaInteres, cantidadCuotas, nuevaFrecuencia, pagoInicial, interesesVencidosManual, fechaInicio } = req.query;
+
+    // Calculate debt breakdown
+    const calculation = await RefinancingService.calculateNewCapital(id);
+
+    if (!calculation) {
+      res.status(404).json({
+        success: false,
+        error: 'Loan not found',
+      });
+      return;
+    }
+
+    // Check eligibility
+    const validation = await RefinancingService.validateRefinancingEligibility(id);
+    if (!validation.eligible) {
+      res.status(400).json({
+        success: false,
+        error: validation.error,
+      });
+      return;
+    }
+
+    // Use manual override if provided
+    const manualInteresesVencidos = interesesVencidosManual 
+      ? parseFloat(interesesVencidosManual as string) 
+      : undefined;
+    
+    const effectiveInteresesVencidos = manualInteresesVencidos !== undefined 
+      ? manualInteresesVencidos 
+      : calculation.interesesVencidos;
+
+    // Calculate adjusted capital with initial payment and manual interesesVencidos
+    const initialPayment = pagoInicial ? parseFloat(pagoInicial as string) : 0;
+    const adjustedCapital = Math.max(0, 
+      calculation.capitalPendiente + effectiveInteresesVencidos + calculation.pagosAtrasados - initialPayment
+    );
+
+    // Parse start date (fechaInicio) or use current date
+    const startDate = fechaInicio ? new Date(fechaInicio as string) : new Date();
+
+    const response: any = {
+      success: true,
+      data: {
+        loanId: id,
+        eligible: true,
+        breakdown: {
+          capitalPendiente: calculation.capitalPendiente,
+          interesesVencidos: effectiveInteresesVencidos,
+          pagosAtrasados: calculation.pagosAtrasados,
+          nuevoCapital: adjustedCapital,
+        },
+      },
+    };
+
+    // If query params provided, generate preview amortization table
+    if (nuevaTasaInteres && cantidadCuotas) {
+      const rate = parseFloat(nuevaTasaInteres as string) / 100;
+      const term = parseInt(cantidadCuotas as string, 10);
+      const frequency = (nuevaFrecuencia as string) as PaymentFrequency || PaymentFrequency.MONTHLY;
+
+      const amortization = AmortizationService.calculate({
+        amount: adjustedCapital,
+        interestRate: rate,
+        termMonths: term,
+        frequency: frequency,
+        startDate: startDate,
+      });
+
+      response.data.previewAmortization = {
+        nuevoCapital: adjustedCapital,
+        nuevaTasaInteres: parseFloat(nuevaTasaInteres as string),
+        nuevaFrecuencia: frequency,
+        cantidadCuotas: term,
+        installmentAmount: amortization.installmentAmount,
+        totalInterest: amortization.totalInterest,
+        totalPayment: amortization.totalPayment,
+        schedule: amortization.schedule.map(item => ({
+          ...item,
+          dueDate: item.dueDate.toISOString(),
+        })),
+      };
+    }
+
+    res.json(response);
+  } catch (error) {
+    console.error('Preview refinancing error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+    });
+  }
+});
+
+// POST /api/loans/:id/execute-refinancing - Execute refinancing (Admin only)
+router.post('/:id/execute-refinancing', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id: loanId } = req.params;
+    const body = executeRefinancingSchema.parse(req.body);
+
+    const { nuevaTasaInteres, cantidadCuotas, nuevaFrecuencia, fechaInicio, pagoInicial, interesesVencidosManual } = body;
+
+    // Parse the first due date
+    const startDate = fechaInicio ? new Date(fechaInicio) : new Date();
+
+    // Validate loan exists is eligible for refinancing
+    const validation = await RefinancingService.validateRefinancingEligibility(loanId);
+    if (!validation.eligible) {
+      res.status(400).json({
+        success: false,
+        error: validation.error,
+      });
+      return;
+    }
+
+    // Execute refinancing
+    const result = await RefinancingService.executeRefinancing({
+      loanId,
+      newInterestRate: nuevaTasaInteres,
+      newTermMonths: cantidadCuotas,
+      newFrequency: nuevaFrecuencia as PaymentFrequency,
+      startDate,
+      notes: pagoInicial ? `Pago inicial: ${pagoInicial}` : undefined,
+      capitalExtra: pagoInicial || undefined,
+      interesesVencidosManual,
+    });
+
+    if (!result.success) {
+      res.status(400).json({
+        success: false,
+        error: result.error,
+      });
+      return;
+    }
+
+    // Get full new loan details
+    const newLoan = await prisma.loan.findUnique({
+      where: { id: result.newLoan!.id },
+      include: {
+        client: {
+          include: {
+            user: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+          },
+        },
+        installments: {
+          orderBy: { installmentNumber: 'asc' },
+        },
+      },
+    });
+
+    res.json({
+      success: true,
+      data: {
+        message: 'Refinanciación ejecutada exitosamente',
+        newLoan,
+        oldLoanId: loanId,
+      },
+    });
+  } catch (error) {
+    console.error('Execute refinancing error:', error);
     res.status(500).json({
       success: false,
       error: 'Internal server error',

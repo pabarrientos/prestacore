@@ -118,6 +118,9 @@ cd apps/web && pnpm test:e2e
 - `GET /api/loans` - Listar préstamos
 - `POST /api/loans` - Crear préstamo
 - `GET /api/loans/:id` - Ver préstamo
+- `PATCH /api/loans/:id` - Editar o cambiar estado (Admin)
+- `GET /api/loans/:id/preview-refinancing` - Previsualizar refinanciación
+- `POST /api/loans/:id/execute-refinancing` - Ejecutar refinanciación
 
 ### Pagos
 - `POST /api/payments` - Registrar pago de cuota
@@ -125,6 +128,17 @@ cd apps/web && pnpm test:e2e
 ### Dashboard
 - `GET /api/dashboard` - Métricas del sistema
 - `GET /api/dashboard/overdue` - Cuotas vencidas
+
+## 🔄 Refinanciación
+
+El sistema permite refinanciar préstamos en mora:
+
+1. **Previsualización**: Muestra el desglose de deuda (capital pendiente, intereses vencidos, pagos atrasados)
+2. **Edición manual**: Los intereses vencidos pueden ajustarse manualmente
+3. **Nuevo préstamo**: Se crea un nuevo préstamo con el capital refinanciado
+4. **Seguimiento**: Links bidireccionales entre préstamo original y nuevo
+
+Para refinanciar un préstamo, debe estar en estado DEFAULTED o tener cuotas vencidas.
 
 ## 🔧 Variables de Entorno
 
