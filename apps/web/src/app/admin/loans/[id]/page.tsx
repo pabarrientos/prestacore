@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import PaymentForm from '@/components/PaymentForm';
+import RefinancingModal from '@/components/RefinancingModal';
 
 interface LoanDetail {
   id: string;
@@ -36,6 +37,19 @@ interface LoanDetail {
   } | null;
   installments: Installment[];
   payments: Payment[];
+  // Refinancing links
+  prestamo_origen?: {
+    id: string;
+    amount: number;
+    status: string;
+  } | null;
+  prestamo_nuevo?: {
+    id: string;
+    amount: number;
+    status: string;
+  } | null;
+  prestamo_nuevo_id?: string | null;
+  prestamo_origen_id?: string | null;
 }
 
 interface Installment {
@@ -94,6 +108,7 @@ const installmentStatusColors: Record<string, string> = {
   PAID: 'bg-green-100 text-green-800',
   OVERDUE: 'bg-red-100 text-red-800',
   PARTIAL: 'bg-orange-100 text-orange-800',
+  CANCELADA_POR_REFINANCIACION: 'bg-purple-100 text-purple-800',
 };
 
 function isOverdue(dueDate: string, status: string): boolean {
@@ -130,6 +145,7 @@ export default function LoanDetailPage() {
   const [error, setError] = useState('');
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
+  const [showRefinancing, setShowRefinancing] = useState(false);
 
   const handleEditPayment = (payment: Payment) => {
     setEditingPayment(payment);
@@ -279,6 +295,85 @@ export default function LoanDetailPage() {
               Registrar Pago
             </button>
           )}
+          {loan.status === 'DEFAULTED' && user?.role === 'ADMIN' && (
+            <button
+              onClick={() => setShowRefinancing(true)}
+              className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
+            >
+              Refinanciar
+            </button>
+          )}
+          {/* Also show refinancing for ACTIVE loans with overdue installments */}
+          {loan.status === 'ACTIVE' && user?.role === 'ADMIN' && loan.installments?.some(i => {
+            const now = new Date();
+            const due = new Date(i.dueDate);
+            return due < now && i.status !== 'PAID';
+          }) && (
+            <button
+              onClick={() => setShowRefinancing(true)}
+              className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
+            >
+              Refinanciar
+            </button>
+          )}
+          {/* Mark as DEFAULTED button for ACTIVE loans (admin only) */}
+          {loan.status === 'ACTIVE' && user?.role === 'ADMIN' && (
+            <button
+              onClick={async () => {
+                if (!confirm('¿Marcar este préstamo como DEFAULTED (en mora)?')) return;
+                try {
+                  const res = await fetch(`${API_URL}/api/loans/${params.id}`, {
+                    method: 'PATCH',
+                    headers: { 
+                      Authorization: `Bearer ${token}`,
+                      'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ status: 'DEFAULTED' })
+                  });
+                  const data = await res.json();
+                  if (data.success) {
+                    setLoan({ ...loan, status: 'DEFAULTED' });
+                  } else {
+                    alert(data.error || 'Error al marcar como DEFAULTED');
+                  }
+                } catch (err) {
+                  alert('Error al conectar con el servidor');
+                }
+              }}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+            >
+              Marcar Incobrable
+            </button>
+          )}
+          {/* Reactivar button for DEFAULTED loans (admin only) */}
+          {loan.status === 'DEFAULTED' && user?.role === 'ADMIN' && (
+            <button
+              onClick={async () => {
+                if (!confirm('¿Reactivar este préstamo (volver a ACTIVE)?')) return;
+                try {
+                  const res = await fetch(`${API_URL}/api/loans/${params.id}`, {
+                    method: 'PATCH',
+                    headers: { 
+                      Authorization: `Bearer ${token}`,
+                      'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ status: 'ACTIVE' })
+                  });
+                  const data = await res.json();
+                  if (data.success) {
+                    setLoan({ ...loan, status: 'ACTIVE' });
+                  } else {
+                    alert(data.error || 'Error al reactivar el préstamo');
+                  }
+                } catch (err) {
+                  alert('Error al conectar con el servidor');
+                }
+              }}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            >
+              Reactivar
+            </button>
+          )}
         </div>
       </div>
 
@@ -292,9 +387,29 @@ export default function LoanDetailPage() {
       <div className="bg-white rounded-lg shadow p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Información del Préstamo</h2>
-          <span className={`px-3 py-1 text-sm rounded-full ${statusColors[loan.status]}`}>
-            {loan.status}
-          </span>
+          <div className="flex items-center gap-2">
+            {/* Link to original loan - only for NEW loans from refinancing (not REFINANCIADO) */}
+            {(loan.prestamo_origen?.id || loan.prestamo_origen_id) && (
+              <a 
+                href={`/admin/loans/${loan.prestamo_origen?.id || loan.prestamo_origen_id}`}
+                className="text-xs text-blue-600 hover:underline"
+              >
+                Ver Préstamo Original
+              </a>
+            )}
+            {/* Link to new loan - only for REFINANCIADO loans */}
+            {(loan.prestamo_nuevo?.id || loan.prestamo_nuevo_id) && (
+              <a 
+                href={`/admin/loans/${loan.prestamo_nuevo?.id || loan.prestamo_nuevo_id}`}
+                className="text-xs text-blue-600 hover:underline"
+              >
+                Ver Nuevo Préstamo
+              </a>
+            )}
+            <span className={`px-3 py-1 text-sm rounded-full ${statusColors[loan.status]}`}>
+              {loan.status}
+            </span>
+          </div>
         </div>
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -487,6 +602,31 @@ export default function LoanDetailPage() {
                 setShowPaymentForm(false);
                 setEditingPayment(null);
               }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Refinancing Modal */}
+      {showRefinancing && loan && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="max-w-4xl w-full">
+            <RefinancingModal
+              loanId={loan.id}
+              onSuccess={() => {
+                setShowRefinancing(false);
+                // Reload loan data
+                if (token && params.id) {
+                  fetch(`${API_URL}/api/loans/${params.id}`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                  })
+                    .then((res) => res.json())
+                    .then((data) => {
+                      if (data.success) setLoan(data.data);
+                    });
+                }
+              }}
+              onCancel={() => setShowRefinancing(false)}
             />
           </div>
         </div>
