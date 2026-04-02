@@ -7,7 +7,7 @@ interface DashboardMetrics {
   totalLoans: number;
   activeLoans: number;
   pendingApprovals: number;
-  overdueRate: number;
+  futureCollectionAmount: number;
   totalDisbursed: number;
   totalCollected: number;
   statusBreakdown: Record<string, number>;
@@ -76,10 +76,12 @@ export default function AdminDashboard() {
           <p className="text-3xl font-bold text-yellow-600">{metrics?.pendingApprovals || 0}</p>
         </div>
 
-        {/* Tasa de Mora */}
+        {/* Monto a Cobrar a Futuro */}
         <div className="bg-white rounded-lg shadow p-6">
-          <p className="text-sm text-gray-500">Tasa de Mora</p>
-          <p className="text-3xl font-bold text-red-600">{metrics?.overdueRate || 0}%</p>
+          <p className="text-sm text-gray-500">Monto a Cobrar a Futuro</p>
+          <p className="text-3xl font-bold text-blue-600">
+            ${(metrics?.futureCollectionAmount || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+          </p>
         </div>
 
         {/* Total Desembolsado */}

@@ -107,11 +107,18 @@ router.get('/', authMiddleware, requireVendor, async (req: AuthRequest, res: Res
       amount: Math.round(data.amount * 100) / 100,
     }));
 
-    // Calculate overdue rate
-    const overdueLoans = await prisma.loan.count({
-      where: { ...whereClause, status: LoanStatus.DEFAULTED },
+    // Calculate future collection amount - sum of all installments with balance > 0 (pending + overdue)
+    const allInstallmentsWithBalance = await prisma.installment.findMany({
+      where: {
+        ...whereClause,
+        balance: { gt: 0 },
+      },
+      select: { balance: true },
     });
-    const overdueRate = totalLoans > 0 ? (overdueLoans / totalLoans) * 100 : 0;
+    const futureCollectionAmount = allInstallmentsWithBalance.reduce(
+      (sum, inst) => sum + Number(inst.balance),
+      0
+    );
 
     // Format response
     const statusBreakdown = loansByStatus.reduce((acc, item) => {
@@ -125,7 +132,7 @@ router.get('/', authMiddleware, requireVendor, async (req: AuthRequest, res: Res
         totalLoans,
         activeLoans,
         pendingApprovals,
-        overdueRate: Math.round(overdueRate * 100) / 100,
+        futureCollectionAmount: Math.round(futureCollectionAmount * 100) / 100,
         totalDisbursed: totalDisbursed._sum.amount || 0,
         totalCollected: totalCollected._sum.amount || 0,
         statusBreakdown,

@@ -136,7 +136,7 @@ export interface DashboardMetrics {
   activeLoans: number;
   totalDisbursed: number;
   totalCollected: number;
-  overdueRate: number;
+  futureCollectionAmount: number;
   pendingApprovals: number;
 }
 
