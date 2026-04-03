@@ -274,6 +274,14 @@ export class RefinancingService {
         return { success: false, error: 'Préstamo no encontrado' };
       }
 
+      // Idempotency check: prevent double execution
+      if (oldLoan.status === LoanStatus.REFINANCIADO) {
+        return { success: false, error: 'El préstamo ya ha sido refinanciado anteriormente' };
+      }
+      if (oldLoan.status === LoanStatus.PAID) {
+        return { success: false, error: 'El préstamo ya está cancelado' };
+      }
+
       const loanStartDate = startDate || new Date();
 
       // Execute atomic transaction

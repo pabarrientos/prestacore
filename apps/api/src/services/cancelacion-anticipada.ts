@@ -146,7 +146,7 @@ export class CancelacionAnticipadaService {
         return { success: false, error: 'Préstamo no encontrado' };
       }
 
-      // Check if loan is already PAID - prevent early cancellation on paid loans
+      // Idempotency check: prevent double execution
       if (loan.status === LoanStatus.PAID) {
         return { success: false, error: 'El préstamo ya está cancelado' };
       }

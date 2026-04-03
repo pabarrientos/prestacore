@@ -300,17 +300,18 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
 
       if (data.success) {
         setSuccessMessage('Refinanciación ejecutada exitosamente');
+        // Don't disable loading - keep button disabled until modal closes
         setTimeout(() => {
           onSuccess();
         }, 1500);
       } else {
         setError(data.error || 'Error al ejecutar la refinanciación');
         setConfirmStep(false);
+        setExecuteLoading(false);
       }
     } catch (err) {
       setError('Error al conectar con el servidor');
       setConfirmStep(false);
-    } finally {
       setExecuteLoading(false);
     }
   };
@@ -688,21 +689,30 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
         <button
           onClick={handleExecute}
           disabled={executeLoading || !showPreview || !preview.previewAmortization}
-          className={`flex-1 px-4 py-3 rounded-lg font-semibold text-white transition ${
+          className={`flex-1 px-4 py-3 rounded-lg font-semibold text-white transition flex items-center justify-center gap-2 ${
             confirmStep
               ? 'bg-red-600 hover:bg-red-700'
               : 'bg-primary-600 hover:bg-primary-700'
           } disabled:opacity-50 disabled:cursor-not-allowed`}
         >
-          {executeLoading
-            ? 'Ejecutando...'
-            : confirmStep
-            ? 'CONFIRMAR Refinanciación'
-            : 'Refinanciar Préstamo'}
+          {executeLoading ? (
+            <>
+              <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              Procesando...
+            </>
+          ) : confirmStep ? (
+            'CONFIRMAR Refinanciación'
+          ) : (
+            'Refinanciar Préstamo'
+          )}
         </button>
         <button
           onClick={onCancel}
-          className="px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-100"
+          disabled={executeLoading}
+          className="px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Cancelar
         </button>
