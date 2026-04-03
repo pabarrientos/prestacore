@@ -189,19 +189,19 @@ export default function PaymentForm({ loanId, payment, preselectedInstallmentId,
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h3 className="text-lg font-semibold mb-4">
+    <div className="bg-white rounded-lg shadow p-6 dark:bg-[#1e1e1e]">
+      <h3 className="text-lg font-semibold mb-4 dark:text-white/[.87]">
         {isEditing ? 'Editar Pago' : 'Registrar Pago'}
       </h3>
 
       {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm">
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm dark:bg-red-950/50 dark:border-red-900 dark:text-red-400">
           {error}
         </div>
       )}
 
       {success && (
-        <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-600 rounded-lg text-sm">
+        <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-600 rounded-lg text-sm dark:bg-green-950/50 dark:border-green-900 dark:text-green-400">
           {success}
         </div>
       )}
@@ -209,7 +209,7 @@ export default function PaymentForm({ loanId, payment, preselectedInstallmentId,
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Installment selector */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
             Cuota *
           </label>
           <select
@@ -222,7 +222,7 @@ export default function PaymentForm({ loanId, payment, preselectedInstallmentId,
                 setAmount(Number(inst.balance).toString());
               }
             }}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14]"
             required
           >
             <option value="">Seleccionar cuota...</option>
@@ -238,7 +238,7 @@ export default function PaymentForm({ loanId, payment, preselectedInstallmentId,
 
         {/* Amount */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
             Monto *
           </label>
           <input
@@ -247,38 +247,38 @@ export default function PaymentForm({ loanId, payment, preselectedInstallmentId,
             min="0"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14]"
             placeholder="0.00"
             required
           />
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-gray-500 mt-1 dark:text-white/60">
             Máximo: ${maxAmount.toFixed(2)}
           </p>
         </div>
 
         {/* Reference */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
             Referencia (opcional)
           </label>
           <input
             type="text"
             value={reference}
             onChange={(e) => setReference(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14]"
             placeholder="Nro. de transacción, comprobante..."
           />
         </div>
 
         {/* Notes */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
             Notas (opcional)
           </label>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14]"
             rows={2}
             placeholder="Notas adicionales..."
           />
@@ -286,14 +286,14 @@ export default function PaymentForm({ loanId, payment, preselectedInstallmentId,
 
         {/* Payment Date */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
             Fecha de Pago
           </label>
           <input
             type="date"
             value={paymentDate}
             onChange={(e) => setPaymentDate(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14]"
           />
         </div>
 
@@ -302,7 +302,7 @@ export default function PaymentForm({ loanId, payment, preselectedInstallmentId,
           <button
             type="submit"
             disabled={loading}
-            className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-[#39ff14] dark:text-black dark:hover:bg-[#32e012] dark:hover:shadow-[0_0_15px_rgba(57,255,20,0.4)]"
           >
             {loading ? 'Registrando...' : 'Registrar Pago'}
           </button>
@@ -310,7 +310,7 @@ export default function PaymentForm({ loanId, payment, preselectedInstallmentId,
             <button
               type="button"
               onClick={onCancel}
-              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 dark:border-gray-700 dark:text-white/60 dark:hover:bg-white/10"
             >
               Cancelar
             </button>

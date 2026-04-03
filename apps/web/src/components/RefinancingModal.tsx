@@ -334,9 +334,9 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white rounded-lg shadow p-6 dark:bg-[#1e1e1e]">
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 dark:border-[#39ff14]"></div>
         </div>
       </div>
     );
@@ -344,12 +344,12 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
 
   if (error && !preview) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white rounded-lg shadow p-6 dark:bg-[#1e1e1e]">
         <div className="text-center py-8">
-          <p className="text-red-600 mb-4">{error}</p>
+          <p className="text-red-600 mb-4 dark:text-red-400">{error}</p>
           <button
             onClick={onCancel}
-            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 dark:border-gray-700 dark:text-white/60 dark:hover:bg-white/10"
           >
             Cerrar
           </button>
@@ -360,12 +360,12 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
 
   if (!preview || !preview.eligible) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white rounded-lg shadow p-6 dark:bg-[#1e1e1e]">
         <div className="text-center py-8">
-          <p className="text-red-600 mb-4">Este préstamo no es elegible para refinanciación</p>
+          <p className="text-red-600 mb-4 dark:text-red-400">Este préstamo no es elegible para refinanciación</p>
           <button
             onClick={onCancel}
-            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 dark:border-gray-700 dark:text-white/60 dark:hover:bg-white/10"
           >
             Cerrar
           </button>
@@ -375,13 +375,13 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-      <div className="p-6 border-b">
+    <div className="bg-white rounded-lg shadow-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto dark:bg-[#1e1e1e]">
+      <div className="p-6 border-b dark:border-gray-700">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Refinanciar Préstamo</h2>
+          <h2 className="text-xl font-semibold dark:text-white/[.87]">Refinanciar Préstamo</h2>
           <button
             onClick={onCancel}
-            className="text-gray-400 hover:text-gray-600 text-2xl"
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-white/87 text-2xl"
           >
             ×
           </button>
@@ -390,30 +390,30 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
 
       <div className="p-6 space-y-6">
         {error && (
-          <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm">
+          <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm dark:bg-red-950/50 dark:border-red-900 dark:text-red-400">
             {error}
           </div>
         )}
 
         {successMessage && (
-          <div className="p-3 bg-green-50 border border-green-200 text-green-600 rounded-lg text-sm">
+          <div className="p-3 bg-green-50 border border-green-200 text-green-600 rounded-lg text-sm dark:bg-green-950/50 dark:border-green-900 dark:text-green-400">
             {successMessage}
           </div>
         )}
 
         {/* Debt Breakdown Section */}
-        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-          <h3 className="font-semibold text-orange-800 mb-3">Desglose de Deuda Actual</h3>
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 dark:bg-orange-950/50 dark:border-orange-900">
+          <h3 className="font-semibold text-orange-800 mb-3 dark:text-orange-400">Desglose de Deuda Actual</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <p className="text-sm text-orange-700">Capital Pendiente</p>
-              <p className="text-xl font-bold text-orange-900">
+              <p className="text-sm text-orange-700 dark:text-orange-500">Capital Pendiente</p>
+              <p className="text-xl font-bold text-orange-900 dark:text-orange-300">
                 {formatCurrency(preview.breakdown.capitalPendiente)}
               </p>
-              <p className="text-xs text-orange-600 mt-1">Saldo capital 1ra cuota impaga</p>
+              <p className="text-xs text-orange-600 mt-1 dark:text-orange-500">Saldo capital 1ra cuota impaga</p>
             </div>
             <div>
-              <p className="text-sm text-orange-700">Intereses Vencidos</p>
+              <p className="text-sm text-orange-700 dark:text-orange-500">Intereses Vencidos</p>
               {interesesVencidosModificado ? (
                 <div className="flex items-center gap-1">
                   <input
@@ -438,7 +438,7 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
                         }
                       });
                     }}
-                    className="w-24 px-2 py-1 text-xl font-bold text-orange-900 border border-orange-300 rounded focus:ring-2 focus:ring-orange-500"
+                    className="w-24 px-2 py-1 text-xl font-bold text-orange-900 border border-orange-300 rounded focus:ring-2 focus:ring-orange-500 dark:bg-[#2a2a2a] dark:border-orange-700 dark:text-orange-300 dark:focus:ring-orange-600"
                   />
                   <button
                     type="button"
@@ -460,14 +460,14 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
                         }
                       });
                     }}
-                    className="text-xs text-gray-500 hover:text-gray-700"
+                    className="text-xs text-gray-500 hover:text-gray-700 dark:text-white/60 dark:hover:text-white/87"
                   >
                     ✕
                   </button>
                 </div>
               ) : (
                 <>
-                  <p className="text-xl font-bold text-orange-900">
+                  <p className="text-xl font-bold text-orange-900 dark:text-orange-300">
                     {formatCurrency(preview.breakdown.interesesVencidos)}
                   </p>
                   <button
@@ -476,43 +476,43 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
                       setInteresesVencidosModificado(true);
                       setInteresesVencidosManual(preview.breakdown.interesesVencidos.toString());
                     }}
-                    className="text-xs text-orange-600 hover:text-orange-800 mt-1"
+                    className="text-xs text-orange-600 hover:text-orange-800 mt-1 dark:text-orange-500 dark:hover:text-orange-400"
                   >
                     Editar
                   </button>
                 </>
               )}
-              <p className="text-xs text-orange-600 mt-1">Mora dinámica (como /admin/overdue)</p>
+              <p className="text-xs text-orange-600 mt-1 dark:text-orange-500">Mora dinámica (como /admin/overdue)</p>
             </div>
             <div>
-              <p className="text-sm text-orange-700">Pagos Atrasados</p>
-              <p className="text-xl font-bold text-orange-900">
+              <p className="text-sm text-orange-700 dark:text-orange-500">Pagos Atrasados</p>
+              <p className="text-xl font-bold text-orange-900 dark:text-orange-300">
                 {formatCurrency(preview.breakdown.pagosAtrasados)}
               </p>
-              <p className="text-xs text-orange-600 mt-1">Suma balances cuotas vencidas</p>
+              <p className="text-xs text-orange-600 mt-1 dark:text-orange-500">Suma balances cuotas vencidas</p>
             </div>
             <div>
-              <p className="text-sm text-orange-700 font-semibold">Nuevo Capital</p>
-              <p className="text-xl font-bold text-primary-600">
+              <p className="text-sm text-orange-700 font-semibold dark:text-orange-500">Nuevo Capital</p>
+              <p className="text-xl font-bold text-primary-600 dark:text-[#39ff14]">
                 {formatCurrency(preview.breakdown.nuevoCapital)}
               </p>
-              <p className="text-xs text-orange-600 mt-1">Cap + Int + Atras - Inicial</p>
+              <p className="text-xs text-orange-600 mt-1 dark:text-orange-500">Cap + Int + Atras - Inicial</p>
             </div>
           </div>
         </div>
 
         {/* New Loan Configuration Form */}
         <div>
-          <h3 className="font-semibold mb-4">Nueva Configuración del Préstamo</h3>
+          <h3 className="font-semibold mb-4 dark:text-white/[.87]">Nueva Configuración del Préstamo</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
                 Frecuencia de Pago *
               </label>
               <select
                 value={nuevaFrecuencia}
                 onChange={(e) => setNuevaFrecuencia(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14]"
               >
                 {frequencyOptions.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -522,7 +522,7 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
                 Cantidad de Cuotas *
               </label>
               <input
@@ -531,13 +531,13 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
                 max="60"
                 value={cantidadCuotas}
                 onChange={(e) => setCantidadCuotas(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14]"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
                 Tasa de Interés ({getFrequencyLabel(nuevaFrecuencia)}) *
-                {tasaManual && <span className="text-xs text-gray-500"> (manual)</span>}
+                {tasaManual && <span className="text-xs text-gray-500 dark:text-white/60"> (manual)</span>}
               </label>
               <div className="flex items-center gap-2">
                 <input
@@ -550,9 +550,9 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
                     setTasaManual(true);
                     setNuevaTasaInteres(e.target.value);
                   }}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14]"
                 />
-                <span className="text-gray-500">%</span>
+                <span className="text-gray-500 dark:text-white/60">%</span>
               </div>
               <div className="mt-1">
                 <button
@@ -562,25 +562,25 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
                     const periodRate = calculatePeriodRate();
                     setNuevaTasaInteres(periodRate.toFixed(2));
                   }}
-                  className="text-xs text-primary-600 hover:text-primary-800"
+                  className="text-xs text-primary-600 hover:text-primary-800 dark:text-[#39ff14] dark:hover:text-[#32e012]"
                 >
                   {tasaManual ? 'Usar tasa automática' : ''}
                 </button>
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
                 Fecha de Inicio *
               </label>
               <input
                 type="date"
                 value={fechaInicio}
                 onChange={(e) => setFechaInicio(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14]"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
                 Pago Inicial (opcional)
               </label>
               <input
@@ -589,17 +589,17 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
                 min="0"
                 value={pagoInicial}
                 onChange={(e) => setPagoInicial(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14]"
                 placeholder="0.00"
               />
-              <p className="text-xs text-gray-500 mt-1">Monto que el cliente paga al inicio → reduce el capital del nuevo préstamo</p>
+              <p className="text-xs text-gray-500 mt-1 dark:text-white/60">Monto que el cliente paga al inicio → reduce el capital del nuevo préstamo</p>
             </div>
             <div className="flex items-end">
               <button
                 type="button"
                 onClick={fetchPreview}
                 disabled={previewLoading || !nuevaTasaInteres || !cantidadCuotas}
-                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-blue-700 dark:hover:bg-blue-600"
               >
                 {previewLoading ? 'Calculando...' : 'Previsualizar Préstamo'}
               </button>
@@ -609,37 +609,37 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
 
         {/* Preview Amortization Table */}
         {showPreview && preview.previewAmortization && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 dark:bg-green-950/50 dark:border-green-900">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-green-800">Previsualización del Nuevo Préstamo</h3>
+              <h3 className="font-semibold text-green-800 dark:text-green-400">Previsualización del Nuevo Préstamo</h3>
               {previewLoading && (
-                <span className="text-sm text-green-600">Actualizando...</span>
+                <span className="text-sm text-green-600 dark:text-green-500">Actualizando...</span>
               )}
             </div>
             
             {/* Summary */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
               <div>
-                <p className="text-sm text-green-700">Nuevo Capital</p>
-                <p className="font-bold">
+                <p className="text-sm text-green-700 dark:text-green-500">Nuevo Capital</p>
+                <p className="font-bold dark:text-green-300">
                   {formatCurrency(preview.previewAmortization.nuevoCapital)}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-green-700">Cuota {getFrequencyLabel(preview.previewAmortization.nuevaFrecuencia)}</p>
-                <p className="font-bold">
+                <p className="text-sm text-green-700 dark:text-green-500">Cuota {getFrequencyLabel(preview.previewAmortization.nuevaFrecuencia)}</p>
+                <p className="font-bold dark:text-green-300">
                   {formatCurrency(preview.previewAmortization.installmentAmount)}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-green-700">Total Intereses</p>
-                <p className="font-bold">
+                <p className="text-sm text-green-700 dark:text-green-500">Total Intereses</p>
+                <p className="font-bold dark:text-green-300">
                   {formatCurrency(preview.previewAmortization.totalInterest)}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-green-700">Total a Pagar</p>
-                <p className="font-bold">
+                <p className="text-sm text-green-700 dark:text-green-500">Total a Pagar</p>
+                <p className="font-bold dark:text-green-300">
                   {formatCurrency(preview.previewAmortization.totalPayment)}
                 </p>
               </div>
@@ -647,32 +647,32 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
 
             {/* Table */}
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-green-200 text-sm">
-                <thead className="bg-green-100">
+              <table className="min-w-full divide-y divide-green-200 text-sm dark:divide-green-900">
+                <thead className="bg-green-100 dark:bg-green-900/50">
                   <tr>
-                    <th className="px-3 py-2 text-left text-green-800 font-medium">#</th>
-                    <th className="px-3 py-2 text-left text-green-800 font-medium">Fecha</th>
-                    <th className="px-3 py-2 text-right text-green-800 font-medium">Cuota</th>
-                    <th className="px-3 py-2 text-right text-green-800 font-medium">Capital</th>
-                    <th className="px-3 py-2 text-right text-green-800 font-medium">Interés</th>
-                    <th className="px-3 py-2 text-right text-green-800 font-medium">Saldo</th>
+                    <th className="px-3 py-2 text-left text-green-800 font-medium dark:text-green-400">#</th>
+                    <th className="px-3 py-2 text-left text-green-800 font-medium dark:text-green-400">Fecha</th>
+                    <th className="px-3 py-2 text-right text-green-800 font-medium dark:text-green-400">Cuota</th>
+                    <th className="px-3 py-2 text-right text-green-800 font-medium dark:text-green-400">Capital</th>
+                    <th className="px-3 py-2 text-right text-green-800 font-medium dark:text-green-400">Interés</th>
+                    <th className="px-3 py-2 text-right text-green-800 font-medium dark:text-green-400">Saldo</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-green-200 bg-white">
+                <tbody className="divide-y divide-green-200 bg-white dark:divide-green-900 dark:bg-[#1e1e1e]">
                   {preview.previewAmortization.schedule.map((item) => (
                     <tr key={item.installmentNumber}>
-                      <td className="px-3 py-2 text-green-900">{item.installmentNumber}</td>
-                      <td className="px-3 py-2 text-green-900">{formatDate(item.dueDate)}</td>
-                      <td className="px-3 py-2 text-right text-green-900">
+                      <td className="px-3 py-2 text-green-900 dark:text-green-300">{item.installmentNumber}</td>
+                      <td className="px-3 py-2 text-green-900 dark:text-green-300">{formatDate(item.dueDate)}</td>
+                      <td className="px-3 py-2 text-right text-green-900 dark:text-green-300">
                         {formatCurrency(item.amount)}
                       </td>
-                      <td className="px-3 py-2 text-right text-green-900">
+                      <td className="px-3 py-2 text-right text-green-900 dark:text-green-300">
                         {formatCurrency(item.principal)}
                       </td>
-                      <td className="px-3 py-2 text-right text-green-900">
+                      <td className="px-3 py-2 text-right text-green-900 dark:text-green-300">
                         {formatCurrency(item.interest)}
                       </td>
-                      <td className="px-3 py-2 text-right text-green-900">
+                      <td className="px-3 py-2 text-right text-green-900 dark:text-green-300">
                         {formatCurrency(item.balance)}
                       </td>
                     </tr>
@@ -685,7 +685,7 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
       </div>
 
       {/* Actions */}
-      <div className="p-6 border-t bg-gray-50 flex gap-3">
+      <div className="p-6 border-t bg-gray-50 flex gap-3 dark:border-gray-700 dark:bg-[#1a1a1a]">
         <button
           onClick={handleExecute}
           disabled={executeLoading || !showPreview || !preview.previewAmortization}
@@ -693,7 +693,7 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
             confirmStep
               ? 'bg-red-600 hover:bg-red-700'
               : 'bg-primary-600 hover:bg-primary-700'
-          } disabled:opacity-50 disabled:cursor-not-allowed`}
+          } disabled:opacity-50 disabled:cursor-not-allowed dark:bg-[#39ff14] dark:text-black dark:hover:bg-[#32e012] dark:hover:shadow-[0_0_15px_rgba(57,255,20,0.4)]`}
         >
           {executeLoading ? (
             <>
@@ -712,7 +712,7 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
         <button
           onClick={onCancel}
           disabled={executeLoading}
-          className="px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed dark:border-gray-700 dark:text-white/60 dark:hover:bg-white/10"
         >
           Cancelar
         </button>
@@ -720,7 +720,7 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
 
       {confirmStep && (
         <div className="px-6 pb-4">
-          <p className="text-red-600 text-sm text-center">
+          <p className="text-red-600 text-sm text-center dark:text-red-400">
             Está a punto de ejecutar la refinanciación. Esta acción no se puede deshacer.
           </p>
         </div>

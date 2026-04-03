@@ -52,7 +52,7 @@ const frequencyLabels: Record<string, { plural: string; singular: string }> = {
 export default function EditLoanPage() {
   const params = useParams();
   const router = useRouter();
-  const { token, user } = useAuth();
+  const { token } = useAuth();
   const [loan, setLoan] = useState<Loan | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -306,19 +306,19 @@ export default function EditLoanPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      <div className="flex items-center justify-center h-64 dark:bg-[#121212]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 dark:border-[#39ff14]"></div>
       </div>
     );
   }
 
   if (error && !loan) {
     return (
-      <div className="text-center py-12">
-        <p className="text-red-600 mb-4">{error || 'Préstamo no encontrado'}</p>
+      <div className="text-center py-12 dark:bg-[#121212]">
+        <p className="text-red-600 dark:text-red-400 mb-4">{error || 'Préstamo no encontrado'}</p>
         <button
           onClick={() => router.push('/admin/loans')}
-          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 dark:bg-[#39ff14] dark:text-black dark:hover:bg-[#32e612] dark:hover:shadow-[0_0_15px_rgba(57,255,20,0.4)]"
         >
           Volver a la lista
         </button>
@@ -334,13 +334,13 @@ export default function EditLoanPage() {
         <div>
           <button
             onClick={() => router.push(`/admin/loans/${params.id}`)}
-            className="text-primary-600 hover:text-primary-800 mb-2"
+            className="text-primary-600 dark:text-[#39ff14] hover:text-primary-800 dark:hover:text-[#32e612] mb-2"
           >
             ← Volver al detalle
           </button>
-          <h1 className="text-2xl font-bold">Editar Préstamo</h1>
+          <h1 className="text-2xl font-bold dark:text-white/[.87]">Editar Préstamo</h1>
           {loan && (
-            <p className="text-gray-500">
+            <p className="text-gray-500 dark:text-white/38">
               Cliente: {loan.client.user.firstName} {loan.client.user.lastName}
             </p>
           )}
@@ -348,22 +348,22 @@ export default function EditLoanPage() {
       </div>
 
       {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg">
+        <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/50 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 rounded-lg">
           {error}
         </div>
       )}
 
       {success && (
-        <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-600 rounded-lg">
+        <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/50 border border-green-200 dark:border-green-800 text-green-600 dark:text-green-400 rounded-lg">
           {success}
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Formulario */}
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="bg-white dark:bg-[#1e1e1e] rounded-lg shadow p-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-[#d3d3d3] mb-1">
               Fecha de Inicio
             </label>
             <input
@@ -371,14 +371,14 @@ export default function EditLoanPage() {
               name="startDate"
               value={formData.startDate}
               onChange={handleChange}
-              className="w-full px-4 py-2 border rounded-lg"
+              className="w-full px-4 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white/[.87] focus:ring-primary-500 dark:focus:ring-[#39ff14] focus:border-primary-500 dark:focus:border-[#39ff14]"
               required
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-[#d3d3d3] mb-1">
                 Monto ($)
               </label>
               <input
@@ -386,7 +386,7 @@ export default function EditLoanPage() {
                 name="amount"
                 value={formData.amount}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border rounded-lg"
+                className="w-full px-4 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white/[.87] focus:ring-primary-500 dark:focus:ring-[#39ff14] focus:border-primary-500 dark:focus:border-[#39ff14]"
                 min="100"
                 step="0.01"
                 required
@@ -394,7 +394,7 @@ export default function EditLoanPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-[#d3d3d3] mb-1">
                 Plazo ({labels.plural})
               </label>
               <input
@@ -402,7 +402,7 @@ export default function EditLoanPage() {
                 name="term"
                 value={formData.term}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border rounded-lg"
+                className="w-full px-4 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white/[.87] focus:ring-primary-500 dark:focus:ring-[#39ff14] focus:border-primary-500 dark:focus:border-[#39ff14]"
                 min="1"
                 max="120"
                 required
@@ -412,14 +412,14 @@ export default function EditLoanPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-[#d3d3d3] mb-1">
                 Frecuencia
               </label>
               <select
                 name="frequency"
                 value={formData.frequency}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border rounded-lg"
+                className="w-full px-4 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white/[.87]"
               >
                 <option value="WEEKLY">Semanal</option>
                 <option value="BIWEEKLY">Quincenal</option>
@@ -429,7 +429,7 @@ export default function EditLoanPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-[#d3d3d3] mb-1">
                 Tasa {labels.singular} (%)
               </label>
               <input
@@ -437,7 +437,7 @@ export default function EditLoanPage() {
                 name="customRate"
                 value={formData.customRate}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border rounded-lg"
+                className="w-full px-4 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white/[.87] focus:ring-primary-500 dark:focus:ring-[#39ff14] focus:border-primary-500 dark:focus:border-[#39ff14]"
                 step="0.0001"
                 min="0"
                 required
@@ -446,7 +446,7 @@ export default function EditLoanPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-[#d3d3d3] mb-1">
               Propósito
             </label>
             <input
@@ -454,20 +454,20 @@ export default function EditLoanPage() {
               name="purpose"
               value={formData.purpose}
               onChange={handleChange}
-              className="w-full px-4 py-2 border rounded-lg"
+              className="w-full px-4 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white/[.87] dark:placeholder-gray-500"
               placeholder="Ej: Consumo, negocio, etc."
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-[#d3d3d3] mb-1">
               Notas
             </label>
             <textarea
               name="notes"
               value={formData.notes}
               onChange={handleChange}
-              className="w-full px-4 py-2 border rounded-lg"
+              className="w-full px-4 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white/[.87]"
               rows={3}
             />
           </div>
@@ -477,14 +477,14 @@ export default function EditLoanPage() {
               type="button"
               onClick={simulateLoan}
               disabled={simulating}
-              className="flex-1 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition disabled:opacity-50"
+              className="flex-1 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-[#d3d3d3] rounded-lg hover:bg-gray-50 dark:hover:bg-[#2a2a2a] transition disabled:opacity-50"
             >
               {simulating ? 'Calculando...' : 'Simular'}
             </button>
             <button
               type="submit"
               disabled={saving || !simulation}
-              className="flex-1 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50"
+              className="flex-1 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 dark:bg-[#39ff14] dark:text-black dark:hover:bg-[#32e612] dark:hover:shadow-[0_0_15px_rgba(57,255,20,0.4)] transition disabled:opacity-50"
             >
               {saving ? 'Guardando...' : 'Guardar Cambios'}
             </button>
@@ -492,61 +492,61 @@ export default function EditLoanPage() {
         </form>
 
         {/* Simulación */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-4">Simulación</h2>
+        <div className="bg-white dark:bg-[#1e1e1e] rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold mb-4 dark:text-white/[.87]">Simulación</h2>
           
           {simulation ? (
             <div className="space-y-4">
-              <div className="p-4 bg-primary-50 rounded-lg">
-                <p className="text-sm text-gray-600">Cuota ({labels.singular})</p>
-                <p className="text-2xl font-bold text-primary-700">
+              <div className="p-4 bg-primary-50 dark:bg-[#2a2a2a] rounded-lg">
+                <p className="text-sm text-gray-600 dark:text-[#d3d3d3]">Cuota ({labels.singular})</p>
+                <p className="text-2xl font-bold text-primary-700 dark:text-[#39ff14]">
                   ${simulation.installmentAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-500 dark:text-white/38 mt-1">
                   {simulation.schedule.length} pagos {labels.plural}
                 </p>
               </div>
               
               <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <p className="text-sm text-gray-600">Total Intereses</p>
-                  <p className="text-xl font-semibold">
+                <div className="p-4 bg-gray-50 dark:bg-[#2a2a2a] rounded-lg">
+                  <p className="text-sm text-gray-600 dark:text-[#d3d3d3]">Total Intereses</p>
+                  <p className="text-xl font-semibold dark:text-white/[.87]">
                     ${simulation.totalInterest.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                   </p>
                 </div>
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <p className="text-sm text-gray-600">Nro. de Pagos</p>
-                  <p className="text-xl font-semibold">{simulation.schedule.length}</p>
+                <div className="p-4 bg-gray-50 dark:bg-[#2a2a2a] rounded-lg">
+                  <p className="text-sm text-gray-600 dark:text-[#d3d3d3]">Nro. de Pagos</p>
+                  <p className="text-xl font-semibold dark:text-white/[.87]">{simulation.schedule.length}</p>
                 </div>
               </div>
 
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600">Total a Pagar</p>
-                <p className="text-2xl font-bold">
+              <div className="p-4 bg-gray-50 dark:bg-[#2a2a2a] rounded-lg">
+                <p className="text-sm text-gray-600 dark:text-[#d3d3d3]">Total a Pagar</p>
+                <p className="text-2xl font-bold dark:text-white/[.87]">
                   ${simulation.totalPayment.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </p>
               </div>
 
-              <div className="max-h-64 overflow-y-auto border rounded-lg">
+              <div className="max-h-64 overflow-y-auto border dark:border-gray-700 rounded-lg">
                 <table className="min-w-full text-sm">
-                  <thead className="bg-gray-50 sticky top-0">
+                  <thead className="bg-gray-50 dark:bg-[#2a2a2a] sticky top-0">
                     <tr>
-                      <th className="px-2 py-1">#</th>
-                      <th className="px-2 py-1">Fecha</th>
-                      <th className="px-2 py-1">Cuota</th>
+                      <th className="px-2 py-1 dark:text-[#d3d3d3]">#</th>
+                      <th className="px-2 py-1 dark:text-[#d3d3d3]">Fecha</th>
+                      <th className="px-2 py-1 dark:text-[#d3d3d3]">Cuota</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                     {simulation.schedule.slice(0, 12).map((item) => (
-                      <tr key={item.number} className="border-t text-center">
-                        <td className="px-2 py-1">{item.number}</td>
-                        <td className="px-2 py-1">{item.date}</td>
-                        <td className="px-2 py-1">${item.payment.toFixed(2)}</td>
+                      <tr key={item.number} className="border-t dark:border-gray-700 text-center">
+                        <td className="px-2 py-1 dark:text-white/[.87]">{item.number}</td>
+                        <td className="px-2 py-1 dark:text-white/[.87]">{item.date}</td>
+                        <td className="px-2 py-1 dark:text-white/[.87]">${item.payment.toFixed(2)}</td>
                       </tr>
                     ))}
                     {simulation.schedule.length > 12 && (
                       <tr>
-                        <td colSpan={3} className="px-2 py-1 text-center text-gray-500">
+                        <td colSpan={3} className="px-2 py-1 text-center text-gray-500 dark:text-white/38">
                           ... y {simulation.schedule.length - 12} más
                         </td>
                       </tr>
@@ -556,7 +556,7 @@ export default function EditLoanPage() {
               </div>
             </div>
           ) : (
-            <p className="text-gray-500 text-center py-8">
+            <p className="text-gray-500 dark:text-white/38 text-center py-8">
               Configure los parámetros y haga clic en "Simular"
             </p>
           )}

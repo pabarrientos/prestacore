@@ -26,7 +26,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 export default function EditClientPage() {
   const params = useParams();
   const router = useRouter();
-  const { token, user } = useAuth();
+  const { token } = useAuth();
   const [client, setClient] = useState<ClientData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -138,19 +138,19 @@ export default function EditClientPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      <div className="flex items-center justify-center h-64 dark:bg-[#121212]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 dark:border-[#39ff14]"></div>
       </div>
     );
   }
 
   if (error && !client) {
     return (
-      <div className="text-center py-12">
-        <p className="text-red-600 mb-4">{error || 'Cliente no encontrado'}</p>
+      <div className="text-center py-12 dark:bg-[#121212]">
+        <p className="text-red-600 dark:text-red-400 mb-4">{error || 'Cliente no encontrado'}</p>
         <button
           onClick={() => router.push('/admin/clients')}
-          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 dark:bg-[#39ff14] dark:text-black dark:hover:bg-[#32e612] dark:hover:shadow-[0_0_15px_rgba(57,255,20,0.4)]"
         >
           Volver a la lista
         </button>
@@ -164,32 +164,32 @@ export default function EditClientPage() {
         <div>
           <button
             onClick={() => router.push('/admin/clients')}
-            className="text-primary-600 hover:text-primary-800 mb-2"
+            className="text-primary-600 dark:text-[#39ff14] hover:text-primary-800 dark:hover:text-[#32e612] mb-2"
           >
             ← Volver a la lista
           </button>
-          <h1 className="text-2xl font-bold">Editar Cliente</h1>
+          <h1 className="text-2xl font-bold dark:text-white/[.87]">Editar Cliente</h1>
         </div>
       </div>
 
       {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg">
+        <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/50 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 rounded-lg">
           {error}
         </div>
       )}
 
       {success && (
-        <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-600 rounded-lg">
+        <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/50 border border-green-200 dark:border-green-800 text-green-600 dark:text-green-400 rounded-lg">
           {success}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6 space-y-4 max-w-2xl">
-        <h2 className="text-lg font-semibold border-b pb-2">Datos de Usuario</h2>
+      <form onSubmit={handleSubmit} className="bg-white dark:bg-[#1e1e1e] rounded-lg shadow p-6 space-y-4 max-w-2xl">
+        <h2 className="text-lg font-semibold border-b dark:border-gray-700 pb-2 dark:text-white/[.87]">Datos de Usuario</h2>
         
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-[#d3d3d3] mb-1">
               Email *
             </label>
             <input
@@ -197,17 +197,17 @@ export default function EditClientPage() {
               name="email"
               value={formData.email}
               onChange={handleChange}
-              className="w-full px-4 py-2 border rounded-lg"
+              className="w-full px-4 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white/[.87] focus:ring-primary-500 dark:focus:ring-[#39ff14] focus:border-primary-500 dark:focus:border-[#39ff14]"
               required
             />
           </div>
         </div>
 
-        <h2 className="text-lg font-semibold border-b pb-2 pt-4">Datos Personales</h2>
+        <h2 className="text-lg font-semibold border-b dark:border-gray-700 pb-2 pt-4 dark:text-white/[.87]">Datos Personales</h2>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-[#d3d3d3] mb-1">
               Nombre *
             </label>
             <input
@@ -215,13 +215,13 @@ export default function EditClientPage() {
               name="firstName"
               value={formData.firstName}
               onChange={handleChange}
-              className="w-full px-4 py-2 border rounded-lg"
+              className="w-full px-4 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white/[.87] focus:ring-primary-500 dark:focus:ring-[#39ff14] focus:border-primary-500 dark:focus:border-[#39ff14]"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-[#d3d3d3] mb-1">
               Apellido *
             </label>
             <input
@@ -229,7 +229,7 @@ export default function EditClientPage() {
               name="lastName"
               value={formData.lastName}
               onChange={handleChange}
-              className="w-full px-4 py-2 border rounded-lg"
+              className="w-full px-4 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white/[.87] focus:ring-primary-500 dark:focus:ring-[#39ff14] focus:border-primary-500 dark:focus:border-[#39ff14]"
               required
             />
           </div>
@@ -237,7 +237,7 @@ export default function EditClientPage() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-[#d3d3d3] mb-1">
               DNI *
             </label>
             <input
@@ -245,13 +245,13 @@ export default function EditClientPage() {
               name="dni"
               value={formData.dni}
               onChange={handleChange}
-              className="w-full px-4 py-2 border rounded-lg"
+              className="w-full px-4 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white/[.87] focus:ring-primary-500 dark:focus:ring-[#39ff14] focus:border-primary-500 dark:focus:border-[#39ff14]"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-[#d3d3d3] mb-1">
               Fecha de Nacimiento *
             </label>
             <input
@@ -259,7 +259,7 @@ export default function EditClientPage() {
               name="dateOfBirth"
               value={formData.dateOfBirth}
               onChange={handleChange}
-              className="w-full px-4 py-2 border rounded-lg"
+              className="w-full px-4 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white/[.87] focus:ring-primary-500 dark:focus:ring-[#39ff14] focus:border-primary-500 dark:focus:border-[#39ff14]"
               required
             />
           </div>
@@ -267,7 +267,7 @@ export default function EditClientPage() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-[#d3d3d3] mb-1">
               Teléfono
             </label>
             <input
@@ -275,12 +275,12 @@ export default function EditClientPage() {
               name="phone"
               value={formData.phone}
               onChange={handleChange}
-              className="w-full px-4 py-2 border rounded-lg"
+              className="w-full px-4 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white/[.87] focus:ring-primary-500 dark:focus:ring-[#39ff14] focus:border-primary-500 dark:focus:border-[#39ff14]"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-[#d3d3d3] mb-1">
               Ciudad
             </label>
             <input
@@ -288,13 +288,13 @@ export default function EditClientPage() {
               name="city"
               value={formData.city}
               onChange={handleChange}
-              className="w-full px-4 py-2 border rounded-lg"
+              className="w-full px-4 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white/[.87] focus:ring-primary-500 dark:focus:ring-[#39ff14] focus:border-primary-500 dark:focus:border-[#39ff14]"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-[#d3d3d3] mb-1">
             Dirección
           </label>
           <input
@@ -302,15 +302,15 @@ export default function EditClientPage() {
             name="address"
             value={formData.address}
             onChange={handleChange}
-            className="w-full px-4 py-2 border rounded-lg"
+            className="w-full px-4 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white/[.87] focus:ring-primary-500 dark:focus:ring-[#39ff14] focus:border-primary-500 dark:focus:border-[#39ff14]"
           />
         </div>
 
-        <h2 className="text-lg font-semibold border-b pb-2 pt-4">Datos Laborales</h2>
+        <h2 className="text-lg font-semibold border-b dark:border-gray-700 pb-2 pt-4 dark:text-white/[.87]">Datos Laborales</h2>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-[#d3d3d3] mb-1">
               Ocupación
             </label>
             <input
@@ -318,12 +318,12 @@ export default function EditClientPage() {
               name="occupation"
               value={formData.occupation}
               onChange={handleChange}
-              className="w-full px-4 py-2 border rounded-lg"
+              className="w-full px-4 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white/[.87] focus:ring-primary-500 dark:focus:ring-[#39ff14] focus:border-primary-500 dark:focus:border-[#39ff14]"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-[#d3d3d3] mb-1">
               Empleador
             </label>
             <input
@@ -331,13 +331,13 @@ export default function EditClientPage() {
               name="employer"
               value={formData.employer}
               onChange={handleChange}
-              className="w-full px-4 py-2 border rounded-lg"
+              className="w-full px-4 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white/[.87] focus:ring-primary-500 dark:focus:ring-[#39ff14] focus:border-primary-500 dark:focus:border-[#39ff14]"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-[#d3d3d3] mb-1">
             Ingreso Mensual *
           </label>
           <input
@@ -345,7 +345,7 @@ export default function EditClientPage() {
             name="monthlyIncome"
             value={formData.monthlyIncome}
             onChange={handleChange}
-            className="w-full px-4 py-2 border rounded-lg"
+            className="w-full px-4 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white/[.87] focus:ring-primary-500 dark:focus:ring-[#39ff14] focus:border-primary-500 dark:focus:border-[#39ff14]"
             min="0"
             step="0.01"
             required
@@ -356,14 +356,14 @@ export default function EditClientPage() {
           <button
             type="submit"
             disabled={saving}
-            className="flex-1 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50"
+            className="flex-1 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 dark:bg-[#39ff14] dark:text-black dark:hover:bg-[#32e612] dark:hover:shadow-[0_0_15px_rgba(57,255,20,0.4)] transition disabled:opacity-50"
           >
             {saving ? 'Guardando...' : 'Guardar Cambios'}
           </button>
           <button
             type="button"
             onClick={() => router.push('/admin/clients')}
-            className="py-2 px-4 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+            className="py-2 px-4 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-[#d3d3d3] rounded-lg hover:bg-gray-50 dark:hover:bg-[#2a2a2a]"
           >
             Cancelar
           </button>
