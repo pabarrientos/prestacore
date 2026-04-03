@@ -330,7 +330,7 @@ export default function EditLoanPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
         <div>
           <button
             onClick={() => router.push(`/admin/loans/${params.id}`)}
@@ -361,7 +361,7 @@ export default function EditLoanPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Formulario */}
-        <form onSubmit={handleSubmit} className="bg-white dark:bg-[#1e1e1e] rounded-lg shadow p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="bg-white dark:bg-[#1e1e1e] rounded-lg shadow p-4 sm:p-6 space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-[#d3d3d3] mb-1">
               Fecha de Inicio
@@ -376,7 +376,7 @@ export default function EditLoanPage() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-[#d3d3d3] mb-1">
                 Monto ($)
@@ -410,7 +410,7 @@ export default function EditLoanPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-[#d3d3d3] mb-1">
                 Frecuencia
@@ -507,7 +507,7 @@ export default function EditLoanPage() {
                 </p>
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="p-4 bg-gray-50 dark:bg-[#2a2a2a] rounded-lg">
                   <p className="text-sm text-gray-600 dark:text-[#d3d3d3]">Total Intereses</p>
                   <p className="text-xl font-semibold dark:text-white/[.87]">

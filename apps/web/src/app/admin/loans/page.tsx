@@ -122,12 +122,12 @@ export default function LoansPage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <h1 className="text-2xl font-bold dark:text-white/[.87]">Préstamos</h1>
         {user?.role === 'ADMIN' || user?.role === 'VENDEDOR' ? (
           <a
             href="/admin/loans/new"
-            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 dark:bg-[#39ff14] dark:text-black dark:hover:bg-[#32e012] dark:hover:shadow-[0_0_15px_rgba(57,255,20,0.4)] transition"
+            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 dark:bg-[#39ff14] dark:text-black dark:hover:bg-[#32e012] dark:hover:shadow-[0_0_15px_rgba(57,255,20,0.4)] transition min-h-[44px]"
           >
             Nuevo Préstamo
           </a>
@@ -141,12 +141,13 @@ export default function LoansPage() {
           placeholder="Filtrar por estado o cliente..."
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          className="px-4 py-2 border rounded-lg w-full md:w-64 dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14]"
+          className="px-4 py-2 border rounded-lg w-full md:w-64 min-h-[44px] dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14]"
         />
       </div>
 
       {/* Table */}
       <div className="bg-white rounded-lg shadow overflow-hidden dark:bg-[#1e1e1e]">
+        <div className="overflow-x-auto -mx-4 sm:mx-0">
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-[#1a1a1a]">
             <tr>
@@ -231,6 +232,7 @@ export default function LoansPage() {
             ))}
           </tbody>
         </table>
+        </div>
         
         {filteredLoans.length === 0 && (
           <p className="p-4 text-center text-gray-500 dark:text-white/60">No hay préstamos</p>

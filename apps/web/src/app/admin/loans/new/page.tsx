@@ -367,7 +367,7 @@ function NewLoanForm() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Formulario */}
-        <form onSubmit={handleSubmit} className="bg-white dark:bg-[#1e1e1e] rounded-lg shadow p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="bg-white dark:bg-[#1e1e1e] rounded-lg shadow p-4 sm:p-6 space-y-4">
           {/* Cliente con autocomplete */}
           <div className="relative">
             <label className="block text-sm font-medium text-gray-700 dark:text-[#d3d3d3] mb-1">
@@ -381,7 +381,7 @@ function NewLoanForm() {
                 setSelectedClient(null);
               }}
               onFocus={() => clientResults.length > 0 && setShowClientDropdown(true)}
-              className="w-full px-4 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white/[.87] dark:placeholder-gray-500 focus:ring-primary-500 dark:focus:ring-[#39ff14] focus:border-primary-500 dark:focus:border-[#39ff14]"
+              className="w-full px-4 py-2 min-h-[44px] border rounded-lg dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white/[.87] dark:placeholder-gray-500 focus:ring-primary-500 dark:focus:ring-[#39ff14] focus:border-primary-500 dark:focus:border-[#39ff14]"
               placeholder="Buscar por nombre, apellido o DNI..."
               autoComplete="off"
             />
@@ -416,7 +416,7 @@ function NewLoanForm() {
               name="startDate"
               value={formData.startDate}
               onChange={handleChange}
-              className="w-full px-4 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white/[.87] focus:ring-primary-500 dark:focus:ring-[#39ff14] focus:border-primary-500 dark:focus:border-[#39ff14]"
+              className="w-full px-4 py-2 min-h-[44px] border rounded-lg dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white/[.87] focus:ring-primary-500 dark:focus:ring-[#39ff14] focus:border-primary-500 dark:focus:border-[#39ff14]"
               required
             />
           </div>
@@ -430,14 +430,14 @@ function NewLoanForm() {
               name="amount"
               value={formData.amount}
               onChange={handleChange}
-              className="w-full px-4 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white/[.87] focus:ring-primary-500 dark:focus:ring-[#39ff14] focus:border-primary-500 dark:focus:border-[#39ff14]"
+              className="w-full px-4 py-2 min-h-[44px] border rounded-lg dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white/[.87] focus:ring-primary-500 dark:focus:ring-[#39ff14] focus:border-primary-500 dark:focus:border-[#39ff14]"
               min={rates.MIN_LOAN_AMOUNT}
               max={rates.MAX_LOAN_AMOUNT}
               required
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-[#d3d3d3] mb-1">
                 Plazo ({labels.plural})
@@ -447,7 +447,7 @@ function NewLoanForm() {
                 name="term"
                 value={formData.term}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white/[.87] focus:ring-primary-500 dark:focus:ring-[#39ff14] focus:border-primary-500 dark:focus:border-[#39ff14]"
+                className="w-full px-4 py-2 min-h-[44px] border rounded-lg dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white/[.87] focus:ring-primary-500 dark:focus:ring-[#39ff14] focus:border-primary-500 dark:focus:border-[#39ff14]"
                 min="1"
                 max="120"
                 required
@@ -462,7 +462,7 @@ function NewLoanForm() {
                   name="frequency"
                   value={formData.frequency}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white/[.87]"
+                  className="w-full px-4 py-2 min-h-[44px] border rounded-lg dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white/[.87]"
                 >
                   <option value="WEEKLY">Semanal</option>
                   <option value="BIWEEKLY">Quincenal</option>
@@ -481,7 +481,7 @@ function NewLoanForm() {
               name="customRate"
               value={formData.customRate}
               onChange={handleChange}
-              className="w-full px-4 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white/[.87] focus:ring-primary-500 dark:focus:ring-[#39ff14] focus:border-primary-500 dark:focus:border-[#39ff14]"
+              className="w-full px-4 py-2 min-h-[44px] border rounded-lg dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white/[.87] focus:ring-primary-500 dark:focus:ring-[#39ff14] focus:border-primary-500 dark:focus:border-[#39ff14]"
               step="0.1"
               min="0.1"
               required
@@ -496,7 +496,7 @@ function NewLoanForm() {
               name="purpose"
               value={formData.purpose}
               onChange={handleChange}
-              className="w-full px-4 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white/[.87] dark:placeholder-gray-500"
+              className="w-full px-4 py-2 min-h-[44px] border rounded-lg dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white/[.87] dark:placeholder-gray-500"
               placeholder="Ej: Consumo, negocio, etc."
             />
           </div>
@@ -514,19 +514,19 @@ function NewLoanForm() {
             />
           </div>
 
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
             <button
               type="button"
               onClick={simulateLoan}
               disabled={simulating}
-              className="flex-1 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-[#d3d3d3] rounded-lg hover:bg-gray-50 dark:hover:bg-[#2a2a2a] transition disabled:opacity-50"
+              className="flex-1 py-2 min-h-[44px] border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-[#d3d3d3] rounded-lg hover:bg-gray-50 dark:hover:bg-[#2a2a2a] transition disabled:opacity-50"
             >
               {simulating ? 'Calculando...' : 'Simular'}
             </button>
             <button
               type="submit"
               disabled={loading || !simulation}
-              className="flex-1 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 dark:bg-[#39ff14] dark:text-black dark:hover:bg-[#32e612] dark:hover:shadow-[0_0_15px_rgba(57,255,20,0.4)] transition disabled:opacity-50"
+              className="flex-1 py-2 min-h-[44px] bg-primary-600 text-white rounded-lg hover:bg-primary-700 dark:bg-[#39ff14] dark:text-black dark:hover:bg-[#32e612] dark:hover:shadow-[0_0_15px_rgba(57,255,20,0.4)] transition disabled:opacity-50"
             >
               {loading ? 'Creando...' : 'Crear Préstamo'}
             </button>
@@ -534,14 +534,14 @@ function NewLoanForm() {
         </form>
 
         {/* Simulación */}
-        <div className="bg-white dark:bg-[#1e1e1e] rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-[#1e1e1e] rounded-lg shadow p-4 sm:p-6">
           <h2 className="text-lg font-semibold mb-4 dark:text-white/[.87]">Simulación</h2>
           
           {simulation ? (
             <div className="space-y-4">
               <div className="p-4 bg-primary-50 dark:bg-[#2a2a2a] rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-[#d3d3d3]">Cuota ({labels.singular})</p>
-                <p className="text-2xl font-bold text-primary-700 dark:text-[#39ff14]">
+                <p className="text-xl sm:text-2xl font-bold text-primary-700 dark:text-[#39ff14]">
                   ${simulation.installmentAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-white/38 mt-1">
@@ -549,7 +549,7 @@ function NewLoanForm() {
                 </p>
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="p-4 bg-gray-50 dark:bg-[#2a2a2a] rounded-lg">
                   <p className="text-sm text-gray-600 dark:text-[#d3d3d3]">Total Intereses</p>
                   <p className="text-xl font-semibold dark:text-white/[.87]">

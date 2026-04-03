@@ -52,7 +52,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-8 bg-gray-50 dark:bg-[#121212]">
+    <main className="min-h-screen flex items-center justify-center p-4 md:p-8 bg-gray-50 dark:bg-[#121212]">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-primary-700 dark:text-[#39ff14]">Crear Cuenta</h1>
@@ -66,7 +66,7 @@ export default function RegisterPage() {
         )}
         
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
                 Nombre

@@ -125,21 +125,21 @@ export default function OverduePage() {
       {/* Summary Cards */}
       {summary && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-white dark:bg-[#1e1e1e] rounded-lg shadow p-6">
+          <div className="bg-white dark:bg-[#1e1e1e] rounded-lg shadow p-4 sm:p-6">
             <p className="text-sm text-gray-500 dark:text-white/38">Total Vencido</p>
-            <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+            <p className="text-xl sm:text-2xl font-bold text-red-600 dark:text-red-400">
               ${summary.totalOverdue.toLocaleString()}
             </p>
           </div>
-          <div className="bg-white dark:bg-[#1e1e1e] rounded-lg shadow p-6">
+          <div className="bg-white dark:bg-[#1e1e1e] rounded-lg shadow p-4 sm:p-6">
             <p className="text-sm text-gray-500 dark:text-white/38">Total Mora</p>
-            <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+            <p className="text-xl sm:text-2xl font-bold text-orange-600 dark:text-orange-400">
               ${summary.totalMora.toLocaleString()}
             </p>
           </div>
-          <div className="bg-white dark:bg-[#1e1e1e] rounded-lg shadow p-6">
+          <div className="bg-white dark:bg-[#1e1e1e] rounded-lg shadow p-4 sm:p-6">
             <p className="text-sm text-gray-500 dark:text-white/38">Cuotas Vencidas</p>
-            <p className="text-2xl font-bold dark:text-white/[.87]">{installments.length}</p>
+            <p className="text-xl sm:text-2xl font-bold dark:text-white/[.87]">{installments.length}</p>
           </div>
         </div>
       )}
@@ -164,7 +164,7 @@ export default function OverduePage() {
 
       {/* Filters */}
       <div className="bg-white dark:bg-[#1e1e1e] rounded-lg shadow p-4 mb-6">
-        <form onSubmit={handleFilter} className="flex flex-wrap gap-4 items-end">
+        <form onSubmit={handleFilter} className="flex flex-wrap gap-3 sm:gap-4 items-end">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-[#d3d3d3] mb-1">
               Desde
@@ -173,7 +173,7 @@ export default function OverduePage() {
               type="date"
               value={fromDate}
               onChange={(e) => setFromDate(e.target.value)}
-              className="px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-[#2a2a2a] dark:text-white/[.87] rounded-lg"
+              className="px-3 py-2 min-h-[44px] border border-gray-300 dark:border-gray-600 dark:bg-[#2a2a2a] dark:text-white/[.87] rounded-lg"
             />
           </div>
           <div>
@@ -184,12 +184,12 @@ export default function OverduePage() {
               type="date"
               value={toDate}
               onChange={(e) => setToDate(e.target.value)}
-              className="px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-[#2a2a2a] dark:text-white/[.87] rounded-lg"
+              className="px-3 py-2 min-h-[44px] border border-gray-300 dark:border-gray-600 dark:bg-[#2a2a2a] dark:text-white/[.87] rounded-lg"
             />
           </div>
           <button
             type="submit"
-            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 dark:bg-[#39ff14] dark:text-black dark:hover:bg-[#32e612] dark:hover:shadow-[0_0_15px_rgba(57,255,20,0.4)]"
+            className="px-4 py-2 min-h-[44px] bg-primary-600 text-white rounded-lg hover:bg-primary-700 dark:bg-[#39ff14] dark:text-black dark:hover:bg-[#32e612] dark:hover:shadow-[0_0_15px_rgba(57,255,20,0.4)]"
           >
             Filtrar
           </button>
@@ -201,7 +201,7 @@ export default function OverduePage() {
               setToDate('');
               loadOverdueData();
             }}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 dark:text-[#d3d3d3] rounded-lg hover:bg-gray-50 dark:hover:bg-[#2a2a2a]"
+            className="px-4 py-2 min-h-[44px] border border-gray-300 dark:border-gray-600 dark:text-[#d3d3d3] rounded-lg hover:bg-gray-50 dark:hover:bg-[#2a2a2a]"
           >
             Limpiar
           </button>

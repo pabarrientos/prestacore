@@ -104,7 +104,7 @@ export default function SettingsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6 dark:text-white/[.87]">Configuración del Sistema</h1>
+      <h1 className="text-2xl md:text-3xl font-bold mb-6 dark:text-white/[.87]">Configuración del Sistema</h1>
 
       {message.text && (
         <div className={`mb-4 p-3 rounded-lg ${message.type === 'success' ? 'bg-green-50 text-green-600 dark:bg-green-950/50 dark:text-green-400 dark:border dark:border-green-900' : 'bg-red-50 text-red-600 dark:bg-red-950/50 dark:text-red-400 dark:border dark:border-red-900'}`}>
@@ -128,7 +128,7 @@ export default function SettingsPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
                 Tasa Semanal Base (%)
               </label>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="number"
                   step="0.1"
@@ -153,7 +153,7 @@ export default function SettingsPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
                 Tasa Quincenal Base (%)
               </label>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="number"
                   step="0.1"
@@ -178,7 +178,7 @@ export default function SettingsPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
                 Tasa Mensual Base (%)
               </label>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="number"
                   step="0.1"
@@ -203,7 +203,7 @@ export default function SettingsPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
                 Tasa Diaria Base (%)
               </label>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="number"
                   step="0.1"
@@ -236,7 +236,7 @@ export default function SettingsPage() {
             <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
               Monto Mínimo ($)
             </label>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <input
                 type="number"
                 value={settings.MIN_LOAN_AMOUNT?.value || ''}
@@ -257,7 +257,7 @@ export default function SettingsPage() {
             <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
               Monto Máximo ($)
             </label>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <input
                 type="number"
                 value={settings.MAX_LOAN_AMOUNT?.value || ''}
@@ -284,7 +284,7 @@ export default function SettingsPage() {
           <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
             Tasa Diaria de Mora (decimal)
           </label>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <input
               type="number"
               step="0.0001"
@@ -320,7 +320,7 @@ export default function SettingsPage() {
           <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
             Timezone
           </label>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <select
               value={(settings.TIMEZONE?.value) || 'America/Argentina/Buenos_Aires'}
               onChange={(e) => {
@@ -384,7 +384,7 @@ function ThemeSelectorCard() {
       <p className="text-sm text-gray-500 mb-4 dark:text-white/60">
         Selecciona el tema de la interfaz
       </p>
-      <div className="flex gap-3">
+      <div className="flex flex-wrap gap-3">
         {themes.map((t) => {
           const isActive = theme === t;
           return (
