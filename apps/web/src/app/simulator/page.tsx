@@ -195,33 +195,33 @@ export default function SimulatorPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      <div className="min-h-screen flex items-center justify-center dark:bg-[#121212]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 dark:border-[#39ff14]"></div>
       </div>
     );
   }
 
   return (
-    <main className="min-h-screen p-8">
+    <main className="min-h-screen p-8 bg-gray-50 dark:bg-[#121212]">
       <div className="max-w-5xl mx-auto">
-        <h1 className="text-3xl font-bold text-center mb-8 text-primary-700">
+        <h1 className="text-3xl font-bold text-center mb-8 text-primary-700 dark:text-[#39ff14]">
           Simulador de Préstamos
         </h1>
         
         <div className="grid md:grid-cols-2 gap-8">
           {/* Formulario */}
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold mb-4">Datos del Préstamo</h2>
+          <div className="bg-white p-6 rounded-lg shadow-md dark:bg-[#1e1e1e]">
+            <h2 className="text-xl font-semibold mb-4 dark:text-white/[.87]">Datos del Préstamo</h2>
             
             {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg">
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg dark:bg-red-950/50 dark:border-red-900 dark:text-red-400">
                 {error}
               </div>
             )}
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
                   Monto ($)
                 </label>
                 <input
@@ -230,19 +230,19 @@ export default function SimulatorPage() {
                   value={formData.amount}
                   onChange={handleChange}
                   placeholder={rates ? `${rates.MIN_LOAN_AMOUNT} - ${rates.MAX_LOAN_AMOUNT}` : '1000'}
-                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14]"
                   min={rates?.MIN_LOAN_AMOUNT}
                   max={rates?.MAX_LOAN_AMOUNT}
                 />
                 {rates && (
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-gray-500 mt-1 dark:text-white/60">
                     Mínimo: ${rates.MIN_LOAN_AMOUNT.toLocaleString()} - Máximo: ${rates.MAX_LOAN_AMOUNT.toLocaleString()}
                   </p>
                 )}
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
                   Plazo ({labels.plural})
                 </label>
                 <input
@@ -251,24 +251,24 @@ export default function SimulatorPage() {
                   value={formData.term}
                   onChange={handleChange}
                   placeholder="12"
-                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14]"
                   min="1"
                   max="120"
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-500 mt-1 dark:text-white/60">
                   Cantidad de {labels.plural}
                 </p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
                   Frecuencia de Pago
                 </label>
                 <select
                   name="frequency"
                   value={formData.frequency}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14]"
                 >
                   <option value="WEEKLY">Semanal</option>
                   <option value="BIWEEKLY">Quincenal</option>
@@ -276,7 +276,7 @@ export default function SimulatorPage() {
                   <option value="DAILY">Diario</option>
                 </select>
                 {rates && (
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-gray-500 mt-1 dark:text-white/60">
                     Tasa {labels.period}: <span className="font-medium">{baseRate}%</span>
                   </p>
                 )}
@@ -284,7 +284,7 @@ export default function SimulatorPage() {
               
               <button
                 onClick={calculateLoan}
-                className="w-full py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition font-medium"
+                className="w-full py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition font-medium dark:bg-[#39ff14] dark:text-black dark:hover:bg-[#32e012] dark:hover:shadow-[0_0_15px_rgba(57,255,20,0.4)]"
               >
                 Calcular
               </button>
@@ -292,39 +292,39 @@ export default function SimulatorPage() {
           </div>
 
           {/* Resultados */}
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold mb-4">Resultado</h2>
+          <div className="bg-white p-6 rounded-lg shadow-md dark:bg-[#1e1e1e]">
+            <h2 className="text-xl font-semibold mb-4 dark:text-white/[.87]">Resultado</h2>
             
             {result ? (
               <div className="space-y-4">
-                <div className="p-4 bg-primary-50 rounded-lg">
-                  <p className="text-sm text-gray-600">Cuota ({labels.singular})</p>
-                  <p className="text-3xl font-bold text-primary-700">
+                <div className="p-4 bg-primary-50 rounded-lg dark:bg-[#1a1a1a]">
+                  <p className="text-sm text-gray-600 dark:text-white/60">Cuota ({labels.singular})</p>
+                  <p className="text-3xl font-bold text-primary-700 dark:text-[#39ff14]">
                     ${result.installmentAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                   </p>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-gray-500 mt-1 dark:text-white/60">
                     {result.schedule.length} pagos {labels.plural}
                   </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-600">Total Intereses</p>
-                    <p className="text-xl font-semibold">${result.totalInterest.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+                  <div className="p-4 bg-gray-50 rounded-lg dark:bg-[#1a1a1a]">
+                    <p className="text-sm text-gray-600 dark:text-white/60">Total Intereses</p>
+                    <p className="text-xl font-semibold dark:text-white/[.87]">${result.totalInterest.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
                   </div>
-                  <div className="p-4 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-600">Nro. de Pagos</p>
-                    <p className="text-xl font-semibold">{result.schedule.length}</p>
+                  <div className="p-4 bg-gray-50 rounded-lg dark:bg-[#1a1a1a]">
+                    <p className="text-sm text-gray-600 dark:text-white/60">Nro. de Pagos</p>
+                    <p className="text-xl font-semibold dark:text-white/[.87]">{result.schedule.length}</p>
                   </div>
                 </div>
 
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <p className="text-sm text-gray-600">Total a Pagar</p>
-                  <p className="text-2xl font-bold">${result.totalPayment.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+                <div className="p-4 bg-gray-50 rounded-lg dark:bg-[#1a1a1a]">
+                  <p className="text-sm text-gray-600 dark:text-white/60">Total a Pagar</p>
+                  <p className="text-2xl font-bold dark:text-white/[.87]">${result.totalPayment.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
                 </div>
               </div>
             ) : (
-              <p className="text-gray-500 text-center py-8">
+              <p className="text-gray-500 text-center py-8 dark:text-white/60">
                 Ingrese los datos y haga clic en "Calcular"
               </p>
             )}
@@ -333,35 +333,35 @@ export default function SimulatorPage() {
 
         {/* Tabla de Amortización */}
         {result && result.schedule.length > 0 && (
-          <div className="mt-8 bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold mb-4">Tabla de Amortización</h2>
-            <p className="text-sm text-gray-500 mb-4">
+          <div className="mt-8 bg-white p-6 rounded-lg shadow-md dark:bg-[#1e1e1e]">
+            <h2 className="text-xl font-semibold mb-4 dark:text-white/[.87]">Tabla de Amortización</h2>
+            <p className="text-sm text-gray-500 mb-4 dark:text-white/60">
               Cronograma de {result.schedule.length} pagos {labels.plural}
             </p>
             
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
-                <thead className="bg-gray-50">
+                <thead className="bg-gray-50 dark:bg-[#1a1a1a]">
                   <tr>
-                    <th className="px-4 py-2 text-left font-medium text-gray-600">#</th>
-                    <th className="px-4 py-2 text-left font-medium text-gray-600">Fecha</th>
-                    <th className="px-4 py-2 text-right font-medium text-gray-600">Cuota</th>
-                    <th className="px-4 py-2 text-right font-medium text-gray-600">Capital</th>
-                    <th className="px-4 py-2 text-right font-medium text-gray-600">Interés</th>
-                    <th className="px-4 py-2 text-right font-medium text-gray-600">Saldo Capital</th>
-                    <th className="px-4 py-2 text-right font-medium text-gray-600">Saldo</th>
+                    <th className="px-4 py-2 text-left font-medium text-gray-600 dark:text-white/60">#</th>
+                    <th className="px-4 py-2 text-left font-medium text-gray-600 dark:text-white/60">Fecha</th>
+                    <th className="px-4 py-2 text-right font-medium text-gray-600 dark:text-white/60">Cuota</th>
+                    <th className="px-4 py-2 text-right font-medium text-gray-600 dark:text-white/60">Capital</th>
+                    <th className="px-4 py-2 text-right font-medium text-gray-600 dark:text-white/60">Interés</th>
+                    <th className="px-4 py-2 text-right font-medium text-gray-600 dark:text-white/60">Saldo Capital</th>
+                    <th className="px-4 py-2 text-right font-medium text-gray-600 dark:text-white/60">Saldo</th>
                   </tr>
                 </thead>
                 <tbody>
                   {result.schedule.map((item) => (
-                    <tr key={item.number} className="border-t">
-                      <td className="px-4 py-2">{item.number}</td>
-                      <td className="px-4 py-2">{item.date}</td>
-                      <td className="px-4 py-2 text-right">${item.payment.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-                      <td className="px-4 py-2 text-right text-green-600">${item.principal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-                      <td className="px-4 py-2 text-right text-red-600">${item.interest.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-                      <td className="px-4 py-2 text-right font-medium">${item.capitalBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-                      <td className="px-4 py-2 text-right">${item.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                    <tr key={item.number} className="border-t dark:border-gray-700">
+                      <td className="px-4 py-2 dark:text-white/[.87]">{item.number}</td>
+                      <td className="px-4 py-2 dark:text-white/[.87]">{item.date}</td>
+                      <td className="px-4 py-2 text-right dark:text-white/[.87]">${item.payment.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                      <td className="px-4 py-2 text-right text-green-600 dark:text-green-400">${item.principal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                      <td className="px-4 py-2 text-right text-red-600 dark:text-red-400">${item.interest.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                      <td className="px-4 py-2 text-right font-medium dark:text-white/[.87]">${item.capitalBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                      <td className="px-4 py-2 text-right dark:text-white/[.87]">${item.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -371,7 +371,7 @@ export default function SimulatorPage() {
         )}
 
         <div className="text-center mt-6">
-          <a href="/register" className="text-primary-600 hover:underline">
+          <a href="/register" className="text-primary-600 hover:underline dark:text-[#39ff14] dark:hover:text-[#32e012]">
             Solicitar este préstamo →
           </a>
         </div>

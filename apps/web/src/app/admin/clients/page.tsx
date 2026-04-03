@@ -76,8 +76,8 @@ export default function ClientsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      <div className="flex items-center justify-center h-64 dark:bg-[#121212]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 dark:border-[#39ff14]"></div>
       </div>
     );
   }
@@ -85,11 +85,11 @@ export default function ClientsPage() {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Clientes</h1>
+        <h1 className="text-2xl font-bold dark:text-white/[.87]">Clientes</h1>
         {user?.role === 'ADMIN' && (
           <Link
             href="/admin/clients/new"
-            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 dark:bg-[#39ff14] dark:text-black dark:hover:bg-[#32e012] dark:hover:shadow-[0_0_15px_rgba(57,255,20,0.4)] transition"
           >
             Nuevo Cliente
           </Link>
@@ -103,56 +103,56 @@ export default function ClientsPage() {
           placeholder="Buscar por DNI, nombre, apellido o email..."
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          className="px-4 py-2 border rounded-lg w-full md:w-80"
+          className="px-4 py-2 border rounded-lg w-full md:w-80 dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14]"
         />
       </div>
 
       {/* Tabla */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+      <div className="bg-white rounded-lg shadow overflow-hidden dark:bg-[#1e1e1e]">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead className="bg-gray-50 dark:bg-[#1a1a1a]">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-white/60">
                 DNI
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-white/60">
                 Nombre
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-white/60">
                 Email
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-white/60">
                 Teléfono
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-white/60">
                 Ciudad
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-white/60">
                 Ingreso Mensual
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-white/60">
                 Acciones
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white divide-y divide-gray-200 dark:bg-[#1e1e1e] dark:divide-gray-700">
             {filteredClients.map((client) => (
-              <tr key={client.id}>
-                <td className="px-6 py-4 whitespace-nowrap">{client.dni}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
+              <tr key={client.id} className="dark:hover:bg-white/10">
+                <td className="px-6 py-4 whitespace-nowrap dark:text-white/[.87]">{client.dni}</td>
+                <td className="px-6 py-4 whitespace-nowrap dark:text-white/[.87]">
                   {client.firstName} {client.lastName}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">{client.email}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{client.phone || '-'}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{client.city || '-'}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-6 py-4 whitespace-nowrap dark:text-white/[.87]">{client.email}</td>
+                <td className="px-6 py-4 whitespace-nowrap dark:text-white/[.87]">{client.phone || '-'}</td>
+                <td className="px-6 py-4 whitespace-nowrap dark:text-white/[.87]">{client.city || '-'}</td>
+                <td className="px-6 py-4 whitespace-nowrap dark:text-white/[.87]">
                   ${client.monthlyIncome.toLocaleString()}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex flex-col gap-1">
                     <a
                       href={`/admin/loans/new?clientId=${client.id}`}
-                      className="text-primary-600 hover:text-primary-900 text-sm"
+                      className="text-primary-600 hover:text-primary-900 text-sm dark:text-[#39ff14] dark:hover:text-[#32e012]"
                     >
                       Crear Préstamo
                     </a>
@@ -160,14 +160,14 @@ export default function ClientsPage() {
                       <>
                         <a
                           href={`/admin/clients/${client.id}`}
-                          className="text-blue-600 hover:text-blue-900 text-sm"
+                          className="text-blue-600 hover:text-blue-900 text-sm dark:text-blue-400 dark:hover:text-blue-300"
                         >
                           Editar
                         </a>
                         <button
                           onClick={() => handleDelete(client.id)}
                           disabled={deleting === client.id}
-                          className="text-red-600 hover:text-red-900 text-sm text-left disabled:opacity-50"
+                          className="text-red-600 hover:text-red-900 text-sm text-left disabled:opacity-50 dark:text-red-400 dark:hover:text-red-300"
                         >
                           {deleting === client.id ? 'Eliminando...' : 'Eliminar'}
                         </button>
@@ -181,7 +181,7 @@ export default function ClientsPage() {
         </table>
         
         {filteredClients.length === 0 && (
-          <p className="p-4 text-center text-gray-500">No hay clientes</p>
+          <p className="p-4 text-center text-gray-500 dark:text-white/60">No hay clientes</p>
         )}
       </div>
     </div>

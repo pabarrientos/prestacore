@@ -29,22 +29,22 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-8">
+    <main className="min-h-screen flex items-center justify-center p-8 bg-gray-50 dark:bg-[#121212]">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-primary-700">Iniciar Sesión</h1>
-          <p className="text-gray-600 mt-2">Accede a tu cuenta</p>
+          <h1 className="text-3xl font-bold text-primary-700 dark:text-[#39ff14]">Iniciar Sesión</h1>
+          <p className="text-gray-600 mt-2 dark:text-white/60">Accede a tu cuenta</p>
         </div>
         
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg">
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg dark:bg-red-950/50 dark:border-red-900 dark:text-red-400">
             {error}
           </div>
         )}
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
               Correo electrónico
             </label>
             <input
@@ -52,14 +52,14 @@ export default function LoginPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14] dark:focus:border-[#39ff14]"
               placeholder="tu@email.com"
               required
             />
           </div>
           
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
               Contraseña
             </label>
             <input
@@ -67,7 +67,7 @@ export default function LoginPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14] dark:focus:border-[#39ff14]"
               placeholder="••••••••"
               required
             />
@@ -76,14 +76,21 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition font-medium disabled:opacity-50"
+            className="w-full py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition font-medium disabled:opacity-50 dark:bg-[#39ff14] dark:text-black dark:hover:bg-[#32e012] dark:hover:shadow-[0_0_15px_rgba(57,255,20,0.4)]"
           >
-            {isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
+            {isLoading ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg className="animate-spin h-5 w-5 border-2 border-white dark:border-black border-t-transparent rounded-full" />
+                Iniciando sesión...
+              </span>
+            ) : (
+              'Iniciar Sesión'
+            )}
           </button>
         </form>
         
         <div className="mt-6 text-center">
-          <a href="/register" className="text-primary-600 hover:underline">
+          <a href="/register" className="text-primary-600 hover:underline dark:text-[#39ff14] dark:hover:text-[#39ff14]">
             ¿No tienes cuenta? Regístrate
           </a>
         </div>
