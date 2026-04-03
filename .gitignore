@@ -55,3 +55,6 @@ tmp/
 
 # pnpm store
 .pnpm-store/
+
+# openspec
+.openspec/
