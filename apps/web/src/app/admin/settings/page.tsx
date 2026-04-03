@@ -320,7 +320,7 @@ export default function SettingsPage() {
               value={(settings.TIMEZONE?.value) || 'America/Argentina/Buenos_Aires'}
               onChange={(e) => {
                 // Ensure the setting object exists with value and description
-                const currentValue = settings.TIMEZONE?.value || 'America/Argentina/Buenos_Aires';
+                // const currentValue = settings.TIMEZONE?.value || 'America/Argentina/Buenos_Aires';
                 setSettings({
                   ...settings,
                   TIMEZONE: { 

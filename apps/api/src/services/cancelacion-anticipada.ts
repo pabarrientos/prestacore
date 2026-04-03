@@ -8,7 +8,7 @@ import {
 } from '@prisma/client';
 import { MoraService } from './mora';
 import { getRate } from './settings';
-import { getNow, getToday } from './datetime';
+import { getNow } from './datetime';
 
 const prisma = new PrismaClient();
 
