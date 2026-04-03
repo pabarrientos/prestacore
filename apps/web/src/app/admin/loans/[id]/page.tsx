@@ -276,7 +276,7 @@ export default function LoanDetailPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
         <div>
           <button
             onClick={() => router.push('/admin/loans')}
@@ -286,11 +286,11 @@ export default function LoanDetailPage() {
           </button>
           <h1 className="text-2xl font-bold dark:text-white/[.87]">Detalle del Préstamo</h1>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {loan.status === 'PENDING' && user?.role === 'ADMIN' && (
             <button
               onClick={handleApprove}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+              className="px-3 py-2 min-h-[44px] text-sm bg-green-600 text-white rounded-lg hover:bg-green-700"
             >
               Aprobar Préstamo
             </button>
@@ -298,7 +298,7 @@ export default function LoanDetailPage() {
           {loan.status === 'ACTIVE' && (
             <button
               onClick={() => setShowPaymentForm(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              className="px-3 py-2 min-h-[44px] text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
               Registrar Pago
             </button>
@@ -306,7 +306,7 @@ export default function LoanDetailPage() {
           {loan.status === 'DEFAULTED' && user?.role === 'ADMIN' && (
             <button
               onClick={() => setShowRefinancing(true)}
-              className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
+              className="px-3 py-2 min-h-[44px] text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700"
             >
               Refinanciar
             </button>
@@ -319,7 +319,7 @@ export default function LoanDetailPage() {
           }) && (
             <button
               onClick={() => setShowRefinancing(true)}
-              className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
+              className="px-3 py-2 min-h-[44px] text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700"
             >
               Refinanciar
             </button>
@@ -328,7 +328,7 @@ export default function LoanDetailPage() {
           {(loan.status === 'ACTIVE' || loan.status === 'DEFAULTED') && (user?.role === 'ADMIN' || user?.role === 'VENDEDOR') && (
             <button
               onClick={() => setShowCancelacionAnticipada(true)}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+              className="px-3 py-2 min-h-[44px] text-sm bg-green-600 text-white rounded-lg hover:bg-green-700"
             >
               Cancelación Anticipada
             </button>
@@ -357,7 +357,7 @@ export default function LoanDetailPage() {
                   alert('Error al conectar con el servidor');
                 }
               }}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              className="px-3 py-2 min-h-[44px] text-sm bg-red-600 text-white rounded-lg hover:bg-red-700"
             >
               Marcar Incobrable
             </button>
@@ -386,7 +386,7 @@ export default function LoanDetailPage() {
                   alert('Error al conectar con el servidor');
                 }
               }}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+              className="px-3 py-2 min-h-[44px] text-sm bg-green-600 text-white rounded-lg hover:bg-green-700"
             >
               Reactivar
             </button>
@@ -401,7 +401,7 @@ export default function LoanDetailPage() {
       )}
 
       {/* Loan Info Card */}
-      <div className="bg-white dark:bg-[#1e1e1e] rounded-lg shadow p-6 mb-6">
+      <div className="bg-white dark:bg-[#1e1e1e] rounded-lg shadow p-4 sm:p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold dark:text-white/[.87]">Información del Préstamo</h2>
           <div className="flex items-center gap-2">
@@ -429,30 +429,30 @@ export default function LoanDetailPage() {
           </div>
         </div>
         
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <p className="text-sm text-gray-500 dark:text-white/38">Monto</p>
-            <p className="text-xl font-bold dark:text-white/[.87]">${Number(loan.amount).toLocaleString()}</p>
+            <p className="text-lg sm:text-xl font-bold dark:text-white/[.87]">${Number(loan.amount).toLocaleString()}</p>
           </div>
           <div>
             <p className="text-sm text-gray-500 dark:text-white/38">Tasa ({freq.singular})</p>
-            <p className="text-xl font-bold dark:text-white/[.87]">{periodicRate}% {freq.rate}</p>
+            <p className="text-lg sm:text-xl font-bold dark:text-white/[.87]">{periodicRate}% {freq.rate}</p>
           </div>
           <div>
             <p className="text-sm text-gray-500 dark:text-white/38">Plazo</p>
-            <p className="text-xl font-bold dark:text-white/[.87]">{loan.termMonths} {freq.plural}</p>
+            <p className="text-lg sm:text-xl font-bold dark:text-white/[.87]">{loan.termMonths} {freq.plural}</p>
           </div>
           <div>
             <p className="text-sm text-gray-500 dark:text-white/38">Cuota ({freq.singular})</p>
-            <p className="text-xl font-bold dark:text-white/[.87]">${Number(loan.installmentAmount).toLocaleString()}</p>
+            <p className="text-lg sm:text-xl font-bold dark:text-white/[.87]">${Number(loan.installmentAmount).toLocaleString()}</p>
           </div>
           <div>
             <p className="text-sm text-gray-500 dark:text-white/38">Total Intereses</p>
-            <p className="text-lg dark:text-white/[.87]">${Number(loan.totalInterest).toLocaleString()}</p>
+            <p className="text-base sm:text-lg dark:text-white/[.87]">${Number(loan.totalInterest).toLocaleString()}</p>
           </div>
           <div>
             <p className="text-sm text-gray-500 dark:text-white/38">Total a Pagar</p>
-            <p className="text-lg dark:text-white/[.87]">${Number(loan.totalPayment).toLocaleString()}</p>
+            <p className="text-base sm:text-lg dark:text-white/[.87]">${Number(loan.totalPayment).toLocaleString()}</p>
           </div>
           <div>
             <p className="text-sm text-gray-500 dark:text-white/38">Fecha de Inicio</p>
@@ -472,9 +472,9 @@ export default function LoanDetailPage() {
       </div>
 
       {/* Client Info Card */}
-      <div className="bg-white dark:bg-[#1e1e1e] rounded-lg shadow p-6 mb-6">
+      <div className="bg-white dark:bg-[#1e1e1e] rounded-lg shadow p-4 sm:p-6 mb-6">
         <h2 className="text-lg font-semibold mb-4 dark:text-white/[.87]">Información del Cliente</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <p className="text-sm text-gray-500 dark:text-white/38">Nombre</p>
             <p className="font-medium dark:text-white/[.87]">{loan.client.user.firstName} {loan.client.user.lastName}</p>
@@ -550,7 +550,7 @@ export default function LoanDetailPage() {
       {/* Payment History */}
       {loan.payments && loan.payments.length > 0 && (
         <div className="bg-white dark:bg-[#1e1e1e] rounded-lg shadow overflow-hidden mb-6">
-          <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+          <div className="p-4 border-b dark:border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <h2 className="text-lg font-semibold dark:text-white/[.87]">Historial de Pagos</h2>
           </div>
           <div className="overflow-x-auto">
@@ -627,7 +627,7 @@ export default function LoanDetailPage() {
       {/* Refinancing Modal */}
       {showRefinancing && loan && (
         <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4">
-          <div className="max-w-4xl w-full">
+          <div className="w-full max-w-lg sm:max-w-2xl md:max-w-4xl">
             <RefinancingModal
               loanId={loan.id}
               onSuccess={() => {
@@ -652,7 +652,7 @@ export default function LoanDetailPage() {
       {/* Cancelacion Anticipada Modal */}
       {showCancelacionAnticipada && loan && (
         <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4">
-          <div className="max-w-2xl w-full">
+          <div className="w-full max-w-lg md:max-w-2xl">
             <CancelacionAnticipadaModal
               loanId={loan.id}
               onSuccess={() => {

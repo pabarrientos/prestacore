@@ -29,7 +29,7 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-8 bg-gray-50 dark:bg-[#121212]">
+    <main className="min-h-screen flex items-center justify-center p-4 md:p-8 bg-gray-50 dark:bg-[#121212]">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-primary-700 dark:text-[#39ff14]">Iniciar Sesión</h1>

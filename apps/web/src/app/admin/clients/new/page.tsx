@@ -95,7 +95,7 @@ export default function NewClientPage() {
           >
             ← Volver a la lista
           </button>
-          <h1 className="text-2xl font-bold dark:text-white/[.87]">Nuevo Cliente</h1>
+          <h1 className="text-2xl md:text-3xl font-bold dark:text-white/[.87]">Nuevo Cliente</h1>
         </div>
       </div>
 
@@ -114,7 +114,7 @@ export default function NewClientPage() {
       <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6 space-y-4 max-w-2xl dark:bg-[#1e1e1e]">
         <h2 className="text-lg font-semibold border-b pb-2 dark:text-white/[.87] dark:border-gray-700">Datos de Usuario</h2>
         
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
               Email *
@@ -147,7 +147,7 @@ export default function NewClientPage() {
 
         <h2 className="text-lg font-semibold border-b pb-2 pt-4 dark:text-white/[.87] dark:border-gray-700">Datos Personales</h2>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
               Nombre *
@@ -177,7 +177,7 @@ export default function NewClientPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
               DNI *
@@ -207,7 +207,7 @@ export default function NewClientPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
               Teléfono
@@ -250,7 +250,7 @@ export default function NewClientPage() {
 
         <h2 className="text-lg font-semibold border-b pb-2 pt-4 dark:text-white/[.87] dark:border-gray-700">Datos Laborales</h2>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
               Ocupación
