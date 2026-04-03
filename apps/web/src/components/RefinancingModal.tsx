@@ -47,6 +47,7 @@ const frequencyOptions = [
   { value: 'WEEKLY', label: 'Semanal', periodsPerYear: 52 },
   { value: 'BIWEEKLY', label: 'Quincenal', periodsPerYear: 24 },
   { value: 'MONTHLY', label: 'Mensual', periodsPerYear: 12 },
+  { value: 'DAILY', label: 'Diario', periodsPerYear: 365 },
 ];
 
 // Default annual rate to use as base (fallback if settings not available)
@@ -56,6 +57,7 @@ interface RateConfig {
   WEEKLY_BASE_RATE: number;
   BIWEEKLY_BASE_RATE: number;
   MONTHLY_BASE_RATE: number;
+  DAILY_BASE_RATE: number;
   MIN_LOAN_AMOUNT: number;
   MAX_LOAN_AMOUNT: number;
 }
@@ -104,6 +106,10 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
       case 'BIWEEKLY':
         baseRate = rates.BIWEEKLY_BASE_RATE;
         periodsPerYear = 24;
+        break;
+      case 'DAILY':
+        baseRate = rates.DAILY_BASE_RATE;
+        periodsPerYear = 365;
         break;
       case 'MONTHLY':
       default:

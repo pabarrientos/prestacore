@@ -262,4 +262,89 @@ describe('Loans API', () => {
       expect(res.body.success).toBe(true);
     });
   });
+
+  // ========== DAILY FREQUENCY TESTS ==========
+  describe('POST /api/loans/simulate with DAILY frequency', () => {
+    it('should simulate loan with DAILY frequency correctly', async () => {
+      const res = await request(app)
+        .post('/api/loans/simulate')
+        .send({
+          amount: 1000,
+          interestRate: 18.25, // ~0.05% daily
+          termMonths: 30, // 30 days
+          frequency: 'DAILY',
+        })
+        .expect(200);
+
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.installmentAmount).toBeGreaterThan(0);
+      expect(res.body.data.schedule).toHaveLength(30);
+    });
+
+    it('should calculate daily payments correctly', async () => {
+      const res = await request(app)
+        .post('/api/loans/simulate')
+        .send({
+          amount: 1000,
+          interestRate: 1, // Minimum allowed rate (1%)
+          termMonths: 10, // 10 days
+          frequency: 'DAILY',
+        })
+        .expect(200);
+
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.installmentAmount).toBeGreaterThan(0);
+      expect(res.body.data.schedule).toHaveLength(10);
+    });
+  });
+
+  describe('POST /api/loans with DAILY frequency', () => {
+    let dailyLoanId: string;
+
+    it('should create loan with DAILY frequency as admin', async () => {
+      const res = await request(app)
+        .post('/api/loans')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          clientId: testClientId,
+          amount: 1000,
+          interestRate: 18.25,
+          termMonths: 30,
+          frequency: 'DAILY',
+          purpose: 'Test daily loan',
+        })
+        .expect(201);
+
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.frequency).toBe('DAILY');
+      expect(res.body.data.installments).toHaveLength(30);
+      dailyLoanId = res.body.data.id;
+    });
+
+    it('should create loan with DAILY frequency as vendor', async () => {
+      const res = await request(app)
+        .post('/api/loans')
+        .set('Authorization', `Bearer ${vendorToken}`)
+        .send({
+          clientId: testClientId,
+          amount: 500,
+          interestRate: 10,
+          termMonths: 7,
+          frequency: 'DAILY',
+        })
+        .expect(201);
+
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.frequency).toBe('DAILY');
+    });
+
+    afterAll(async () => {
+      // Clean up daily loans
+      if (dailyLoanId) {
+        await prisma.loan.deleteMany({
+          where: { id: dailyLoanId },
+        }).catch(() => {});
+      }
+    });
+  });
 });

@@ -11,6 +11,8 @@ Sistema web integral para la gestión de préstamos personales con sistema de am
 - **Roles**: Administrador, Vendedor, Cliente
 - **Dashboard**: Métricas en tiempo real (total prestado, cobranza, mora)
 - **API REST**: Comunicación entre frontend y backend
+- **Períodos de Pago**: Semanal, Quincenal, Mensual, Diario (configurable)
+- **Configuración de Tasas**: Tasas base configurables por período desde `/admin/settings`
 
 ## 🛠️ Tech Stack
 
@@ -153,6 +155,28 @@ El sistema permite cancelar un préstamo antes de su fecha de vencimiento:
 4. **Estado**: El préstamo pasa a estado PAID
 
 Para cancelar anticipadamente, el préstamo debe estar en estado ACTIVE o DEFAULTED (no PENDING, PAID ni REFINANCIADO).
+
+## 💰 Períodos de Pago
+
+El sistema soporta 4 períodos de pago configurables:
+
+| Período | Cuotas/año | Configuración de Tasa |
+|---------|------------|----------------------|
+| Semanal | 52 | `WEEKLY_BASE_RATE` (ej: 7.5%) |
+| Quincenal | 24 | `BIWEEKLY_BASE_RATE` (ej: 15%) |
+| Mensual | 12 | `MONTHLY_BASE_RATE` (ej: 30%) |
+| Diario | 365 | `DAILY_BASE_RATE` (ej: 0.5%) |
+
+### Configuración de Tasas
+
+Las tasas base se configuran desde `/admin/settings`:
+
+1. **Tasa semanal**: Ejemplo: 7.5% × 52 semanas = 390% anual
+2. **Tasa quincenal**: Ejemplo: 15% × 24 quincenas = 360% anual
+3. **Tasa mensual**: Ejemplo: 30% × 12 meses = 360% anual
+4. **Tasa diaria**: Ejemplo: 0.5% × 365 días = 182.5% anual
+
+Cada tasa se aplica automáticamente según el período seleccionado al crear el préstamo.
 
 ## ⏰ Zona Horaria
 

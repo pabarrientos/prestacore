@@ -15,7 +15,7 @@ const simulationSchema = z.object({
   amount: z.number().positive().min(1000).max(100000),
   interestRate: z.number().positive().min(1).max(50),
   termMonths: z.number().int().positive().min(1).max(60),
-  frequency: z.enum(['WEEKLY', 'BIWEEKLY', 'MONTHLY']).default('MONTHLY'),
+  frequency: z.enum(['WEEKLY', 'BIWEEKLY', 'MONTHLY', 'DAILY']).default('MONTHLY'),
 });
 
 const createLoanSchema = z.object({
@@ -23,7 +23,7 @@ const createLoanSchema = z.object({
   amount: z.number().positive().min(100),
   interestRate: z.number().positive().min(0.1).max(500),
   termMonths: z.number().int().positive().min(1).max(120),
-  frequency: z.enum(['WEEKLY', 'BIWEEKLY', 'MONTHLY']).default('MONTHLY'),
+  frequency: z.enum(['WEEKLY', 'BIWEEKLY', 'MONTHLY', 'DAILY']).default('MONTHLY'),
   purpose: z.string().optional(),
   notes: z.string().optional(),
   startDate: z.string().optional(),
@@ -691,7 +691,7 @@ router.get('/:id/schedule', authMiddleware, async (req: AuthRequest, res: Respon
 const executeRefinancingSchema = z.object({
   nuevaTasaInteres: z.number().min(0),
   cantidadCuotas: z.number().int().min(1).max(60),
-  nuevaFrecuencia: z.enum(['WEEKLY', 'BIWEEKLY', 'MONTHLY']),
+  nuevaFrecuencia: z.enum(['WEEKLY', 'BIWEEKLY', 'MONTHLY', 'DAILY']),
   fechaInicio: z.string(),
   pagoInicial: z.number().min(0).optional(),
   interesesVencidosManual: z.number().min(0).optional(),

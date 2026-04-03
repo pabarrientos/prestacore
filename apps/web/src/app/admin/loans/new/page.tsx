@@ -17,6 +17,7 @@ interface RateConfig {
   WEEKLY_BASE_RATE: number;
   BIWEEKLY_BASE_RATE: number;
   MONTHLY_BASE_RATE: number;
+  DAILY_BASE_RATE: number;
   MIN_LOAN_AMOUNT: number;
   MAX_LOAN_AMOUNT: number;
 }
@@ -44,6 +45,7 @@ const frequencyLabels: Record<string, { plural: string; singular: string }> = {
   WEEKLY: { plural: 'semanales', singular: 'semanal' },
   BIWEEKLY: { plural: 'quincenales', singular: 'quincenal' },
   MONTHLY: { plural: 'mensuales', singular: 'mensual' },
+  DAILY: { plural: 'diarios', singular: 'diario' },
 };
 
 function NewLoanForm() {
@@ -152,6 +154,7 @@ function NewLoanForm() {
       let defaultRate = rates.MONTHLY_BASE_RATE;
       if (value === 'WEEKLY') defaultRate = rates.WEEKLY_BASE_RATE;
       else if (value === 'BIWEEKLY') defaultRate = rates.BIWEEKLY_BASE_RATE;
+      else if (value === 'DAILY') defaultRate = rates.DAILY_BASE_RATE;
       setFormData(prev => ({ ...prev, customRate: String(defaultRate) }));
     }
   };
@@ -202,6 +205,7 @@ function NewLoanForm() {
     switch (frequency) {
       case 'WEEKLY': periodsPerYear = 52; break;
       case 'BIWEEKLY': periodsPerYear = 24; break;
+      case 'DAILY': periodsPerYear = 365; break;
       default: periodsPerYear = 12;
     }
 
@@ -244,6 +248,8 @@ function NewLoanForm() {
         paymentDate.setDate(startDate.getDate() + i * 7);
       } else if (frequency === 'BIWEEKLY') {
         paymentDate.setDate(startDate.getDate() + i * 14);
+      } else if (frequency === 'DAILY') {
+        paymentDate.setDate(startDate.getDate() + i);
       } else {
         paymentDate.setMonth(startDate.getMonth() + i);
       }
@@ -291,6 +297,7 @@ function NewLoanForm() {
       let periodsPerYear = 12;
       if (formData.frequency === 'WEEKLY') periodsPerYear = 52;
       else if (formData.frequency === 'BIWEEKLY') periodsPerYear = 24;
+      else if (formData.frequency === 'DAILY') periodsPerYear = 365;
       
       const customRate = parseFloat(formData.customRate);
       const annualRate = customRate * periodsPerYear;
@@ -451,16 +458,17 @@ function NewLoanForm() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Frecuencia
               </label>
-              <select
-                name="frequency"
-                value={formData.frequency}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border rounded-lg"
-              >
-                <option value="WEEKLY">Semanal</option>
-                <option value="BIWEEKLY">Quincenal</option>
-                <option value="MONTHLY">Mensual</option>
-              </select>
+                <select
+                  name="frequency"
+                  value={formData.frequency}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border rounded-lg"
+                >
+                  <option value="WEEKLY">Semanal</option>
+                  <option value="BIWEEKLY">Quincenal</option>
+                  <option value="MONTHLY">Mensual</option>
+                  <option value="DAILY">Diario</option>
+                </select>
             </div>
           </div>
 

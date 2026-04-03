@@ -23,6 +23,89 @@ describe('AmortizationService', () => {
       expect(result.schedule).toHaveLength(12);
     });
 
+    // ========== DAILY PERIOD TESTS ==========
+    it('should calculate DAILY payments with 365 payments per year', () => {
+      const result = AmortizationService.calculate({
+        amount: 10000,
+        interestRate: 0.15, // 15% annual
+        termMonths: 30, // 30 days
+        frequency: 'DAILY' as any,
+        startDate: new Date('2024-01-01'),
+      });
+
+      // Should have 30 payments (one per day)
+      expect(result.schedule).toHaveLength(30);
+      
+      // Periodic rate should be annual/365
+      const periodicRate = 0.15 / 365;
+      expect(periodicRate).toBeCloseTo(0.0004109589, 5);
+    });
+
+    it('should add 1 day per period for DAILY frequency', () => {
+      const result = AmortizationService.calculate({
+        amount: 1000,
+        interestRate: 0.10, // 10% annual
+        termMonths: 7, // 7 days
+        frequency: 'DAILY' as any,
+        startDate: new Date('2024-01-01'),
+      });
+
+      // First payment is day 1: startDate + 1 day = Jan 2
+      expect(result.schedule[0].dueDate.getUTCDate()).toBe(2);
+      
+      // Last payment is day 7: startDate + 7 days = Jan 8
+      const lastPayment = result.schedule[result.schedule.length - 1];
+      expect(lastPayment.dueDate.getUTCDate()).toBe(8);
+    });
+
+    it('should calculate amortization correctly for DAILY period', () => {
+      // Test with $1000, 0.5% daily rate, 30 days
+      // With 0.5% daily rate, the periodic rate per day is the daily rate
+      const result = AmortizationService.calculate({
+        amount: 1000,
+        interestRate: 0.1825, // 18.25% annual = 0.05% daily (0.1825/365)
+        termMonths: 30, // 30 days
+        frequency: 'DAILY' as any,
+        startDate: new Date('2024-01-01'),
+      });
+
+      expect(result.schedule).toHaveLength(30);
+      expect(result.installmentAmount).toBeGreaterThan(0);
+      expect(result.totalPayment).toBeGreaterThan(1000);
+      
+      // Last payment should have near-zero balance
+      const lastInstallment = result.schedule[result.schedule.length - 1];
+      expect(lastInstallment.balance).toBeLessThanOrEqual(0.01);
+    });
+
+    it('should calculate zero interest DAILY loan correctly', () => {
+      const result = AmortizationService.calculate({
+        amount: 1000,
+        interestRate: 0,
+        termMonths: 10, // 10 days
+        frequency: 'DAILY' as any,
+        startDate: new Date('2024-01-01'),
+      });
+
+      expect(result.installmentAmount).toBe(100);
+      expect(result.totalInterest).toBe(0);
+      expect(result.totalPayment).toBe(1000);
+      expect(result.schedule).toHaveLength(10);
+    });
+
+    it('should have decreasing balance in DAILY schedule', () => {
+      const result = AmortizationService.calculate({
+        amount: 10000,
+        interestRate: 0.15,
+        termMonths: 30,
+        frequency: 'DAILY' as any,
+      });
+
+      for (let i = 1; i < result.schedule.length; i++) {
+        expect(result.schedule[i].balance).toBeLessThan(result.schedule[i - 1].balance);
+      }
+    });
+
     it('should calculate zero interest loan correctly', () => {
       const result = AmortizationService.calculate({
         amount: 12000,

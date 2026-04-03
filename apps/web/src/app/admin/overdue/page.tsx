@@ -268,10 +268,15 @@ export default function OverduePage() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <p>${Number(inst.loan.amount).toLocaleString()}</p>
-                      <p className="text-xs text-gray-500">
-                        {inst.loan.remainingInstallments} cuotas restantes
-                      </p>
+                      <Link
+                        href={`/admin/loans/${inst.loan.id}`}
+                        className="hover:text-primary-600 hover:underline"
+                      >
+                        <p>${Number(inst.loan.amount).toLocaleString()}</p>
+                        <p className="text-xs text-gray-500">
+                          {inst.loan.remainingInstallments} cuotas restantes
+                        </p>
+                      </Link>
                     </td>
                     <td className="px-4 py-3">#{inst.installmentNumber}</td>
                     <td className="px-4 py-3">{formatDate(inst.dueDate)}</td>

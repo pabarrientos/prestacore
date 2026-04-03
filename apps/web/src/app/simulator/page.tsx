@@ -6,6 +6,7 @@ interface RateConfig {
   WEEKLY_BASE_RATE: number;
   BIWEEKLY_BASE_RATE: number;
   MONTHLY_BASE_RATE: number;
+  DAILY_BASE_RATE: number;
   MIN_LOAN_AMOUNT: number;
   MAX_LOAN_AMOUNT: number;
 }
@@ -35,6 +36,7 @@ const frequencyLabels = {
   WEEKLY: { plural: 'semanales', singular: 'semanal', period: 'semanal' },
   BIWEEKLY: { plural: 'quincenales', singular: 'quincenal', period: 'quincenal' },
   MONTHLY: { plural: 'mensuales', singular: 'mensual', period: 'mensual' },
+  DAILY: { plural: 'diarios', singular: 'diario', period: 'diario' },
 };
 
 export default function SimulatorPage() {
@@ -100,6 +102,10 @@ export default function SimulatorPage() {
         baseRate = rates.BIWEEKLY_BASE_RATE;
         periodsPerYear = 24;
         break;
+      case 'DAILY':
+        baseRate = rates.DAILY_BASE_RATE;
+        periodsPerYear = 365;
+        break;
       case 'MONTHLY':
       default:
         baseRate = rates.MONTHLY_BASE_RATE;
@@ -153,6 +159,8 @@ export default function SimulatorPage() {
         paymentDate.setDate(today.getDate() + i * 7);
       } else if (frequency === 'BIWEEKLY') {
         paymentDate.setDate(today.getDate() + i * 14);
+      } else if (frequency === 'DAILY') {
+        paymentDate.setDate(today.getDate() + i);
       } else {
         paymentDate.setMonth(today.getMonth() + i);
       }
@@ -181,6 +189,7 @@ export default function SimulatorPage() {
   const baseRate = rates ? (
     formData.frequency === 'WEEKLY' ? rates.WEEKLY_BASE_RATE :
     formData.frequency === 'BIWEEKLY' ? rates.BIWEEKLY_BASE_RATE :
+    formData.frequency === 'DAILY' ? rates.DAILY_BASE_RATE :
     rates.MONTHLY_BASE_RATE
   ) : 0;
 
@@ -264,6 +273,7 @@ export default function SimulatorPage() {
                   <option value="WEEKLY">Semanal</option>
                   <option value="BIWEEKLY">Quincenal</option>
                   <option value="MONTHLY">Mensual</option>
+                  <option value="DAILY">Diario</option>
                 </select>
                 {rates && (
                   <p className="text-xs text-gray-500 mt-1">

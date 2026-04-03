@@ -9,7 +9,7 @@ interface Loan {
   amount: number;
   interestRate: number;
   termMonths: number;
-  frequency: 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY';
+  frequency: 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY' | 'DAILY';
   status: string;
   purpose: string | null;
   notes: string | null;
@@ -46,6 +46,7 @@ const frequencyLabels: Record<string, { plural: string; singular: string }> = {
   WEEKLY: { plural: 'semanales', singular: 'semanal' },
   BIWEEKLY: { plural: 'quincenales', singular: 'quincenal' },
   MONTHLY: { plural: 'mensuales', singular: 'mensual' },
+  DAILY: { plural: 'diarios', singular: 'diario' },
 };
 
 export default function EditLoanPage() {
@@ -86,6 +87,7 @@ export default function EditLoanPage() {
             let periodsPerYear = 12;
             if (l.frequency === 'WEEKLY') periodsPerYear = 52;
             else if (l.frequency === 'BIWEEKLY') periodsPerYear = 24;
+            else if (l.frequency === 'DAILY') periodsPerYear = 365;
             
             const periodicRate = l.interestRate / periodsPerYear;
             
@@ -162,6 +164,7 @@ export default function EditLoanPage() {
     switch (frequency) {
       case 'WEEKLY': periodsPerYear = 52; break;
       case 'BIWEEKLY': periodsPerYear = 24; break;
+      case 'DAILY': periodsPerYear = 365; break;
       default: periodsPerYear = 12;
     }
 
@@ -204,6 +207,8 @@ export default function EditLoanPage() {
         paymentDate.setDate(startDate.getDate() + i * 7);
       } else if (frequency === 'BIWEEKLY') {
         paymentDate.setDate(startDate.getDate() + i * 14);
+      } else if (frequency === 'DAILY') {
+        paymentDate.setDate(startDate.getDate() + i);
       } else {
         paymentDate.setMonth(startDate.getMonth() + i);
       }
@@ -250,6 +255,7 @@ export default function EditLoanPage() {
       let periodsPerYear = 12;
       if (formData.frequency === 'WEEKLY') periodsPerYear = 52;
       else if (formData.frequency === 'BIWEEKLY') periodsPerYear = 24;
+      else if (formData.frequency === 'DAILY') periodsPerYear = 365;
       
       const annualRate = periodicRate * periodsPerYear;
 
@@ -418,6 +424,7 @@ export default function EditLoanPage() {
                 <option value="WEEKLY">Semanal</option>
                 <option value="BIWEEKLY">Quincenal</option>
                 <option value="MONTHLY">Mensual</option>
+                <option value="DAILY">Diario</option>
               </select>
             </div>
 

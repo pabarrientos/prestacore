@@ -112,7 +112,8 @@ export class AmortizationService {
       principalPayment = Math.round(principalPayment * 100) / 100;
       balance = Math.round((balance - principalPayment) * 100) / 100;
       
-      // Calculate due date
+      // Calculate due date - use i for the number of periods to add
+      // For i=1: add 1 day (first payment), for i=7: add 7 days (last payment)
       const dueDate = this.addPeriod(currentDate, frequency, i);
       
       schedule.push({
@@ -145,6 +146,13 @@ export class AmortizationService {
       case PaymentFrequency.MONTHLY:
         result.setMonth(result.getMonth() + periods);
         break;
+      case PaymentFrequency.DAILY:
+        result.setDate(result.getDate() + periods);
+        break;
+      default:
+        // Fallback: treat as daily (handles cases where enum not fully loaded)
+        result.setDate(result.getDate() + periods);
+        break;
     }
     
     return result;
@@ -161,6 +169,8 @@ export class AmortizationService {
         return 26;
       case PaymentFrequency.MONTHLY:
         return 12;
+      case PaymentFrequency.DAILY:
+        return 365;
     }
   }
 

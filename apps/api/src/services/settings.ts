@@ -27,9 +27,9 @@ export async function getRate(key: string): Promise<number> {
 async function reloadRatesCache(): Promise<void> {
   try {
     const settings = await prisma.setting.findMany({
-      where: {
+        where: {
         key: {
-          in: ['WEEKLY_BASE_RATE', 'BIWEEKLY_BASE_RATE', 'MONTHLY_BASE_RATE', 'MORA_RATE'],
+          in: ['WEEKLY_BASE_RATE', 'BIWEEKLY_BASE_RATE', 'MONTHLY_BASE_RATE', 'DAILY_BASE_RATE', 'MORA_RATE'],
         },
       },
     });
@@ -54,6 +54,7 @@ function getDefaultRate(key: string): number {
     WEEKLY_BASE_RATE: 0.001,      // 0.1% semanal
     BIWEEKLY_BASE_RATE: 0.002,   // 0.2% quincenal
     MONTHLY_BASE_RATE: 0.005,    // 0.5% mensual
+    DAILY_BASE_RATE: 0.005,      // 0.5% diario
     MORA_RATE: 0.0005,            // 0.05% diario (default)
   };
   return defaults[key] ?? 0;

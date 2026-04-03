@@ -52,6 +52,7 @@ router.get('/rates', async (_req, res: Response): Promise<void> => {
             'WEEKLY_BASE_RATE',
             'BIWEEKLY_BASE_RATE', 
             'MONTHLY_BASE_RATE',
+            'DAILY_BASE_RATE',
             'MORA_RATE',
             'MIN_LOAN_AMOUNT',
             'MAX_LOAN_AMOUNT',
@@ -101,7 +102,7 @@ router.patch('/', authMiddleware, requireAdmin, async (req: AuthRequest, res: Re
     });
 
     // Invalidate cache if updating a rate or timezone
-    if (['WEEKLY_BASE_RATE', 'BIWEEKLY_BASE_RATE', 'MONTHLY_BASE_RATE', 'MORA_RATE'].includes(body.key)) {
+    if (['WEEKLY_BASE_RATE', 'BIWEEKLY_BASE_RATE', 'MONTHLY_BASE_RATE', 'DAILY_BASE_RATE', 'MORA_RATE'].includes(body.key)) {
       invalidateRatesCache();
     }
     if (body.key === 'TIMEZONE') {

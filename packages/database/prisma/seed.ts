@@ -82,12 +82,16 @@ async function main() {
     { key: 'WEEKLY_BASE_RATE', value: '7.5', description: 'Tasa semanal base para calcular anual (ej: 7.5 * 52 semanas)' },
     { key: 'BIWEEKLY_BASE_RATE', value: '15', description: 'Tasa quincenal base para calcular anual (ej: 15 * 24 quincenas)' },
     { key: 'MONTHLY_BASE_RATE', value: '30', description: 'Tasa mensual base para calcular anual (ej: 30 * 12 meses)' },
+    { key: 'DAILY_BASE_RATE', value: '1', description: 'Tasa diaria base para calcular anual (ej: 1 * 365 días)' },
   ];
 
   for (const setting of settings) {
     await prisma.setting.upsert({
       where: { key: setting.key },
-      update: {},
+      update: {
+        value: setting.value,
+        description: setting.description,
+      },
       create: setting,
     });
   }

@@ -193,6 +193,31 @@ export default function SettingsPage() {
                 {settings.MONTHLY_BASE_RATE?.description}
               </p>
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Tasa Diaria Base (%)
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  step="0.1"
+                  value={settings.DAILY_BASE_RATE?.value || ''}
+                  onChange={(e) => handleChange('DAILY_BASE_RATE', e.target.value)}
+                  className="flex-1 px-4 py-2 border rounded-lg"
+                />
+                <button
+                  onClick={() => handleSave('DAILY_BASE_RATE')}
+                  disabled={saving}
+                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                >
+                  Guardar
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                {settings.DAILY_BASE_RATE?.description}
+              </p>
+            </div>
           </div>
         </div>
       </div>

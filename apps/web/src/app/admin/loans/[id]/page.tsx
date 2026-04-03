@@ -85,6 +85,7 @@ const frequencyLabels: Record<string, { rate: string; plural: string; singular: 
   WEEKLY: { rate: 'semanal', plural: 'semanas', singular: 'semana' },
   BIWEEKLY: { rate: 'quincenal', plural: 'quincenas', singular: 'quincena' },
   MONTHLY: { rate: 'mensual', plural: 'meses', singular: 'mes' },
+  DAILY: { rate: 'diario', plural: 'días', singular: 'día' },
 };
 
 const statusColors: Record<string, string> = {
@@ -135,6 +136,8 @@ function getPeriodicRate(annualRate: number, frequency: string): number {
       return Math.round((annualRate / 52) * 10000) / 10000;
     case 'BIWEEKLY':
       return Math.round((annualRate / 24) * 10000) / 10000;
+    case 'DAILY':
+      return Math.round((annualRate / 365) * 10000) / 10000;
     default:
       return Math.round((annualRate / 12) * 10000) / 10000;
   }
