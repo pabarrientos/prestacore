@@ -43,6 +43,12 @@ export default function SettingsPage() {
   const handleSave = async (key: string) => {
     if (!token) return;
     
+    // Skip if setting doesn't exist yet
+    if (!settings[key]) {
+      setMessage({ type: 'error', text: `La configuración ${key} no existe` });
+      return;
+    }
+    
     setSaving(true);
     setMessage({ type: '', text: '' });
 
@@ -65,7 +71,11 @@ export default function SettingsPage() {
       if (data.success) {
         setMessage({ type: 'success', text: `${key} actualizado correctamente` });
       } else {
-        setMessage({ type: 'error', text: data.error || 'Error al guardar' });
+        // Mostrar detalles del error de validación
+        const errorMsg = data.details 
+          ? `${data.error}: ${JSON.stringify(data.details)}`
+          : data.error || 'Error al guardar';
+        setMessage({ type: 'error', text: errorMsg });
       }
     } catch {
       setMessage({ type: 'error', text: 'Error de conexión' });
@@ -237,7 +247,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Mora */}
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white rounded-lg shadow p-6 mb-6">
         <h2 className="text-lg font-semibold mb-4">Interés por Mora</h2>
         
         <div>
@@ -265,6 +275,57 @@ export default function SettingsPage() {
           </div>
           <p className="text-xs text-gray-500 mt-1">
             Ejemplo: 0.01 = 1% diario, 0.001 = 0.1% diario, 0.0005 = 0.05% diario
+          </p>
+        </div>
+      </div>
+
+      {/* Zona Horaria */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h2 className="text-lg font-semibold mb-4">Zona Horaria</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          La zona horaria se usa para calcular las cuotas vencidas, mora y cancelaciones anticipadas.
+        </p>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Timezone
+          </label>
+          <div className="flex gap-2">
+            <select
+              value={(settings.TIMEZONE?.value) || 'America/Argentina/Buenos_Aires'}
+              onChange={(e) => {
+                // Ensure the setting object exists with value and description
+                const currentValue = settings.TIMEZONE?.value || 'America/Argentina/Buenos_Aires';
+                setSettings({
+                  ...settings,
+                  TIMEZONE: { 
+                    value: e.target.value, 
+                    description: settings.TIMEZONE?.description || null 
+                  },
+                });
+              }}
+              className="flex-1 px-4 py-2 border rounded-lg"
+            >
+              <option value="America/Argentina/Buenos_Aires">Argentina (Buenos Aires)</option>
+              <option value="America/New_York">Estados Unidos (Nueva York)</option>
+              <option value="America/Mexico_City">México</option>
+              <option value="America/Bogota">Colombia</option>
+              <option value="America/Santiago">Chile</option>
+              <option value="America/Lima">Perú</option>
+              <option value="Europe/Madrid">España (Madrid)</option>
+              <option value="Europe/London">Reino Unido (Londres)</option>
+              <option value="UTC">UTC</option>
+            </select>
+            <button
+              onClick={() => handleSave('TIMEZONE')}
+              disabled={saving}
+              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+            >
+              Guardar
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 mt-1">
+            Valor actual: {settings.TIMEZONE?.value || 'America/Argentina/Buenos_Aires'}
           </p>
         </div>
       </div>

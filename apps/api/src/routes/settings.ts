@@ -4,14 +4,15 @@ import { PrismaClient } from '@prisma/client';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { requireAdmin } from '../middleware/rbac';
 import { invalidateRatesCache } from '../services/settings';
+import { invalidateTimezoneCache } from '../services/datetime';
 
 const router: ReturnType<typeof Router> = Router();
 const prisma = new PrismaClient();
 
 const updateSettingSchema = z.object({
   key: z.string(),
-  value: z.string(),
-  description: z.string().optional(),
+  value: z.string().optional(),
+  description: z.string().nullable().optional(),
 });
 
 // GET /api/settings - Get all settings (public for rates)
@@ -82,22 +83,29 @@ router.patch('/', authMiddleware, requireAdmin, async (req: AuthRequest, res: Re
   try {
     const body = updateSettingSchema.parse(req.body);
 
+    // Ensure value is never undefined - use empty string as fallback for new settings
+    const value = body.value ?? '';
+    const description = body.description ?? null;
+
     const setting = await prisma.setting.upsert({
       where: { key: body.key },
       update: {
-        value: body.value,
-        description: body.description,
+        value,
+        description,
       },
       create: {
         key: body.key,
-        value: body.value,
-        description: body.description,
+        value,
+        description,
       },
     });
 
-    // Invalidate cache if updating a rate
+    // Invalidate cache if updating a rate or timezone
     if (['WEEKLY_BASE_RATE', 'BIWEEKLY_BASE_RATE', 'MONTHLY_BASE_RATE', 'MORA_RATE'].includes(body.key)) {
       invalidateRatesCache();
+    }
+    if (body.key === 'TIMEZONE') {
+      invalidateTimezoneCache();
     }
 
     res.json({

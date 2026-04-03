@@ -5,6 +5,7 @@ import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { requireAdmin, requireVendor } from '../middleware/rbac';
 import { AmortizationService } from '../services/amortization';
 import { RefinancingService } from '../services/refinancing';
+import { CancelacionAnticipadaService } from '../services/cancelacion-anticipada';
 
 const router: ReturnType<typeof Router> = Router();
 const prisma = new PrismaClient();
@@ -412,7 +413,7 @@ router.patch('/:id/approve', authMiddleware, requireAdmin, async (req: AuthReque
         status: LoanStatus.ACTIVE,
         approvedAt: new Date(),
         approvedBy: req.user!.userId,
-        startedAt: new Date(),
+        // Keep the original startedAt from the pending loan - don't overwrite with today
       },
       include: {
         client: {
@@ -457,6 +458,15 @@ router.delete('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res
       res.status(404).json({
         success: false,
         error: 'Loan not found',
+      });
+      return;
+    }
+
+    // Check if loan has been refinanced - cannot delete if it has a new loan
+    if (loan.prestamo_nuevo_id) {
+      res.status(400).json({
+        success: false,
+        error: 'No se puede eliminar un préstamo que ya ha sido refinanciado',
       });
       return;
     }
@@ -857,6 +867,81 @@ router.post('/:id/execute-refinancing', authMiddleware, requireAdmin, async (req
     });
   } catch (error) {
     console.error('Execute refinancing error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+    });
+  }
+});
+
+// GET /api/loans/:id/preview-cancelacion-anticipada - Preview early cancellation (no auth)
+router.get('/:id/preview-cancelacion-anticipada', async (req, res): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const preview = await CancelacionAnticipadaService.getCancelacionAnticipadaPreview(id);
+
+    if (!preview) {
+      res.status(404).json({
+        success: false,
+        error: 'Préstamo no encontrado',
+      });
+      return;
+    }
+
+    if (preview.error) {
+      res.status(400).json({
+        success: false,
+        error: preview.error,
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        loanId: preview.loanId,
+        loanStatus: preview.loanStatus,
+        breakdown: preview.breakdown,
+      },
+    });
+  } catch (error) {
+    console.error('Preview cancelacion anticipada error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+    });
+  }
+});
+
+// POST /api/loans/:id/execute-cancelacion-anticipada - Execute early cancellation (Admin or Vendor)
+router.post('/:id/execute-cancelacion-anticipada', authMiddleware, requireVendor, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id: loanId } = req.params;
+    const { interesesVencidosManual } = req.body;
+
+    const result = await CancelacionAnticipadaService.executeEarlyCancellation(
+      loanId,
+      interesesVencidosManual
+    );
+
+    if (!result.success) {
+      res.status(400).json({
+        success: false,
+        error: result.error,
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        message: 'Cancelación anticipada ejecutada exitosamente',
+        loan: result.loan,
+      },
+    });
+  } catch (error) {
+    console.error('Execute cancelacion anticipada error:', error);
     res.status(500).json({
       success: false,
       error: 'Internal server error',

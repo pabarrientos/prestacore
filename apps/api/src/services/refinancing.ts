@@ -10,6 +10,7 @@ import {
 import { AmortizationService } from './amortization';
 import { MoraService } from './mora';
 import { getRate } from './settings';
+import { getNow } from './datetime';
 
 const prisma = new PrismaClient();
 
@@ -72,7 +73,7 @@ export class RefinancingService {
 
     // Get the daily mora rate from settings
     const dailyRate = await getRate('MORA_RATE');
-    const now = new Date();
+    const now = await getNow();
 
     // Find the first unpaid installment (not PAID, ordered by dueDate)
     const firstUnpaidInstallment = loan.installments.find(
@@ -200,9 +201,10 @@ export class RefinancingService {
     }
 
     // Allow DEFAULTED or ACTIVE with overdue installments
+    const now = await getNow();
     const hasOverdueInstallments = loan.installments.some(inst => {
       const dueDate = new Date(inst.dueDate);
-      return dueDate < new Date() && inst.status !== InstallmentStatus.PAID;
+      return dueDate < now && inst.status !== InstallmentStatus.PAID;
     });
     
     if (loan.status === LoanStatus.DEFAULTED) {

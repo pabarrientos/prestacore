@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import PaymentForm from '@/components/PaymentForm';
 import RefinancingModal from '@/components/RefinancingModal';
+import CancelacionAnticipadaModal from '@/components/CancelacionAnticipadaModal';
 
 interface LoanDetail {
   id: string;
@@ -113,7 +114,10 @@ const installmentStatusColors: Record<string, string> = {
 
 function isOverdue(dueDate: string, status: string): boolean {
   if (status === 'PAID') return false;
+  // Para comparar fechas correctamente, necesitamos la timezone del sistema
+  // Usamos una comparación simple: si la fecha de vencimiento es anterior a hoy
   const due = new Date(dueDate);
+  due.setHours(0, 0, 0, 0);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return due < today;
@@ -146,6 +150,7 @@ export default function LoanDetailPage() {
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
   const [showRefinancing, setShowRefinancing] = useState(false);
+  const [showCancelacionAnticipada, setShowCancelacionAnticipada] = useState(false);
 
   const handleEditPayment = (payment: Payment) => {
     setEditingPayment(payment);
@@ -314,6 +319,15 @@ export default function LoanDetailPage() {
               className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
             >
               Refinanciar
+            </button>
+          )}
+          {/* Cancelación Anticipada button - only for ACTIVE or DEFAULTED loans */}
+          {(loan.status === 'ACTIVE' || loan.status === 'DEFAULTED') && (user?.role === 'ADMIN' || user?.role === 'VENDEDOR') && (
+            <button
+              onClick={() => setShowCancelacionAnticipada(true)}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            >
+              Cancelación Anticipada
             </button>
           )}
           {/* Mark as DEFAULTED button for ACTIVE loans (admin only) */}
@@ -627,6 +641,31 @@ export default function LoanDetailPage() {
                 }
               }}
               onCancel={() => setShowRefinancing(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Cancelacion Anticipada Modal */}
+      {showCancelacionAnticipada && loan && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="max-w-2xl w-full">
+            <CancelacionAnticipadaModal
+              loanId={loan.id}
+              onSuccess={() => {
+                setShowCancelacionAnticipada(false);
+                // Reload loan data
+                if (token && params.id) {
+                  fetch(`${API_URL}/api/loans/${params.id}`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                  })
+                    .then((res) => res.json())
+                    .then((data) => {
+                      if (data.success) setLoan(data.data);
+                    });
+                }
+              }}
+              onCancel={() => setShowCancelacionAnticipada(false)}
             />
           </div>
         </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { getTodayString } from '@/lib/datetime';
 
 interface InstallmentOption {
   id: string;
@@ -38,7 +39,7 @@ export default function PaymentForm({ loanId, payment, preselectedInstallmentId,
   const [amount, setAmount] = useState<string>(payment?.amount?.toString() || '');
   const [reference, setReference] = useState<string>(payment?.reference || '');
   const [notes, setNotes] = useState<string>(payment?.notes || '');
-  const [paymentDate, setPaymentDate] = useState<string>(payment?.paymentDate?.split('T')[0] || new Date().toISOString().split('T')[0]);
+  const [paymentDate, setPaymentDate] = useState<string>(''); // Se carga en useEffect con timezone
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
@@ -51,6 +52,19 @@ export default function PaymentForm({ loanId, payment, preselectedInstallmentId,
       setSelectedInstallmentId(preselectedInstallmentId);
     }
   }, [preselectedInstallmentId]);
+
+  // Cargar fecha de pago con timezone (para nuevos pagos) o usar la fecha del pago existente
+  useEffect(() => {
+    if (payment?.paymentDate) {
+      // Si es edición, usar la fecha del pago
+      setPaymentDate(payment.paymentDate.split('T')[0]);
+    } else {
+      // Si es nuevo pago, usar la fecha de hoy en la timezone configurada
+      getTodayString().then((dateStr: string) => {
+        setPaymentDate(dateStr);
+      });
+    }
+  }, [payment]);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
