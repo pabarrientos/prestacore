@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { getTodayString } from '@/lib/datetime';
 
 interface Client {
   id: string;
@@ -63,7 +64,7 @@ function NewLoanForm() {
     customRate: '',
     purpose: '',
     notes: '',
-    startDate: new Date().toISOString().split('T')[0],
+    startDate: '', // Se carga en useEffect con timezone
   });
   const [rates, setRates] = useState<RateConfig | null>(null);
   const [simulation, setSimulation] = useState<SimulationResult | null>(null);
@@ -71,7 +72,7 @@ function NewLoanForm() {
   const [loading, setLoading] = useState(false);
   const [simulating, setSimulating] = useState(false);
 
-  // Cargar tasas
+  // Cargar tasas y fecha inicial con timezone
   useEffect(() => {
     fetch(`${API_URL}/api/settings/rates`)
       .then(res => res.json())
@@ -86,6 +87,11 @@ function NewLoanForm() {
         }
       })
       .catch(console.error);
+
+    // Cargar fecha inicial con timezone
+    getTodayString().then((dateStr: string) => {
+      setFormData(prev => ({ ...prev, startDate: dateStr }));
+    });
   }, []);
 
   // Buscar clientes
@@ -566,7 +572,7 @@ function NewLoanForm() {
                   </thead>
                   <tbody>
                     {simulation.schedule.slice(0, 12).map((item) => (
-                      <tr key={item.number} className="border-t">
+                      <tr key={item.number} className="border-t text-center">
                         <td className="px-2 py-1">{item.number}</td>
                         <td className="px-2 py-1">{item.date}</td>
                         <td className="px-2 py-1">${item.payment.toFixed(2)}</td>

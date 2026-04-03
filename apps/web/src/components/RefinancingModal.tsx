@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { getTodayString } from '@/lib/datetime';
 
 interface RefinancingBreakdown {
   capitalPendiente: number;
@@ -70,10 +71,7 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
   const [cantidadCuotas, setCantidadCuotas] = useState<string>('12');
   const [tasaManual, setTasaManual] = useState<boolean>(false);
   const [nuevaTasaInteres, setNuevaTasaInteres] = useState<string>('');
-  const [fechaInicio, setFechaInicio] = useState<string>(() => {
-    // Default to today's date
-    return new Date().toISOString().split('T')[0];
-  });
+  const [fechaInicio, setFechaInicio] = useState<string>(''); // Se carga en useEffect con timezone
   const [pagoInicial, setPagoInicial] = useState<string>('0');
   
   // Manual override for interesesVencidos
@@ -157,6 +155,11 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
         setError('Error al conectar con el servidor');
       })
       .finally(() => setLoading(false));
+
+    // Cargar fecha de inicio con timezone
+    getTodayString().then((dateStr: string) => {
+      setFechaInicio(dateStr);
+    });
   }, [loanId]);
 
   // Update rate when frequency changes (if not manually set)

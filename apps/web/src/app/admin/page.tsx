@@ -22,6 +22,14 @@ interface DashboardMetrics {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
+// Helper para formatear moneda argentina (necesario para valores de Prisma)
+function formatARS(value: number): string {
+  const fixed = Number(value).toFixed(2);
+  const parts = fixed.split('.');
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return parts.join(',');
+}
+
 export default function AdminDashboard() {
   const { user, token } = useAuth();
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
@@ -80,7 +88,7 @@ export default function AdminDashboard() {
         <div className="bg-white rounded-lg shadow p-6">
           <p className="text-sm text-gray-500">Monto a Cobrar a Futuro</p>
           <p className="text-3xl font-bold text-blue-600">
-            ${(metrics?.futureCollectionAmount || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+            ${(metrics?.futureCollectionAmount || 0).toLocaleString()}
           </p>
         </div>
 
@@ -88,7 +96,7 @@ export default function AdminDashboard() {
         <div className="bg-white rounded-lg shadow p-6">
           <p className="text-sm text-gray-500">Total Desembolsado</p>
           <p className="text-3xl font-bold text-gray-900">
-            ${(metrics?.totalDisbursed || 0).toLocaleString()}
+            ${formatARS(metrics?.totalDisbursed || 0)}
           </p>
         </div>
 
@@ -96,7 +104,7 @@ export default function AdminDashboard() {
         <div className="bg-white rounded-lg shadow p-6">
           <p className="text-sm text-gray-500">Total Cobrado</p>
           <p className="text-3xl font-bold text-green-600">
-            ${(metrics?.totalCollected || 0).toLocaleString()}
+            ${formatARS(metrics?.totalCollected || 0)}
           </p>
         </div>
 

@@ -531,7 +531,7 @@ export default function EditLoanPage() {
                   </thead>
                   <tbody>
                     {simulation.schedule.slice(0, 12).map((item) => (
-                      <tr key={item.number} className="border-t">
+                      <tr key={item.number} className="border-t text-center">
                         <td className="px-2 py-1">{item.number}</td>
                         <td className="px-2 py-1">{item.date}</td>
                         <td className="px-2 py-1">${item.payment.toFixed(2)}</td>

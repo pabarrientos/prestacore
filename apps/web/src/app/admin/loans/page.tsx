@@ -99,9 +99,15 @@ export default function LoansPage() {
     }
   }, [token]);
 
-  const filteredLoans = loans.filter((loan) =>
-    loan.status.toLowerCase().includes(filter.toLowerCase())
-  );
+  const filteredLoans = loans.filter((loan) => {
+    const searchTerm = filter.toLowerCase();
+    const clientName = `${loan.client.user.firstName} ${loan.client.user.lastName}`.toLowerCase();
+    
+    return (
+      loan.status.toLowerCase().includes(searchTerm) ||
+      clientName.includes(searchTerm)
+    );
+  });
 
   if (loading) {
     return (
@@ -129,7 +135,7 @@ export default function LoansPage() {
       <div className="mb-4">
         <input
           type="text"
-          placeholder="Filtrar por estado..."
+          placeholder="Filtrar por estado o cliente..."
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           className="px-4 py-2 border rounded-lg w-full md:w-64"
