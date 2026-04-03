@@ -121,6 +121,9 @@ cd apps/web && pnpm test:e2e
 - `PATCH /api/loans/:id` - Editar o cambiar estado (Admin)
 - `GET /api/loans/:id/preview-refinancing` - Previsualizar refinanciación
 - `POST /api/loans/:id/execute-refinancing` - Ejecutar refinanciación
+- `GET /api/loans/:id/preview-cancelacion-anticipada` - Previsualizar cancelación anticipada
+- `POST /api/loans/:id/execute-cancelacion-anticipada` - Ejecutar cancelación anticipada
+- `DELETE /api/loans/:id` - Eliminar préstamo (Admin)
 
 ### Pagos
 - `POST /api/payments` - Registrar pago de cuota
@@ -139,6 +142,25 @@ El sistema permite refinanciar préstamos en mora:
 4. **Seguimiento**: Links bidireccionales entre préstamo original y nuevo
 
 Para refinanciar un préstamo, debe estar en estado DEFAULTED o tener cuotas vencidas.
+
+## 🔄 Cancelación Anticipada
+
+El sistema permite cancelar un préstamo antes de su fecha de vencimiento:
+
+1. **Previsualización**: Muestra el desglose de deuda actual (capital pendiente, intereses vencidos, pagos atrasados)
+2. **Edición manual**: Los intereses vencidos pueden ajustarse manualmente
+3. **Pago único**: Se crea un pago extraordinario por el total de la deuda
+4. **Estado**: El préstamo pasa a estado PAID
+
+Para cancelar anticipadamente, el préstamo debe estar en estado ACTIVE o DEFAULTED (no PENDING, PAID ni REFINANCIADO).
+
+## ⏰ Zona Horaria
+
+El sistema configurable timezone desde `/admin/settings`:
+
+1. La zona horaria afecta el cálculo de cuotas vencidas, mora y cancelaciones anticipadas
+2. Por defecto: America/Argentina/Buenos_Aires
+3. Los cálculos de fecha usan la zona horaria configurada (no UTC del servidor)
 
 ## 🔧 Variables de Entorno
 
