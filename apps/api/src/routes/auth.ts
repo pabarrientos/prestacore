@@ -37,6 +37,7 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
         success: false,
         error: 'Invalid credentials',
       });
+      console.error('Invalid credentials')
       return;
     }
 
@@ -46,6 +47,7 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
         success: false,
         error: 'Invalid credentials',
       });
+      console.error('Invalid credentials')
       return;
     }
 
