@@ -14,19 +14,22 @@ Este archivo proporciona contexto específico del proyecto para agentes IA que t
 ```
 prestamos/
 ├── apps/api/           # Express API REST
-│   └── src/
-│       ├── routes/    # Endpoints: auth, loans, payments, dashboard
-│       ├── services/  # amortization.ts, mora.ts, payment.ts, jwt.ts
-│       └── middleware/# auth.ts, rbac.ts
+│   ├── src/
+│   │   ├── routes/    # Endpoints: auth, loans, payments, dashboard
+│   │   ├── services/  # amortization.ts, mora.ts, payment.ts, jwt.ts
+│   │   └── middleware/# auth.ts, rbac.ts
+│   └── Dockerfile     # Multi-stage build (producción)
 ├── apps/web/          # Next.js 14 App Router
-│   └── src/
-│       ├── app/       # Pages: login, register, admin, simulator
-│       ├── components/# React components
-│       └── lib/       # auth-context.tsx
+│   ├── src/
+│   │   ├── app/       # Pages: login, register, admin, simulator
+│   │   ├── components/# React components
+│   │   └── lib/       # auth-context.tsx
+│   └── Dockerfile     # Multi-stage build (producción)
 ├── packages/
 │   ├── database/      # Prisma schema + migrations
 │   └── shared/        # Tipos TypeScript compartidos
-├── docker-compose.yml # PostgreSQL + API + Web
+├── docker-compose.yml           # Producción (API + Web + PostgreSQL)
+├── docker-compose.override.yml  # Desarrollo (hot reload con bind mounts)
 └── .devcontainer/    # VSCode Dev Containers
 ```
 
@@ -86,8 +89,23 @@ prestamos/
 ## 📦 Comandos Útiles
 
 ```bash
-# Desarrollo
-pnpm dev              # Iniciar todos los servicios
+# Docker — Desarrollo (hot reload automático)
+docker compose up              # Carga docker-compose.yml + override automáticamente
+docker compose up -d           # Detached mode
+docker compose logs -f         # Ver logs en tiempo real
+docker compose down            # Detener y limpiar
+
+# Docker — Producción (build optimizado multi-stage)
+docker compose -f docker-compose.yml up -d --build
+
+# Docker — Servicios individuales (útil para dev local + DB en Docker)
+docker compose up postgres -d  # Solo PostgreSQL (bind mount a ./storage/postgres)
+docker compose up api -d       # Solo API
+docker compose up web -d       # Solo Web
+docker compose stop api        # Detener un servicio
+
+# Desarrollo local
+pnpm dev                       # Iniciar todos los servicios localmente
 pnpm --filter @prestamos/api dev   # Solo API
 pnpm --filter @prestamos/web dev   # Solo Web
 
@@ -102,7 +120,11 @@ pnpm test:e2e        # Solo E2E
 
 # Build
 pnpm build           # Build de producción
+pnpm start           # Start de producción (local)
 ```
+
+> **Nota**: `storage/postgres` se crea automáticamente al levantar postgres con Docker.
+> Los datos persisten ahí entre reinicios. Para limpiar la DB: `rm -rf storage/postgres`
 
 ## 🔗 URLs de Desarrollo
 

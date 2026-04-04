@@ -32,21 +32,36 @@ Sistema web integral para la gestión de préstamos personales con sistema de am
 
 ## 🏁 Inicio Rápido
 
-### Con Docker Compose
+### Con Docker Compose — Desarrollo (hot reload)
 
 ```bash
 # Clonar el proyecto
 cd prestamos
 
-# Iniciar servicios
-docker-compose up -d
+# Iniciar servicios con hot reload (carga docker-compose.override.yml automáticamente)
+docker compose up
 
 # Acceder a la aplicación
 # Frontend: http://localhost:3000
 # API: http://localhost:3001
 ```
 
-### Desarrollo Local
+Los cambios en el código se reflejan automáticamente gracias a `tsx watch` (API) y `next dev` (Web).
+
+### Con Docker Compose — Producción
+
+```bash
+# Build y start de imágenes optimizadas (multi-stage)
+docker compose -f docker-compose.yml up -d --build
+
+# Ver logs
+docker compose logs -f
+
+# Detener
+docker compose down
+```
+
+### Desarrollo Local (sin Docker)
 
 ```bash
 # Instalar dependencias
@@ -65,6 +80,33 @@ pnpm db:seed
 pnpm dev
 ```
 
+### Servicios Individuales
+
+Para desarrollo local donde necesitás PostgreSQL pero querés correr la API y Web localmente:
+
+```bash
+# Solo PostgreSQL (bind mount a ./storage/postgres)
+docker compose up postgres -d
+
+# Solo API (requiere postgres corriendo)
+docker compose up api -d
+
+# Solo Web (requiere api corriendo)
+docker compose up web -d
+
+# Ver logs de un servicio específico
+docker compose logs -f postgres
+docker compose logs -f api
+docker compose logs -f web
+
+# Detener un servicio específico
+docker compose stop api
+```
+
+> **Nota**: La carpeta `storage/postgres` se crea automáticamente al ejecutar `docker compose up postgres`.
+> Los datos de PostgreSQL persisten ahí entre reinicios. Si querés limpiar la base de datos,
+> eliminá la carpeta: `rm -rf storage/postgres`
+
 ## 👤 Credenciales (seed)
 
 | Rol | Email | Contraseña |
@@ -79,20 +121,23 @@ pnpm dev
 prestamos/
 ├── apps/
 │   ├── api/                 # Express API
-│   │   └── src/
-│   │       ├── routes/      # Endpoints REST
-│   │       ├── services/    # Lógica de negocio
-│   │       └── middleware/  # Auth, RBAC
+│   │   ├── src/
+│   │   │   ├── routes/      # Endpoints REST
+│   │   │   ├── services/    # Lógica de negocio
+│   │   │   └── middleware/  # Auth, RBAC
+│   │   └── Dockerfile       # Multi-stage build (producción)
 │   └── web/                 # Next.js App
-│       └── src/
-│           ├── app/         # Páginas
-│           ├── components/ # Componentes React
-│           └── lib/         # Utilidades
+│       ├── src/
+│       │   ├── app/         # Páginas
+│       │   ├── components/  # Componentes React
+│       │   └── lib/         # Utilidades
+│       └── Dockerfile       # Multi-stage build (producción)
 ├── packages/
 │   ├── database/           # Prisma schema
 │   └── shared/             # Tipos compartidos
-├── docker-compose.yml      # Servicios Docker
-└── .devcontainer/          # VSCode Dev Containers
+├── docker-compose.yml           # Producción (API + Web + PostgreSQL)
+├── docker-compose.override.yml  # Desarrollo (hot reload con bind mounts)
+└── .devcontainer/               # VSCode Dev Containers
 ```
 
 ## 🧪 Testing
