@@ -1,0 +1,61 @@
+# Development override with hot reload
+# Usage: docker compose up (automatically loads this file)
+#
+# For production only: docker compose -f docker-compose.yml up -d --build
+
+services:
+  # API Server - Development
+  api:
+    image: node:20-bullseye-slim
+    container_name: prestamos-api-dev
+    working_dir: /app
+    command: sh -c "npm install -g pnpm@latest && pnpm install --frozen-lockfile && cd packages/database && pnpm exec prisma generate && pnpm --filter @prestamos/api dev"
+    environment:
+      DATABASE_URL: postgresql://prestamos:prestamos_dev@postgres:5432/prestamos?schema=public
+      PORT: 3001
+      NODE_ENV: development
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-key}
+      JWT_EXPIRES_IN: 7d
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./apps/api:/app/apps/api
+      - ./apps/web:/app/apps/web
+      - ./packages/database:/app/packages/database
+      - ./packages/shared:/app/packages/shared
+      - ./package.json:/app/package.json
+      - ./pnpm-lock.yaml:/app/pnpm-lock.yaml
+      - ./pnpm-workspace.yaml:/app/pnpm-workspace.yaml
+      # Avoid mounting node_modules from host
+      - /app/apps/api/node_modules
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Web Frontend - Development
+  web:
+    image: node:20-bullseye-slim
+    container_name: prestamos-web-dev
+    working_dir: /app
+    command: sh -c "npm install -g pnpm@latest && pnpm install --frozen-lockfile && pnpm --filter @prestamos/web dev"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+      NODE_ENV: development
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./apps/web:/app/apps/web
+      - ./packages/database:/app/packages/database
+      - ./packages/shared:/app/packages/shared
+      - ./package.json:/app/package.json
+      - ./pnpm-lock.yaml:/app/pnpm-lock.yaml
+      - ./pnpm-workspace.yaml:/app/pnpm-workspace.yaml
+      - ./tsconfig.json:/app/tsconfig.json
+      - /app/apps/web/node_modules
+      - /app/apps/web/.next
+      - /app/node_modules
+    depends_on:
+      - api
+    restart: unless-stopped

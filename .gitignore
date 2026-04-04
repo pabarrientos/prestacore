@@ -42,7 +42,7 @@ next-env.d.ts
 *.swo
 
 # Docker
-docker-compose.override.yml
+# (docker-compose.override.yml is tracked for dev workflow)
 
 # Logs
 *.log
