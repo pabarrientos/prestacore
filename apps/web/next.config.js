@@ -2,14 +2,14 @@
 const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ['@prestamos/shared'],
-  async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: 'http://api:3001/api/:path*',
-      },
-    ];
-  },
+  // async rewrites() {
+  //   return [
+  //     {
+  //       source: '/api/:path*',
+  //       destination: 'http://api:3001/api/:path*',
+  //     },
+  //   ];
+  // },
   webpack: (config) => {
     config.resolve.alias = {
       ...config.resolve.alias,

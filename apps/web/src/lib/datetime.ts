@@ -2,6 +2,8 @@
  * DateTime utilities for the frontend - handles timezone from settings
  */
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
 let cachedTimezone: string | null = null;
 let timezoneFetchPromise: Promise<string> | null = null;
 
@@ -24,7 +26,7 @@ export async function getTimezone(): Promise<string> {
 
 async function fetchTimezone(): Promise<string> {
   try {
-    const res = await fetch('/api/settings');
+    const res = await fetch(`${API_URL}/api/settings`);
     const data = await res.json();
     if (data.success && data.data.TIMEZONE) {
       cachedTimezone = data.data.TIMEZONE.value;
