@@ -46,9 +46,10 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
     container_name: prestamos-web
     environment:
-      NEXT_PUBLIC_API_URL: http://pabarrientos.dukdns.org:3001
       NODE_ENV: production
     ports:
       - "3000:3000"

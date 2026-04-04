@@ -233,21 +233,36 @@ El sistema configurable timezone desde `/admin/settings`:
 
 ## 🔧 Variables de Entorno
 
+### Desarrollo
+
+Las variables de entorno para desarrollo ya están configuradas en `docker-compose.override.yml` con valores por defecto. No necesitás crear ningún archivo adicional.
+
+### Producción
+
+Creá un archivo `.env` en la raíz del proyecto (no se commitea):
+
 ```env
-# Database
-DATABASE_URL="postgresql://prestamos:prestamos_dev@localhost:5432/prestamos"
+# JWT — Cambiá esto en producción
+JWT_SECRET=tu-secreto-super-seguro
 
-# JWT
-JWT_SECRET="your-secret-key"
-JWT_EXPIRES_IN="7d"
-
-# API
-PORT=3001
-NODE_ENV=development
-
-# Frontend
-NEXT_PUBLIC_API_URL=http://localhost:3001
+# Web — URL de la API (se bakea en el bundle de Next.js en build time)
+NEXT_PUBLIC_API_URL=http://tu-dominio.com:3001
 ```
+
+> **Importante**: `NEXT_PUBLIC_API_URL` se lee en **build time** (no en runtime).
+> Si cambiás este valor, necesitás rebuildar la imagen:
+> ```bash
+> docker compose -f docker-compose.yml up -d --build
+> ```
+
+### Variables disponibles
+
+| Variable | Uso | Default |
+|----------|-----|---------|
+| `JWT_SECRET` | Firma de tokens JWT | `your-secret-key-change-in-production` |
+| `NEXT_PUBLIC_API_URL` | URL de la API para el frontend | `http://localhost:3001` |
+
+> **Nota**: `DATABASE_URL`, `PORT`, `JWT_EXPIRES_IN` y `NODE_ENV` están configurados directamente en `docker-compose.yml` y no necesitan sobrescribirse.
 
 ## 📄 Licencia
 

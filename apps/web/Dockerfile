@@ -22,6 +22,10 @@ RUN pnpm install --frozen-lockfile
 COPY apps/web/ ./apps/web/
 COPY packages/shared/ ./packages/shared/
 
+# Build arg for API URL (baked into Next.js bundle at build time)
+ARG NEXT_PUBLIC_API_URL=http://localhost:3001
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+
 # Build Next.js app
 RUN cd apps/web && pnpm run build
 
