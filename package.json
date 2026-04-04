@@ -8,6 +8,7 @@
   ],
   "scripts": {
     "dev": "pnpm --parallel run dev",
+    "start": "pnpm --parallel run start",
     "build": "pnpm --recursive run build",
     "lint": "pnpm --recursive run lint",
     "test": "pnpm --recursive run test",
