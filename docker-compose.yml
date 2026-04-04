@@ -1,7 +1,7 @@
 version: '3.8'
 
-# Development environment with PostgreSQL only
-# Run apps locally: pnpm dev
+# Full stack: PostgreSQL + API + Web
+# Run: docker compose up -d
 
 services:
   # PostgreSQL Database
@@ -21,3 +21,37 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # API Server
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: prestamos-api
+    environment:
+      DATABASE_URL: postgresql://prestamos:prestamos_dev@postgres:5432/prestamos?schema=public
+      PORT: 3001
+      NODE_ENV: production
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-in-production}
+      JWT_EXPIRES_IN: 7d
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Web Frontend
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: prestamos-web
+    environment:
+      NEXT_PUBLIC_API_URL: http://pabarrientos.dukdns.org:3001
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    restart: unless-stopped
