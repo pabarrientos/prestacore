@@ -10,7 +10,9 @@ async function main() {
   const adminPassword = await bcrypt.hash('admin123', 10);
   const admin = await prisma.user.upsert({
     where: { email: 'admin@prestamos.com' },
-    update: {},
+    update: {
+      passwordHash: adminPassword
+    },
     create: {
       email: 'admin@prestamos.com',
       passwordHash: adminPassword,
@@ -26,7 +28,9 @@ async function main() {
   const vendorPassword = await bcrypt.hash('vendedor123', 10);
   const vendor = await prisma.user.upsert({
     where: { email: 'vendedor@prestamos.com' },
-    update: {},
+    update: {
+      passwordHash: vendorPassword
+    },
     create: {
       email: 'vendedor@prestamos.com',
       passwordHash: vendorPassword,
@@ -42,7 +46,9 @@ async function main() {
   const clientPassword = await bcrypt.hash('cliente123', 10);
   const clientUser = await prisma.user.upsert({
     where: { email: 'cliente@prestamos.com' },
-    update: {},
+    update: {
+      passwordHash: clientPassword
+    },
     create: {
       email: 'cliente@prestamos.com',
       passwordHash: clientPassword,
@@ -73,9 +79,9 @@ async function main() {
 
   // Create default settings
   const settings = [
-    { key: 'MORA_RATE', value: '0.02', description: 'Tasa de interés por mora (diario)' },
+    { key: 'MORA_RATE', value: '0.01', description: 'Tasa de interés por mora (diario)' },
     { key: 'MIN_LOAN_AMOUNT', value: '1000', description: 'Monto mínimo de préstamo' },
-    { key: 'MAX_LOAN_AMOUNT', value: '50000', description: 'Monto máximo de préstamo' },
+    { key: 'MAX_LOAN_AMOUNT', value: '2000000', description: 'Monto máximo de préstamo' },
     { key: 'DEFAULT_INTEREST_RATE', value: '0.15', description: 'Tasa de interés anual por defecto' },
     { key: 'DEFAULT_TERM_MONTHS', value: '12', description: 'Plazo por defecto en meses' },
     // Tasas base por frecuencia (mensual = 30 * 12 = 360% anual)
@@ -83,6 +89,7 @@ async function main() {
     { key: 'BIWEEKLY_BASE_RATE', value: '15', description: 'Tasa quincenal base para calcular anual (ej: 15 * 24 quincenas)' },
     { key: 'MONTHLY_BASE_RATE', value: '30', description: 'Tasa mensual base para calcular anual (ej: 30 * 12 meses)' },
     { key: 'DAILY_BASE_RATE', value: '1', description: 'Tasa diaria base para calcular anual (ej: 1 * 365 días)' },
+    { key: 'TIMEZONE', value: 'America/Argentina/Buenos_Aires', description: 'Valor actual: America/Argentina/Buenos_Aires' },
   ];
 
   for (const setting of settings) {
