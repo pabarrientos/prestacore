@@ -282,7 +282,7 @@ export default function OverduePage() {
                     </td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-1 text-xs rounded-full ${inst.daysOverdue > 30 ? 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-400' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-400'}`}>
-                        {inst.daysOverdue} días
+                        {inst.daysOverdue}
                       </span>
                     </td>
                     <td className="px-4 py-3">
