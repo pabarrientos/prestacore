@@ -106,6 +106,7 @@ function isOverdue(dueDate: string, status: string): boolean {
 
 function getRowClass(status: string, dueDate: string): string {
   if (status === 'PAID') return 'bg-green-50 dark:bg-green-900/20';
+  if (status === 'CANCELADA_POR_REFINANCIACION') return 'bg-purple-50 dark:bg-purple-900/20';
   if (isOverdue(dueDate, status)) return 'bg-red-50 dark:bg-red-900/20';
   return '';
 }
@@ -268,23 +269,41 @@ export default function MisPrestamosDetallePage() {
                 const prevCapitalBalance = idx === 0 ? loan.amount : acc[idx - 1].capitalBalance;
                 const capitalBalance = prevCapitalBalance - inst.principal;
                 
-                const now = new Date();
-                const dueDate = new Date(inst.dueDate);
+                // Calculate status dynamically based on actual payments AND loan status
+                const isRefinanced = loan.status === 'REFINANCIADO';
                 
-                // Calcular pagos realizados para esta cuota
+                // Calculate payments for this installment
                 const paymentsForInstallment = loan.payments?.filter(p => p.installmentId === inst.id) || [];
                 const totalPaidForInstallment = paymentsForInstallment.reduce((sum, p) => sum + Number(p.amount), 0);
                 
-                // Determinar estado real de la cuota basado en pagos
+                // Determine real status based on payments and loan status
                 let dynamicStatus: string;
-                if (totalPaidForInstallment >= Number(inst.amount)) {
-                  dynamicStatus = 'PAID';
-                } else if (totalPaidForInstallment > 0) {
-                  dynamicStatus = 'PARTIAL';
-                } else if (dueDate < now) {
-                  dynamicStatus = 'OVERDUE';
+                
+                // If loan is refinanced, check if installment was cancelled due to refinancing
+                if (isRefinanced && inst.status === 'CANCELADA_POR_REFINANCIACION') {
+                  dynamicStatus = 'CANCELADA_POR_REFINANCIACION';
+                } else if (isRefinanced) {
+                  // For refinanced loans that aren't cancelled, calculate based on payments
+                  if (totalPaidForInstallment >= Number(inst.amount)) {
+                    dynamicStatus = 'PAID';
+                  } else if (totalPaidForInstallment > 0) {
+                    dynamicStatus = 'PARTIAL';
+                  } else {
+                    const now = new Date();
+                    const dueDate = new Date(inst.dueDate);
+                    dynamicStatus = dueDate < now ? 'OVERDUE' : 'PENDING';
+                  }
                 } else {
-                  dynamicStatus = 'PENDING';
+                  // Normal loan - calculate based on payments
+                  if (totalPaidForInstallment >= Number(inst.amount)) {
+                    dynamicStatus = 'PAID';
+                  } else if (totalPaidForInstallment > 0) {
+                    dynamicStatus = 'PARTIAL';
+                  } else {
+                    const now = new Date();
+                    const dueDate = new Date(inst.dueDate);
+                    dynamicStatus = dueDate < now ? 'OVERDUE' : 'PENDING';
+                  }
                 }
                 
                 return [...acc, { ...inst, capitalBalance, dynamicStatus, totalPaid: totalPaidForInstallment }];
