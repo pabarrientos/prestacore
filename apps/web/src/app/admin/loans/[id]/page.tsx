@@ -521,7 +521,6 @@ export default function LoanDetailPage() {
                 const capitalBalance = prevCapitalBalance - inst.principal;
                 
                 // Calculate status dynamically based on actual payments AND loan status
-                // If loan is REFINANCIADO, use the installment's stored status
                 const isRefinanced = loan.status === 'REFINANCIADO';
                 
                 // Calculate payments for this installment
@@ -530,31 +529,23 @@ export default function LoanDetailPage() {
                 
                 let dynamicStatus: string;
                 
-                // If loan is refinanced, check if installment was cancelled due to refinancing
-                if (isRefinanced && inst.status === 'CANCELADA_POR_REFINANCIACION') {
+                // First check: if payment covers the full amount -> PAID (even if loan is refinanced)
+                if (totalPaidForInstallment >= Number(inst.amount)) {
+                  dynamicStatus = 'PAID';
+                } 
+                // Second check: if partial payment -> PARTIAL
+                else if (totalPaidForInstallment > 0) {
+                  dynamicStatus = 'PARTIAL';
+                }
+                // Third check: if loan is refinanced and installment was cancelled -> show cancelled
+                else if (isRefinanced && inst.status === 'CANCELADA_POR_REFINANCIACION') {
                   dynamicStatus = 'CANCELADA_POR_REFINANCIACION';
-                } else if (isRefinanced) {
-                  // For refinanced loans that aren't cancelled, calculate based on payments
-                  if (totalPaidForInstallment >= Number(inst.amount)) {
-                    dynamicStatus = 'PAID';
-                  } else if (totalPaidForInstallment > 0) {
-                    dynamicStatus = 'PARTIAL';
-                  } else {
-                    const now = new Date();
-                    const dueDate = new Date(inst.dueDate);
-                    dynamicStatus = dueDate < now ? 'OVERDUE' : 'PENDING';
-                  }
-                } else {
-                  // Normal loan - calculate based on payments
-                  if (totalPaidForInstallment >= Number(inst.amount)) {
-                    dynamicStatus = 'PAID';
-                  } else if (totalPaidForInstallment > 0) {
-                    dynamicStatus = 'PARTIAL';
-                  } else {
-                    const now = new Date();
-                    const dueDate = new Date(inst.dueDate);
-                    dynamicStatus = dueDate < now ? 'OVERDUE' : 'PENDING';
-                  }
+                }
+                // Fourth check: no payment - check if overdue based on date
+                else {
+                  const now = new Date();
+                  const dueDate = new Date(inst.dueDate);
+                  dynamicStatus = dueDate < now ? 'OVERDUE' : 'PENDING';
                 }
                 
                 return [...acc, { ...inst, capitalBalance, dynamicStatus, totalPaid: totalPaidForInstallment }];
