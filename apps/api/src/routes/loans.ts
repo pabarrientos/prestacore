@@ -2,7 +2,7 @@ import { Router, Response } from 'express';
 import { z } from 'zod';
 import { PrismaClient, Role, LoanStatus, PaymentFrequency } from '@prisma/client';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
-import { requireAdmin, requireVendor } from '../middleware/rbac';
+import { requireAdmin, requireVendor, requireClientOnly } from '../middleware/rbac';
 import { AmortizationService } from '../services/amortization';
 import { RefinancingService } from '../services/refinancing';
 import { CancelacionAnticipadaService } from '../services/cancelacion-anticipada';
@@ -35,6 +35,82 @@ const createLoanSchema = z.object({
     interest: z.number(),
     balance: z.number(),
   })).optional(),
+});
+
+// GET /api/loans/mine - Get current CLIENTE's loans only
+router.get('/mine', authMiddleware, requireClientOnly, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { page = '1', limit = '20' } = req.query;
+    const pageNum = parseInt(page as string, 10);
+    const limitNum = parseInt(limit as string, 10);
+
+    // Get client associated with current user
+    const client = await prisma.client.findUnique({
+      where: { userId: req.user!.userId },
+    });
+
+    if (!client) {
+      res.json({
+        success: true,
+        data: {
+          loans: [],
+          total: 0,
+          page: pageNum,
+          limit: limitNum,
+          totalPages: 0,
+        },
+      });
+      return;
+    }
+
+    const where = { clientId: client.id };
+
+    const [loans, total] = await Promise.all([
+      prisma.loan.findMany({
+        where,
+        include: {
+          client: {
+            include: {
+              user: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                },
+              },
+            },
+          },
+          assignedVendor: {
+            select: {
+              firstName: true,
+              lastName: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (pageNum - 1) * limitNum,
+        take: limitNum,
+      }),
+      prisma.loan.count({ where }),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        loans,
+        total,
+        page: pageNum,
+        limit: limitNum,
+        totalPages: Math.ceil(total / limitNum),
+      },
+    });
+  } catch (error) {
+    console.error('Get my loans error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+    });
+  }
 });
 
 // GET /api/loans/simulate - Public endpoint for loan simulation

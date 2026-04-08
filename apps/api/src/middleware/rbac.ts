@@ -32,5 +32,6 @@ export const rbacMiddleware = (allowedRoles: RoleAllowed) => {
 export const requireAdmin = rbacMiddleware(Role.ADMIN);
 export const requireVendor = rbacMiddleware([Role.ADMIN, Role.VENDEDOR]);
 export const requireClient = rbacMiddleware([Role.ADMIN, Role.VENDEDOR, Role.CLIENTE]);
+export const requireClientOnly = rbacMiddleware(Role.CLIENTE);
 
 export default rbacMiddleware;

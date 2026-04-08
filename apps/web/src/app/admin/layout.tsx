@@ -18,6 +18,10 @@ export default function AdminLayout({
     if (!isLoading && !user) {
       router.push('/login');
     }
+    // Redirect CLIENTE users away from admin routes
+    if (!isLoading && user && user.role === 'CLIENTE') {
+      router.push('/mis-prestamo');
+    }
   }, [user, isLoading, router]);
 
   if (isLoading) {
@@ -35,12 +39,19 @@ export default function AdminLayout({
     return null;
   }
 
-  const navLinks = [
+  // Filter nav links based on role
+  const baseNavLinks = [
     { href: '/admin', label: 'Dashboard' },
     { href: '/admin/loans', label: 'Préstamos' },
     { href: '/admin/clients', label: 'Clientes' },
     { href: '/admin/settings', label: 'Configuración' },
   ];
+
+  const navLinks = user.role === 'VENDEDOR'
+    ? baseNavLinks.filter(link => 
+        link.label === 'Préstamos' || link.label === 'Clientes'
+      )
+    : baseNavLinks;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#121212]">

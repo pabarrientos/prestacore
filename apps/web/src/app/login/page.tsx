@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 
@@ -10,8 +10,19 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   
-  const { login } = useAuth();
+  const { login, user: authUser } = useAuth();
   const router = useRouter();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (authUser) {
+      if (authUser.role === 'CLIENTE') {
+        router.push('/mis-prestamo');
+      } else {
+        router.push('/admin');
+      }
+    }
+  }, [authUser, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,7 +31,18 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
-      router.push('/admin');
+      // Role-based redirect after successful login
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        const userData = JSON.parse(storedUser);
+        if (userData.role === 'CLIENTE') {
+          router.push('/mis-prestamo');
+        } else {
+          router.push('/admin');
+        }
+      } else {
+        router.push('/admin');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
