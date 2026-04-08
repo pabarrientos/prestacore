@@ -545,7 +545,7 @@ export default function LoanDetailPage() {
                   <td className="px-4 py-3 font-medium dark:text-white/[.87]">${Number(inst.capitalBalance || inst.balance).toLocaleString()}</td>
                   <td className="px-4 py-3 dark:text-white/[.87]">
                     <div className="flex flex-col">
-                      <span>${(Number(inst.balance) - inst.totalPaid).toLocaleString()}</span>
+                      <span>${(Number(inst.balance)).toLocaleString()}</span>
                       {inst.totalPaid > 0 && (
                         <span className="text-xs text-green-600 dark:text-green-400">
                           Pagado: ${inst.totalPaid.toLocaleString()}

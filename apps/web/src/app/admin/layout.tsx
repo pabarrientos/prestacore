@@ -49,7 +49,7 @@ export default function AdminLayout({
 
   const navLinks = user.role === 'VENDEDOR'
     ? baseNavLinks.filter(link => 
-        link.label === 'Préstamos' || link.label === 'Clientes'
+        link.label === 'Dashboard' || link.label === 'Préstamos' || link.label === 'Clientes'
       )
     : baseNavLinks;
 

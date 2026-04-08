@@ -20,6 +20,14 @@ router.get('/', authMiddleware, requireVendor, async (req: AuthRequest, res: Res
       whereClause.assignedVendorId = req.user!.userId;
     }
 
+    // Build filter for installment queries
+    const overdueLoanFilter: any = {
+      status: { notIn: [LoanStatus.PENDING, LoanStatus.PAID, LoanStatus.DEFAULTED, LoanStatus.REFINANCIADO] },
+    };
+    if (whereClause.assignedVendorId) {
+      overdueLoanFilter.assignedVendorId = whereClause.assignedVendorId;
+    }
+
     // Get metrics
     const [
       totalLoans,
@@ -77,10 +85,7 @@ router.get('/', authMiddleware, requireVendor, async (req: AuthRequest, res: Res
         where: {
           status: { not: InstallmentStatus.PAID },
           dueDate: { lt: now }, // All installments with dueDate < now
-          loan: {
-            ...whereClause,
-            status: { notIn: [LoanStatus.PENDING, LoanStatus.PAID, LoanStatus.DEFAULTED, LoanStatus.REFINANCIADO] }, // Exclude PENDING, PAID, DEFAULTED and REFINANCIADO loans
-          },
+          loan: overdueLoanFilter,
         },
         select: {
           balance: true,
@@ -119,14 +124,16 @@ router.get('/', authMiddleware, requireVendor, async (req: AuthRequest, res: Res
     }));
 
     // Calculate future collection amount - sum of all installments with balance > 0 - EXCLUDE PENDING, PAID, DEFAULTED and REFINANCIADO loans
+    const loanFilter: any = {
+      status: { notIn: [LoanStatus.PENDING, LoanStatus.PAID, LoanStatus.DEFAULTED, LoanStatus.REFINANCIADO] },
+    };
+    if (whereClause.assignedVendorId) {
+      loanFilter.assignedVendorId = whereClause.assignedVendorId;
+    }
     const allInstallmentsWithBalance = await prisma.installment.findMany({
       where: {
-        ...whereClause,
         balance: { gt: 0 },
-        loan: {
-          ...whereClause,
-          status: { notIn: [LoanStatus.PENDING, LoanStatus.PAID, LoanStatus.DEFAULTED, LoanStatus.REFINANCIADO] }, // Exclude PENDING, PAID, DEFAULTED and REFINANCIADO loans
-        },
+        loan: loanFilter,
       },
       select: { balance: true },
     });
@@ -229,7 +236,7 @@ router.get('/overdue', authMiddleware, requireVendor, async (req: AuthRequest, r
       status: { not: InstallmentStatus.PAID }, // Exclude paid only
       dueDate: { lt: now }, // Overdue based on date
       loan: {
-        status: { notIn: [LoanStatus.PENDING, LoanStatus.PAID, LoanStatus.DEFAULTED, LoanStatus.REFINANCIADO] }, // Exclude PENDING, PAID, DEFAULTED and REFINANCIADO loans
+        status: { notIn: [LoanStatus.PENDING, LoanStatus.PAID, LoanStatus.DEFAULTED, LoanStatus.REFINANCIADO] },
       },
     };
 
