@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
+import { useRouter } from 'next/navigation';
 
 interface Loan {
   id: string;
@@ -59,6 +60,7 @@ const statusColors: Record<string, string> = {
 
 export default function MisPrestamosPage() {
   const { token } = useAuth();
+  const router = useRouter();
   const [loans, setLoans] = useState<Loan[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
@@ -135,6 +137,9 @@ export default function MisPrestamosPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-white/60">
                       Fecha de Inicio
                     </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-white/60">
+                      Acciones
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200 dark:bg-[#1e1e1e] dark:divide-gray-700">
@@ -163,6 +168,14 @@ export default function MisPrestamosPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap dark:text-white/[.87]">
                         {loan.startedAt ? new Date(loan.startedAt).toLocaleDateString('es-AR') : '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <button
+                          onClick={() => router.push(`/mis-prestamo/${loan.id}`)}
+                          className="text-primary-600 hover:text-primary-800 dark:text-[#39ff14] dark:hover:text-[#32e612] text-sm font-medium"
+                        >
+                          Ver Detalle
+                        </button>
                       </td>
                     </tr>
                   ))}

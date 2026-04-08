@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export default function MisPrestamosLayout({
   children,
@@ -51,6 +52,7 @@ export default function MisPrestamosLayout({
               </span>
             </div>
             <div className="flex items-center gap-1">
+              <ThemeToggle />
               <button
                 onClick={() => {
                   localStorage.removeItem('token');
