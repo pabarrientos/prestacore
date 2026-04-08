@@ -569,7 +569,9 @@ export default function LoanDetailPage() {
                   </td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-1 text-xs rounded-full ${installmentStatusColors[inst.dynamicStatus]}`}>
-                      {inst.dynamicStatus === 'PARTIAL' ? 'PARCIAL' : inst.dynamicStatus}
+                      {inst.dynamicStatus === 'PARTIAL' ? 'PARCIAL' : 
+                       inst.dynamicStatus === 'CANCELADA_POR_REFINANCIACION' ? 'REFINANCIADA' : 
+                       inst.dynamicStatus}
                     </span>
                   </td>
                 </tr>
