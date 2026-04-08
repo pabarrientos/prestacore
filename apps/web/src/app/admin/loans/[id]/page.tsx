@@ -519,14 +519,23 @@ export default function LoanDetailPage() {
                 const prevCapitalBalance = idx === 0 ? loan.amount : acc[idx - 1].capitalBalance;
                 const capitalBalance = prevCapitalBalance - inst.principal;
                 
-                // Calculate status dynamically: if dueDate < today and not PAID, it's OVERDUE
-                const now = new Date();
-                const dueDate = new Date(inst.dueDate);
-                const isOverdue = dueDate < now && inst.status !== 'PAID';
-                const dynamicStatus = isOverdue ? 'OVERDUE' : (inst.status === 'PAID' ? 'PAID' : 'PENDING');
+                // Calculate status dynamically based on actual payments
+                const paymentsForInstallment = loan.payments?.filter(p => p.installmentId === inst.id) || [];
+                const totalPaidForInstallment = paymentsForInstallment.reduce((sum, p) => sum + Number(p.amount), 0);
                 
-                return [...acc, { ...inst, capitalBalance, dynamicStatus }];
-              }, [] as (Installment & { capitalBalance: number; dynamicStatus: string })[]).map((inst) => (
+                let dynamicStatus: string;
+                if (totalPaidForInstallment >= Number(inst.amount)) {
+                  dynamicStatus = 'PAID';
+                } else if (totalPaidForInstallment > 0) {
+                  dynamicStatus = 'PARTIAL';
+                } else {
+                  const now = new Date();
+                  const dueDate = new Date(inst.dueDate);
+                  dynamicStatus = dueDate < now ? 'OVERDUE' : 'PENDING';
+                }
+                
+                return [...acc, { ...inst, capitalBalance, dynamicStatus, totalPaid: totalPaidForInstallment }];
+              }, [] as (Installment & { capitalBalance: number; dynamicStatus: string; totalPaid: number })[]).map((inst) => (
                 <tr key={inst.id} className={getRowClass(inst.dynamicStatus, inst.dueDate)}>
                   <td className="px-4 py-3 dark:text-white/[.87]">{inst.installmentNumber}</td>
                   <td className="px-4 py-3 dark:text-white/[.87]">{formatDate(inst.dueDate)}</td>
@@ -534,10 +543,19 @@ export default function LoanDetailPage() {
                   <td className="px-4 py-3 dark:text-white/[.87]">${Number(inst.principal).toLocaleString()}</td>
                   <td className="px-4 py-3 dark:text-white/[.87]">${Number(inst.interest).toLocaleString()}</td>
                   <td className="px-4 py-3 font-medium dark:text-white/[.87]">${Number(inst.capitalBalance || inst.balance).toLocaleString()}</td>
-                  <td className="px-4 py-3 dark:text-white/[.87]">${Number(inst.balance).toLocaleString()}</td>
+                  <td className="px-4 py-3 dark:text-white/[.87]">
+                    <div className="flex flex-col">
+                      <span>${(Number(inst.balance) - inst.totalPaid).toLocaleString()}</span>
+                      {inst.totalPaid > 0 && (
+                        <span className="text-xs text-green-600 dark:text-green-400">
+                          Pagado: ${inst.totalPaid.toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-1 text-xs rounded-full ${installmentStatusColors[inst.dynamicStatus]}`}>
-                      {inst.dynamicStatus}
+                      {inst.dynamicStatus === 'PARTIAL' ? 'PARCIAL' : inst.dynamicStatus}
                     </span>
                   </td>
                 </tr>
