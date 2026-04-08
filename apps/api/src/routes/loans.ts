@@ -256,12 +256,13 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response): Prom
             },
           },
         },
-        assignedVendor: {
-          select: {
-            firstName: true,
-            lastName: true,
+          assignedVendor: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+            },
           },
-        },
         installments: {
           orderBy: { installmentNumber: 'asc' },
           select: {
