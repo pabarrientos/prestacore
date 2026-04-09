@@ -280,6 +280,16 @@ export default function MisPrestamosDetallePage() {
                 const paymentsForInstallment = loan.payments?.filter(p => p.installmentId === inst.id) || [];
                 const totalPaidForInstallment = paymentsForInstallment.reduce((sum, p) => sum + Number(p.amount), 0);
                 
+                // Calculate mora dynamically based on balance and days overdue
+                const now = new Date();
+                const dueDate = new Date(inst.dueDate);
+                const daysOverdue = Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+                // Assume daily mora rate of 0.1% (approximately 36.5% annual)
+                const dailyMoraRate = 0.001;
+                const calculatedMora = daysOverdue > 0 
+                  ? Math.round(Number(inst.balance) * dailyMoraRate * daysOverdue * 100) / 100 
+                  : 0;
+                
                 // Determine real status based on payments and loan status
                 let dynamicStatus: string;
                 
@@ -306,8 +316,8 @@ export default function MisPrestamosDetallePage() {
                   dynamicStatus = dueDate < now ? 'OVERDUE' : 'PENDING';
                 }
                 
-                return [...acc, { ...inst, capitalBalance, dynamicStatus, totalPaid: totalPaidForInstallment }];
-              }, [] as (Installment & { capitalBalance: number; dynamicStatus: string; totalPaid: number })[]).map((inst) => (
+                return [...acc, { ...inst, capitalBalance, dynamicStatus, totalPaid: totalPaidForInstallment, calculatedMora, daysOverdue }];
+              }, [] as (Installment & { capitalBalance: number; dynamicStatus: string; totalPaid: number; calculatedMora: number; daysOverdue: number })[]).map((inst) => (
                 <tr key={inst.id} className={getRowClass(inst.dynamicStatus, inst.dueDate)}>
                   <td className="px-4 py-3 dark:text-white/[.87]">{inst.installmentNumber}</td>
                   <td className="px-4 py-3 dark:text-white/[.87]">{formatDate(inst.dueDate)}</td>
@@ -328,24 +338,15 @@ export default function MisPrestamosDetallePage() {
                   {(inst.dynamicStatus === 'PARTIAL' || inst.dynamicStatus === 'OVERDUE') ? (
                     <>
                       <td className="px-4 py-3 text-orange-600 dark:text-orange-400">
-                        ${Number(inst.moraAmount || 0).toLocaleString()}
+                        ${inst.calculatedMora.toLocaleString()}
                       </td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-1 text-xs rounded-full ${
-                          (() => {
-                            const now = new Date();
-                            const dueDate = new Date(inst.dueDate);
-                            const daysOverdue = Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
-                            return daysOverdue > 30;
-                          })() 
+                          inst.daysOverdue > 30
                             ? 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-400' 
                             : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-400'
                         }`}>
-                          {(() => {
-                            const now = new Date();
-                            const dueDate = new Date(inst.dueDate);
-                            return Math.max(0, Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)));
-                          })()}
+                          {inst.daysOverdue}
                         </span>
                       </td>
                     </>
