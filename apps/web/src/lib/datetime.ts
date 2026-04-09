@@ -42,6 +42,15 @@ async function fetchTimezone(): Promise<string> {
 }
 
 /**
+ * Get current date in configured timezone as Date object
+ * Uses the same logic as backend getNow() in services/datetime.ts
+ */
+export async function getNow(): Promise<Date> {
+  const timezone = await getTimezone();
+  return new Date(new Date().toLocaleString('en-US', { timeZone: timezone }));
+}
+
+/**
  * Get current date in configured timezone as YYYY-MM-DD string
  * This avoids the toISOString() conversion issue
  */
@@ -58,14 +67,6 @@ export async function getTodayString(): Promise<string> {
   });
   
   return formatter.format(now);
-}
-
-/**
- * Get current date in configured timezone as Date object
- */
-export async function getNow(): Promise<Date> {
-  const today = await getTodayString();
-  return new Date(today + 'T00:00:00');
 }
 
 /**

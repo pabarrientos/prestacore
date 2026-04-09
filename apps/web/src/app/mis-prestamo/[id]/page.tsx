@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { getNow } from '@/lib/datetime';
 
 interface Installment {
   id: string;
@@ -133,15 +134,19 @@ export default function MisPrestamosDetallePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [moraRate, setMoraRate] = useState(0.0005); // Default fallback
+  const [currentDate, setCurrentDate] = useState<Date | null>(null);
 
-  // Fetch mora rate on mount
+  // Fetch mora rate and current date in timezone on mount
   useEffect(() => {
-    fetch(`${API_URL}/api/settings/rates`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.success && data.data.MORA_RATE) {
-          setMoraRate(data.data.MORA_RATE);
+    Promise.all([
+      fetch(`${API_URL}/api/settings/rates`).then(res => res.json()),
+      getNow(),
+    ])
+      .then(([ratesData, nowDate]) => {
+        if (ratesData.success && ratesData.data.MORA_RATE) {
+          setMoraRate(ratesData.data.MORA_RATE);
         }
+        setCurrentDate(nowDate);
       })
       .catch(console.error);
   }, []);
@@ -293,11 +298,10 @@ export default function MisPrestamosDetallePage() {
                 const paymentsForInstallment = loan.payments?.filter(p => p.installmentId === inst.id) || [];
                 const totalPaidForInstallment = paymentsForInstallment.reduce((sum, p) => sum + Number(p.amount), 0);
                 
-                // Calculate mora dynamically based on balance and days overdue
-                // Use Argentina timezone to match backend calculation
-                const nowArgentina = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Argentina/Buenos_Aires' }));
+                // Calculate days overdue using timezone-aware current date
+                const nowDate = currentDate || new Date();
                 const dueDate = new Date(inst.dueDate);
-                const daysOverdue = Math.floor((nowArgentina.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+                const daysOverdue = Math.floor((nowDate.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
                 const calculatedMora = daysOverdue > 0 
                   ? Math.round(Number(inst.balance) * moraRate * daysOverdue * 100) / 100
                   : 0;
