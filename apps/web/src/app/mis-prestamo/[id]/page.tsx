@@ -16,6 +16,7 @@ interface Installment {
   paidAmount: number;
   status: string;
   paidAt: string | null;
+  moraAmount?: number;
 }
 
 interface Payment {
@@ -261,6 +262,8 @@ export default function MisPrestamosDetallePage() {
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-white/38 uppercase">Interés</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-white/38 uppercase">Saldo Capital</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-white/38 uppercase">Saldo</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-white/38 uppercase">Mora</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-white/38 uppercase">Días Venc.</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-white/38 uppercase">Estado</th>
               </tr>
             </thead>
@@ -322,6 +325,36 @@ export default function MisPrestamosDetallePage() {
                       )}
                     </div>
                   </td>
+                  {(inst.dynamicStatus === 'PARTIAL' || inst.dynamicStatus === 'OVERDUE') ? (
+                    <>
+                      <td className="px-4 py-3 text-orange-600 dark:text-orange-400">
+                        ${Number(inst.moraAmount || 0).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                          (() => {
+                            const now = new Date();
+                            const dueDate = new Date(inst.dueDate);
+                            const daysOverdue = Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+                            return daysOverdue > 30;
+                          })() 
+                            ? 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-400' 
+                            : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-400'
+                        }`}>
+                          {(() => {
+                            const now = new Date();
+                            const dueDate = new Date(inst.dueDate);
+                            return Math.max(0, Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)));
+                          })()}
+                        </span>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="px-4 py-3 dark:text-white/[.38]">-</td>
+                      <td className="px-4 py-3 dark:text-white/[.38]">-</td>
+                    </>
+                  )}
                   <td className="px-4 py-3">
                     <span className={`px-2 py-1 text-xs rounded-full ${installmentStatusColors[inst.dynamicStatus]}`}>
                       {inst.dynamicStatus === 'PARTIAL' ? 'PARCIAL' : 

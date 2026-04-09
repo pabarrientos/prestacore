@@ -277,6 +277,7 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response): Prom
             paidAmount: true,
             status: true,
             paidAt: true,
+            moraAmount: true,
           },
         },
         payments: {
