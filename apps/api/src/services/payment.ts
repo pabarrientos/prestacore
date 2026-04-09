@@ -296,7 +296,7 @@ export class PaymentService {
     const dailyRate = await getRate('MORA_RATE');
 
     for (const inst of loan.installments) {
-      const daysOverdue = MoraService.calculateDaysOverdue(inst.dueDate);
+      const daysOverdue = await MoraService.calculateDaysOverdue(inst.dueDate);
       const moraAmount = daysOverdue > 0
         ? MoraService.calculate({
             installmentAmount: Number(inst.balance),

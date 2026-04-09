@@ -106,7 +106,7 @@ export class RefinancingService {
     // Calculate dynamic mora for each overdue installment (like /admin/overdue)
     let interesesVencidos = 0;
     for (const inst of overdueInstallments) {
-      const daysOverdue = MoraService.calculateDaysOverdue(inst.dueDate, now);
+      const daysOverdue = await MoraService.calculateDaysOverdue(inst.dueDate, now);
       if (daysOverdue > 0) {
         const moraResult = MoraService.calculate({
           installmentAmount: Number(inst.balance),

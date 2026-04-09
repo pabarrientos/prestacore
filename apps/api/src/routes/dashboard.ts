@@ -4,7 +4,7 @@ import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { requireVendor } from '../middleware/rbac';
 import { MoraService } from '../services/mora';
 import { getRate } from '../services/settings';
-import { getNow } from '../services/datetime';
+import { getNow, getToday } from '../services/datetime';
 
 const router: ReturnType<typeof Router> = Router();
 const prisma = new PrismaClient();
@@ -100,9 +100,10 @@ router.get('/', authMiddleware, requireVendor, async (req: AuthRequest, res: Res
     
     // Group by days overdue
     const byDaysMap = new Map<string, { count: number; amount: number }>();
+    const today = await getToday();
     
     for (const inst of overdueInstallments) {
-      const daysOverdue = MoraService.calculateDaysOverdue(inst.dueDate, now);
+      const daysOverdue = await MoraService.calculateDaysOverdue(inst.dueDate, today);
       let range: string;
       if (daysOverdue <= 7) range = '1-7 días';
       else if (daysOverdue <= 14) range = '8-14 días';
@@ -289,8 +290,9 @@ router.get('/overdue', authMiddleware, requireVendor, async (req: AuthRequest, r
     const byDaysMap = new Map<string, { count: number; amount: number }>();
     const dailyRate = await getRate('MORA_RATE');
 
-    const installments = overdueInstallments.map((inst) => {
-      const daysOverdue = MoraService.calculateDaysOverdue(inst.dueDate, now);
+    // Process installments with timezone-aware days overdue calculation
+    const installments = await Promise.all(overdueInstallments.map(async (inst) => {
+      const daysOverdue = await MoraService.calculateDaysOverdue(inst.dueDate, now);
       const moraAmount = daysOverdue > 0
         ? MoraService.calculate({
             installmentAmount: Number(inst.balance),
@@ -325,7 +327,7 @@ router.get('/overdue', authMiddleware, requireVendor, async (req: AuthRequest, r
         dueDate: inst.dueDate.toISOString(),
         amount: Number(inst.amount),
         balance: Number(inst.balance),
-        moraAmount: Math.round(moraAmount * 100) / 100,
+        moraAmount,
         daysOverdue,
         status: inst.status,
         loan: {
@@ -339,7 +341,7 @@ router.get('/overdue', authMiddleware, requireVendor, async (req: AuthRequest, r
           phone: inst.loan.client.user.phone || '',
         },
       };
-    });
+    }));
 
     const byDays = Array.from(byDaysMap.entries()).map(([range, data]) => ({
       range,

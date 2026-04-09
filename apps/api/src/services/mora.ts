@@ -69,37 +69,51 @@ export class MoraService {
 
   /**
    * Calculate days overdue from due date
+   * Uses timezone-aware comparison
    */
-  static calculateDaysOverdue(dueDate: Date, referenceDate: Date = new Date()): number {
-    const diffTime = referenceDate.getTime() - dueDate.getTime();
+  static async calculateDaysOverdue(dueDate: Date, referenceDate?: Date): Promise<number> {
+    // Get today's date in the configured timezone (without time component)
+    const { getToday } = await import('./datetime');
+    const today = await getToday();
+    
+    // Create a date for the dueDate (without time component)
+    const dueDateObj = new Date(dueDate);
+    const dueDateOnly = new Date(dueDateObj.getFullYear(), dueDateObj.getMonth(), dueDateObj.getDate());
+    
+    // Use provided referenceDate or today's date in timezone
+    const refDate = referenceDate || today;
+    const refDateOnly = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate());
+    
+    const diffTime = refDateOnly.getTime() - dueDateOnly.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return Math.max(0, diffDays);
   }
 
   /**
-   * Check if an installment is overdue
+   * Check if an installment is overdue (async version)
    */
-  static isOverdue(dueDate: Date, referenceDate: Date = new Date()): boolean {
-    return this.calculateDaysOverdue(dueDate, referenceDate) > 0;
+  static async isOverdue(dueDate: Date, referenceDate?: Date): Promise<boolean> {
+    const daysOverdue = await this.calculateDaysOverdue(dueDate, referenceDate);
+    return daysOverdue > 0;
   }
 
   /**
-   * Calculate mora for multiple installments
+   * Calculate mora for multiple installments (async version)
    */
-  static calculateBulk(
+  static async calculateBulk(
     installments: Array<{
       amount: number;
       dueDate: Date;
     }>,
     dailyRate: number,
-    referenceDate: Date = new Date()
-  ): MoraResult {
+    referenceDate?: Date
+  ): Promise<MoraResult> {
     let totalMora = 0;
     let totalPayable = 0;
     let maxDaysOverdue = 0;
 
     for (const inst of installments) {
-      const daysOverdue = this.calculateDaysOverdue(inst.dueDate, referenceDate);
+      const daysOverdue = await this.calculateDaysOverdue(inst.dueDate, referenceDate);
       
       if (daysOverdue > 0) {
         const result = this.calculate({
