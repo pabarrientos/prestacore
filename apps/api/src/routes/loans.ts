@@ -6,6 +6,7 @@ import { requireAdmin, requireVendor, requireClientOnly } from '../middleware/rb
 import { AmortizationService } from '../services/amortization';
 import { RefinancingService } from '../services/refinancing';
 import { CancelacionAnticipadaService } from '../services/cancelacion-anticipada';
+import { getNow } from '../services/datetime';
 
 const router: ReturnType<typeof Router> = Router();
 const prisma = new PrismaClient();
@@ -356,7 +357,7 @@ router.post('/', authMiddleware, requireVendor, async (req: AuthRequest, res: Re
     }
 
     // Calculate amortization with start date - use schedule from frontend if provided
-    const startDate = body.startDate ? new Date(body.startDate) : new Date();
+    const startDate = body.startDate ? new Date(body.startDate) : await getNow();
     
     let installmentsData: { number: number; dueDate: string; amount: number; principal: number; interest: number; balance: number; }[] = body.schedule || [];
     let installmentAmount = 0;
@@ -643,7 +644,7 @@ router.patch('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res:
     }
 
     // Parse start date or use existing
-    const parsedStartDate = startDate ? new Date(startDate) : (loan.startedAt || new Date());
+    const parsedStartDate = startDate ? new Date(startDate) : (loan.startedAt || await getNow());
 
     // Use schedule from frontend if provided, otherwise calculate
     let installmentsData = schedule;
@@ -824,8 +825,8 @@ router.get('/:id/preview-refinancing', async (req, res): Promise<void> => {
       calculation.capitalPendiente + effectiveInteresesVencidos + calculation.pagosAtrasados - initialPayment
     );
 
-    // Parse start date (fechaInicio) or use current date
-    const startDate = fechaInicio ? new Date(fechaInicio as string) : new Date();
+    // Parse start date (fechaInicio) or use current date in timezone
+    const startDate = fechaInicio ? new Date(fechaInicio as string) : await getNow();
 
     const response: any = {
       success: true,
@@ -889,7 +890,7 @@ router.post('/:id/execute-refinancing', authMiddleware, requireAdmin, async (req
     const { nuevaTasaInteres, cantidadCuotas, nuevaFrecuencia, fechaInicio, pagoInicial, interesesVencidosManual } = body;
 
     // Parse the first due date
-    const startDate = fechaInicio ? new Date(fechaInicio) : new Date();
+    const startDate = fechaInicio ? new Date(fechaInicio) : await getNow();
 
     // Validate loan exists is eligible for refinancing
     const validation = await RefinancingService.validateRefinancingEligibility(loanId);
