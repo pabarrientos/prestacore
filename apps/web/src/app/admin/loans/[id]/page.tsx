@@ -522,6 +522,7 @@ export default function LoanDetailPage() {
                 
                 // Calculate status dynamically based on actual payments AND loan status
                 const isRefinanced = loan.status === 'REFINANCIADO';
+                const isPaidLoan = loan.status === 'PAID';
                 
                 // Calculate payments for this installment
                 const paymentsForInstallment = loan.payments?.filter(p => p.installmentId === inst.id) || [];
@@ -529,19 +530,23 @@ export default function LoanDetailPage() {
                 
                 let dynamicStatus: string;
                 
-                // First check: if payment covers the full amount -> PAID (even if loan is refinanced)
-                if (totalPaidForInstallment >= Number(inst.amount)) {
+                // First check: if loan is PAID -> all installments are PAID
+                if (isPaidLoan) {
+                  dynamicStatus = 'PAID';
+                }
+                // Second check: if payment covers the full amount -> PAID (even if loan is refinanced)
+                else if (totalPaidForInstallment >= Number(inst.amount)) {
                   dynamicStatus = 'PAID';
                 } 
-                // Second check: if partial payment -> PARTIAL
+                // Third check: if partial payment -> PARTIAL
                 else if (totalPaidForInstallment > 0) {
                   dynamicStatus = 'PARTIAL';
                 }
-                // Third check: if loan is refinanced and installment was cancelled -> show cancelled
+                // Fourth check: if loan is refinanced and installment was cancelled -> show cancelled
                 else if (isRefinanced && inst.status === 'CANCELADA_POR_REFINANCIACION') {
                   dynamicStatus = 'CANCELADA_POR_REFINANCIACION';
                 }
-                // Fourth check: no payment - check if overdue based on date
+                // Fifth check: no payment - check if overdue based on date
                 else {
                   const now = new Date();
                   const dueDate = new Date(inst.dueDate);
