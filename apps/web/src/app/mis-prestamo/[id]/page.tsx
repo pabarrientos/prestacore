@@ -132,6 +132,19 @@ export default function MisPrestamosDetallePage() {
   const [loan, setLoan] = useState<LoanDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [moraRate, setMoraRate] = useState(0.0005); // Default fallback
+
+  // Fetch mora rate on mount
+  useEffect(() => {
+    fetch(`${API_URL}/api/settings/rates`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.data.MORA_RATE) {
+          setMoraRate(data.data.MORA_RATE);
+        }
+      })
+      .catch(console.error);
+  }, []);
 
   useEffect(() => {
     if (token && params.id) {
@@ -284,10 +297,8 @@ export default function MisPrestamosDetallePage() {
                 const now = new Date();
                 const dueDate = new Date(inst.dueDate);
                 const daysOverdue = Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
-                // Assume daily mora rate of 0.1% (approximately 36.5% annual)
-                const dailyMoraRate = 0.001;
                 const calculatedMora = daysOverdue > 0 
-                  ? Math.round(Number(inst.balance) * dailyMoraRate * daysOverdue * 100) / 100 
+                  ? Math.round(Number(inst.balance) * moraRate * daysOverdue * 100) / 100
                   : 0;
                 
                 // Determine real status based on payments and loan status
