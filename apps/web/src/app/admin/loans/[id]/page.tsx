@@ -544,10 +544,10 @@ export default function LoanDetailPage() {
                 const paymentsForInstallment = loan.payments?.filter(p => p.installmentId === inst.id) || [];
                 const totalPaidForInstallment = paymentsForInstallment.reduce((sum, p) => sum + Number(p.amount), 0);
                 
-                // Calculate mora dynamically based on balance and days overdue
-                const now = new Date();
+                // Calculate days overdue using Argentina timezone (default in settings)
+                const nowArgentina = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Argentina/Buenos_Aires' }));
                 const dueDate = new Date(inst.dueDate);
-                const daysOverdue = Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+                const daysOverdue = Math.floor((nowArgentina.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
                 const calculatedMora = daysOverdue > 0 
                   ? Math.round(Number(inst.balance) * moraRate * daysOverdue * 100) / 100 
                   : 0;

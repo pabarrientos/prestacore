@@ -294,9 +294,10 @@ export default function MisPrestamosDetallePage() {
                 const totalPaidForInstallment = paymentsForInstallment.reduce((sum, p) => sum + Number(p.amount), 0);
                 
                 // Calculate mora dynamically based on balance and days overdue
-                const now = new Date();
+                // Use Argentina timezone to match backend calculation
+                const nowArgentina = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Argentina/Buenos_Aires' }));
                 const dueDate = new Date(inst.dueDate);
-                const daysOverdue = Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+                const daysOverdue = Math.floor((nowArgentina.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
                 const calculatedMora = daysOverdue > 0 
                   ? Math.round(Number(inst.balance) * moraRate * daysOverdue * 100) / 100
                   : 0;
