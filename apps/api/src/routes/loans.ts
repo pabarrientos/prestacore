@@ -539,13 +539,20 @@ router.delete('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res
       return;
     }
 
-    // Check if loan has been refinanced - cannot delete if it has a new loan
+    // Check if loan has been refinanced - can only delete if the new loan was previously deleted
     if (loan.prestamo_nuevo_id) {
-      res.status(400).json({
-        success: false,
-        error: 'No se puede eliminar un préstamo que ya ha sido refinanciado',
+      const newLoanExists = await prisma.loan.findUnique({
+        where: { id: loan.prestamo_nuevo_id },
       });
-      return;
+      
+      if (newLoanExists) {
+        res.status(400).json({
+          success: false,
+          error: 'No se puede eliminar un préstamo que ya ha sido refinanciado',
+        });
+        return;
+      }
+      // If new loan doesn't exist (was deleted), we can delete the refinanced loan
     }
 
     // Delete related records first
