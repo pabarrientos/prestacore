@@ -273,7 +273,70 @@ export class PaymentService {
   }
 
   /**
-   * Calculate the balance of a loan (total pending + mora)
+   * Calculate the balance of a loan (total pending + mora) at a specific date
+   * Used for recalculating mora when payment date changes
+   */
+  static async calculateLoanBalanceAt(loanId: string, referenceDate: Date): Promise<CalculateBalanceResult | null> {
+    const loan = await prisma.loan.findUnique({
+      where: { id: loanId },
+      include: {
+        installments: {
+          orderBy: [{ dueDate: 'asc' }, { installmentNumber: 'asc' }],
+        },
+      },
+    });
+
+    if (!loan) {
+      return null;
+    }
+
+    let totalAmount = 0;
+    let totalPaid = 0;
+    let totalMora = 0;
+    const installments: CalculateBalanceResult['installments'] = [];
+    const dailyRate = await getRate('MORA_RATE');
+
+    for (const inst of loan.installments) {
+      const daysOverdue = await MoraService.calculateDaysOverdue(inst.dueDate, referenceDate);
+      const moraAmount = daysOverdue > 0
+        ? MoraService.calculate({
+            installmentAmount: Number(inst.balance),
+            dailyRate,
+            daysOverdue,
+          }).moraAmount
+        : 0;
+
+      totalAmount += Number(inst.amount);
+      totalPaid += Number(inst.paidAmount);
+      totalMora += moraAmount;
+
+      installments.push({
+        id: inst.id,
+        installmentNumber: inst.installmentNumber,
+        dueDate: inst.dueDate,
+        amount: Number(inst.amount),
+        balance: Number(inst.balance),
+        paidAmount: Number(inst.paidAmount),
+        moraAmount,
+        status: inst.status,
+        daysOverdue,
+      });
+    }
+
+    const totalPending = totalAmount - totalPaid + totalMora;
+
+    return {
+      loanId,
+      totalAmount,
+      totalPaid,
+      totalPending,
+      totalMora,
+      installments,
+    };
+  }
+
+  /**
+   * Calculate the balance of a loan (total pending + mora) - uses current date
    */
   static async calculateLoanBalance(loanId: string): Promise<CalculateBalanceResult | null> {
     const loan = await prisma.loan.findUnique({

@@ -1,7 +1,7 @@
 import Router, { Response } from 'express';
 import { z } from 'zod';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
-import { requireVendor } from '../middleware/rbac';
+import { requireVendor, requireAdmin } from '../middleware/rbac';
 import { PaymentService } from '../services/payment';
 import { PrismaClient, InstallmentStatus, LoanStatus } from '@prisma/client';
 
@@ -361,6 +361,204 @@ router.put('/:id', authMiddleware, requireVendor, async (req: AuthRequest, res: 
     });
   } catch (error) {
     console.error('Update payment error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+    });
+  }
+});
+
+// Validation schema for mora payment (no installmentId - abelian account)
+const createMoraPaymentSchema = z.object({
+  loanId: z.string().cuid('Invalid loan ID'),
+  installmentId: z.string().cuid('Invalid installment ID'),
+  amount: z.number().min(0, 'Amount cannot be negative'),
+  paymentDate: z.string().optional(),
+  reference: z.string().max(100).optional(),
+  notes: z.string().max(500).optional(),
+  originalMoraAmount: z.number().min(0).optional(),
+  originalDaysOverdue: z.number().int().min(0).optional(),
+});
+
+// POST /api/payments/mora - Register a mora payment (abono a cuenta, no associated to any installment)
+router.post('/mora', authMiddleware, requireVendor, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    // Validate request
+    const validation = createMoraPaymentSchema.safeParse(req.body);
+    if (!validation.success) {
+      res.status(400).json({
+        success: false,
+        error: 'Validation error',
+        details: validation.error.errors,
+      });
+      return;
+    }
+
+    const { 
+      loanId, 
+      installmentId, 
+      amount, 
+      paymentDate, 
+      reference, 
+      notes,
+      originalMoraAmount,
+      originalDaysOverdue 
+    } = validation.data;
+
+    // Get installment to build notes
+    const installment = await prisma.installment.findUnique({
+      where: { id: installmentId },
+    });
+
+    if (!installment) {
+      res.status(400).json({
+        success: false,
+        error: 'Installment not found',
+      });
+      return;
+    }
+
+    // Get loan to validate and get client
+    const loan = await prisma.loan.findUnique({
+      where: { id: loanId },
+      include: { client: true },
+    });
+
+    if (!loan) {
+      res.status(404).json({
+        success: false,
+        error: 'Loan not found',
+      });
+      return;
+    }
+
+    if (loan.status !== LoanStatus.ACTIVE) {
+      res.status(400).json({
+        success: false,
+        error: `Cannot register payment on loan with status ${loan.status}`,
+      });
+      return;
+    }
+
+    // Build notes with tracking information
+    const installmentNumber = installment.installmentNumber;
+    const wasModified = originalMoraAmount !== undefined && amount !== originalMoraAmount;
+    const forgivenText = amount === 0 && wasModified ? ' (PERDONADA)' : '';
+    const modifiedText = wasModified && amount > 0 ? ` MODIFICADO a $${amount.toFixed(2)}` : '';
+    
+    let autoNotes = `Mora cuota #${installmentNumber}`;
+    if (originalMoraAmount !== undefined) {
+      autoNotes += `. Original: $${originalMoraAmount.toFixed(2)}`;
+    }
+    if (originalDaysOverdue !== undefined) {
+      autoNotes += `, Días: ${originalDaysOverdue}`;
+    }
+    if (wasModified) {
+      autoNotes += `.${modifiedText}`;
+    }
+    if (forgivenText) {
+      autoNotes += forgivenText;
+    }
+
+    // Combine autoNotes with manual notes if provided
+    const finalNotes = notes ? `${autoNotes}. ${notes}` : autoNotes;
+
+    // Create payment WITHOUT installmentId (abono a cuenta)
+    const payment = await prisma.payment.create({
+      data: {
+        clientId: loan.clientId,
+        loanId: loanId,
+        installmentId: null, // Key: NO associated installment
+        amount: amount,
+        type: 'MANUAL',
+        status: 'COMPLETED',
+        reference,
+        notes: finalNotes,
+        paymentDate: paymentDate ? new Date(paymentDate) : undefined,
+        processedAt: new Date(),
+      },
+    });
+
+    res.status(201).json({
+      success: true,
+      data: {
+        id: payment.id,
+        loanId: payment.loanId,
+        installmentId: payment.installmentId, // Will be null
+        amount: Number(payment.amount),
+        status: payment.status,
+        reference: payment.reference,
+        notes: payment.notes,
+        paymentDate: payment.paymentDate?.toISOString() || payment.createdAt.toISOString(),
+        createdAt: payment.createdAt.toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error('Mora payment error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+    });
+  }
+});
+
+// GET /api/payments/balance/:loanId/at?date=YYYY-MM-DD - Get balance with mora calculated at specific date
+router.get('/balance/:loanId/at', authMiddleware, requireVendor, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { loanId } = req.params;
+    const { date } = req.query;
+
+    // Validate date query param
+    let referenceDate: Date;
+    if (date) {
+      const dateStr = String(date);
+      const parsed = new Date(dateStr);
+      if (isNaN(parsed.getTime())) {
+        res.status(400).json({
+          success: false,
+          error: 'Invalid date format. Use YYYY-MM-DD',
+        });
+        return;
+      }
+      referenceDate = parsed;
+    } else {
+      referenceDate = new Date();
+    }
+
+    const balance = await PaymentService.calculateLoanBalanceAt(loanId, referenceDate);
+
+    if (!balance) {
+      res.status(404).json({
+        success: false,
+        error: 'Loan not found',
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        loanId: balance.loanId,
+        totalAmount: balance.totalAmount,
+        totalPaid: balance.totalPaid,
+        totalPending: balance.totalPending,
+        totalMora: balance.totalMora,
+        calculatedAt: referenceDate.toISOString(),
+        installments: balance.installments.map((inst) => ({
+          id: inst.id,
+          installmentNumber: inst.installmentNumber,
+          dueDate: inst.dueDate.toISOString(),
+          amount: inst.amount,
+          balance: inst.balance,
+          paidAmount: inst.paidAmount,
+          moraAmount: inst.moraAmount,
+          status: inst.status,
+          daysOverdue: inst.daysOverdue,
+        })),
+      },
+    });
+  } catch (error) {
+    console.error('Get balance at date error:', error);
     res.status(500).json({
       success: false,
       error: 'Internal server error',

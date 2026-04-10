@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { getTodayString } from '@/lib/datetime';
+import { useAuth } from '@/lib/auth-context';
 
 interface InstallmentOption {
   id: string;
@@ -12,6 +13,7 @@ interface InstallmentOption {
   paidAmount: number;
   status: string;
   daysOverdue: number;
+  moraAmount?: number;
 }
 
 interface PaymentData {
@@ -34,6 +36,7 @@ interface PaymentFormProps {
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export default function PaymentForm({ loanId, payment, preselectedInstallmentId, onSuccess, onCancel }: PaymentFormProps) {
+  const { user } = useAuth();
   const [installments, setInstallments] = useState<InstallmentOption[]>([]);
   const [selectedInstallmentId, setSelectedInstallmentId] = useState<string>(preselectedInstallmentId || payment?.installmentId || '');
   const [amount, setAmount] = useState<string>(payment?.amount?.toString() || '');
@@ -44,6 +47,13 @@ export default function PaymentForm({ loanId, payment, preselectedInstallmentId,
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
   const [maxAmount, setMaxAmount] = useState<number>(0);
+  
+  // Mora state
+  const [moraAmount, setMoraAmount] = useState<number>(0);
+  const [originalMoraAmount, setOriginalMoraAmount] = useState<number>(0);
+  const [originalDaysOverdue, setOriginalDaysOverdue] = useState<number>(0);
+  const [moraCalculatedAt, setMoraCalculatedAt] = useState<string>('');
+  const [moraLoading, setMoraLoading] = useState(false);
 
   const isEditing = !!payment?.id;
 
@@ -90,6 +100,66 @@ export default function PaymentForm({ loanId, payment, preselectedInstallmentId,
       .catch((err) => console.error('Error loading installments:', err));
   }, [loanId]);
 
+  // Función para recalcular mora cuando cambia la fecha de pago
+  const recalculateMora = async (date: string) => {
+    if (!loanId || !selectedInstallmentId) return;
+    
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    setMoraLoading(true);
+    try {
+      const res = await fetch(
+        `${API_URL}/api/payments/balance/${loanId}/at?date=${date}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await res.json();
+      
+      if (data.success) {
+        const inst = data.data.installments.find(
+          (i: InstallmentOption) => i.id === selectedInstallmentId
+        );
+        if (inst) {
+          setMoraAmount(inst.moraAmount);
+          setOriginalMoraAmount(inst.moraAmount);
+          setOriginalDaysOverdue(inst.daysOverdue);
+          setMoraCalculatedAt(data.data.calculatedAt);
+        }
+      }
+    } catch (err) {
+      console.error('Error recalculating mora:', err);
+    } finally {
+      setMoraLoading(false);
+    }
+  };
+
+  // Effect para cargar mora cuando se selecciona una cuota
+  useEffect(() => {
+    if (selectedInstallmentId && installments.length > 0) {
+      const inst = installments.find(i => i.id === selectedInstallmentId);
+      if (inst) {
+        setMoraAmount(inst.moraAmount || 0);
+        setOriginalMoraAmount(inst.moraAmount || 0);
+        setOriginalDaysOverdue(inst.daysOverdue || 0);
+        // Usar la fecha actual para el cálculo
+        getTodayString().then((dateStr: string) => {
+          setMoraCalculatedAt(dateStr);
+        });
+      }
+    }
+  }, [selectedInstallmentId, installments]);
+
+  // Effect para recalcular mora cuando cambia la fecha de pago
+  useEffect(() => {
+    if (paymentDate && selectedInstallmentId) {
+      recalculateMora(paymentDate);
+    }
+  }, [paymentDate]);
+
+  // Control de acceso por rol
+  const canEditMora = user?.role === 'ADMIN' || user?.role === 'VENDEDOR';
+  const canEditPaymentDate = user?.role === 'ADMIN';
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -110,6 +180,12 @@ export default function PaymentForm({ loanId, payment, preselectedInstallmentId,
     // Validate installment is selected
     if (!selectedInstallmentId) {
       setError('Debe seleccionar una cuota');
+      return;
+    }
+
+    // Validate mora amount is not negative
+    if (moraAmount < 0) {
+      setError('El monto de mora no puede ser negativo');
       return;
     }
 
@@ -168,7 +244,39 @@ export default function PaymentForm({ loanId, payment, preselectedInstallmentId,
         data = await res.json();
 
         if (data.success) {
-          setSuccess('Pago registrado exitosamente');
+          // Si hay mora y se debe registrar (incluso $0 para tracking)
+          if (moraAmount >= 0) {
+            try {
+              const moraRes = await fetch(`${API_URL}/api/payments/mora`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                  loanId,
+                  installmentId: selectedInstallmentId,
+                  amount: moraAmount,
+                  paymentDate: paymentDate || undefined,
+                  originalMoraAmount,
+                  originalDaysOverdue,
+                }),
+              });
+              const moraData = await moraRes.json();
+              
+              if (moraData.success) {
+                setSuccess(moraAmount === 0 
+                  ? 'Pago registrado. Mora perdonada ($0)' 
+                  : 'Pago de cuota y mora registrados');
+              } else {
+                // Si falla la mora pero la cuota se pagó, warning
+                setSuccess('Pago de cuota registrado. Error en pago de mora: ' + moraData.error);
+              }
+            } catch (moraErr) {
+              setSuccess('Pago de cuota registrado. Error en mora');
+            }
+          }
+          
           setAmount('');
           setReference('');
           setNotes('');
@@ -256,6 +364,50 @@ export default function PaymentForm({ loanId, payment, preselectedInstallmentId,
           </p>
         </div>
 
+        {/* Mora Amount */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
+            Monto de Mora
+          </label>
+          <div className="relative">
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={moraAmount}
+              onChange={(e) => {
+                const val = parseFloat(e.target.value);
+                setMoraAmount(isNaN(val) ? 0 : val);
+              }}
+              disabled={!canEditMora}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14] ${
+                !canEditMora ? 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed' : ''
+              }`}
+              placeholder="0.00"
+            />
+            {moraLoading && (
+              <span className="absolute right-3 top-2 text-xs text-gray-500">
+                Calculando...
+              </span>
+            )}
+          {moraCalculatedAt && !moraLoading && (
+            <p className="text-xs text-gray-400 mt-1">
+              Calculado para fecha: {moraCalculatedAt}
+            </p>
+          )}
+          </div>
+          {originalMoraAmount > 0 && moraAmount !== originalMoraAmount && (
+            <p className="text-xs text-amber-600 mt-1 dark:text-amber-400">
+              Original: ${originalMoraAmount.toFixed(2)} • Días: {originalDaysOverdue}
+            </p>
+          )}
+          {!canEditMora && (
+            <p className="text-xs text-gray-500 mt-1 dark:text-white/60">
+              Solo ADMIN o VENDEDOR pueden modificar
+            </p>
+          )}
+        </div>
+
         {/* Reference */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
@@ -287,13 +439,16 @@ export default function PaymentForm({ loanId, payment, preselectedInstallmentId,
         {/* Payment Date */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
-            Fecha de Pago
+            Fecha de Pago {canEditPaymentDate && <span className="text-xs text-gray-400">(Editable solo ADMIN)</span>}
           </label>
           <input
             type="date"
             value={paymentDate}
             onChange={(e) => setPaymentDate(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14]"
+            disabled={!canEditPaymentDate}
+            className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14] ${
+              !canEditPaymentDate ? 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed' : ''
+            }`}
           />
         </div>
 
