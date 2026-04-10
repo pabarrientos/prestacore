@@ -43,7 +43,14 @@ export default function RegisterPage() {
         phone: formData.phone,
         role: 'CLIENTE',
       });
-      router.push('/admin');
+
+      // Check if there's a pending loan request
+      const hasPendingRequest = typeof window !== 'undefined' && window.sessionStorage?.getItem('pending_loan_request');
+      if (hasPendingRequest) {
+        router.push('/solicitar');
+      } else {
+        router.push('/mis-prestamo');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {

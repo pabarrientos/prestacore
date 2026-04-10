@@ -34,6 +34,7 @@ interface LoanDetail {
     };
   };
   assignedVendor: {
+    id?: string;
     firstName: string;
     lastName: string;
   } | null;
@@ -159,6 +160,9 @@ export default function LoanDetailPage() {
   const [showCancelacionAnticipada, setShowCancelacionAnticipada] = useState(false);
   const [moraRate, setMoraRate] = useState(0.0005); // Default fallback
   const [currentDate, setCurrentDate] = useState<Date | null>(null);
+  const [showVendorSelect, setShowVendorSelect] = useState(false);
+  const [vendors, setVendors] = useState<{ id: string; firstName: string; lastName: string }[]>([]);
+  const [reassigning, setReassigning] = useState(false);
 
   // Fetch mora rate and current date in timezone on mount
   useEffect(() => {
@@ -227,17 +231,23 @@ export default function LoanDetailPage() {
 
   useEffect(() => {
     if (token && params.id) {
-      fetch(`${API_URL}/api/loans/${params.id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.success) {
-            setLoan(data.data);
+      Promise.all([
+        fetch(`${API_URL}/api/loans/${params.id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${API_URL}/api/users/vendors`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ])
+        .then(([loanRes, vendorsRes]) => Promise.all([loanRes.json(), vendorsRes.json()]))
+        .then(([loanData, vendorsData]) => {
+          if (loanData.success) {
+            setLoan(loanData.data);
           } else {
-            setError(data.error || 'Error al cargar el préstamo');
+            setError(loanData.error || 'Error al cargar el préstamo');
+          }
+          if (vendorsData.success) {
+            setVendors(vendorsData.data);
           }
         })
         .catch((err) => {
@@ -266,6 +276,40 @@ export default function LoanDetailPage() {
       }
     } catch (err) {
       setError('Error al aprobar el préstamo');
+    }
+  };
+
+  const handleReassignVendor = async (vendorId: string | null) => {
+    if (!token) return;
+    setReassigning(true);
+    try {
+      // First update the vendor
+      const res = await fetch(`${API_URL}/api/loans/${params.id}`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ assignedVendorId: vendorId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        // Reload full loan data to get installments
+        const loanRes = await fetch(`${API_URL}/api/loans/${params.id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const loanData = await loanRes.json();
+        if (loanData.success) {
+          setLoan(loanData.data);
+        }
+        setShowVendorSelect(false);
+      } else {
+        setError(data.error || 'Error al reasignar el vendedor');
+      }
+    } catch (err) {
+      setError('Error al reasignar el vendedor');
+    } finally {
+      setReassigning(false);
     }
   };
 
@@ -481,6 +525,46 @@ export default function LoanDetailPage() {
           <div>
             <p className="text-sm text-gray-500 dark:text-white/38">Creado</p>
             <p className="dark:text-white/[.87]">{formatDate(loan.createdAt)}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500 dark:text-white/38">Vendedor</p>
+            {showVendorSelect ? (
+              <div className="flex gap-2 flex-wrap">
+                <select
+                  value={loan.assignedVendor?.id || ''}
+                  onChange={(e) => handleReassignVendor(e.target.value || null)}
+                  disabled={reassigning}
+                  className="px-2 py-1 text-sm border rounded dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87]"
+                >
+                  <option value="">Sin vendedor</option>
+                  {vendors.map((v) => (
+                    <option key={v.id} value={v.id}>{v.firstName} {v.lastName}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => setShowVendorSelect(false)}
+                  className="px-2 py-1 text-sm text-gray-500 hover:text-gray-700 dark:text-white/60"
+                >
+                  Cancelar
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <p className="dark:text-white/[.87]">
+                  {loan.assignedVendor 
+                    ? `${loan.assignedVendor.firstName} ${loan.assignedVendor.lastName}` 
+                    : 'Sin asignar'}
+                </p>
+                {user?.role === 'ADMIN' && (
+                  <button
+                    onClick={() => setShowVendorSelect(true)}
+                    className="text-xs text-blue-600 hover:underline dark:text-blue-400"
+                  >
+                    Cambiar
+                  </button>
+                )}
+              </div>
+            )}
           </div>
           {loan.purpose && (
             <div>

@@ -542,7 +542,7 @@ function NewLoanForm() {
               <div className="p-4 bg-primary-50 dark:bg-[#2a2a2a] rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-[#d3d3d3]">Cuota ({labels.singular})</p>
                 <p className="text-xl sm:text-2xl font-bold text-primary-700 dark:text-[#39ff14]">
-                  ${simulation.installmentAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  ${simulation.installmentAmount.toLocaleString()}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-white/38 mt-1">
                   {simulation.schedule.length} pagos {labels.plural}
@@ -553,7 +553,7 @@ function NewLoanForm() {
                 <div className="p-4 bg-gray-50 dark:bg-[#2a2a2a] rounded-lg">
                   <p className="text-sm text-gray-600 dark:text-[#d3d3d3]">Total Intereses</p>
                   <p className="text-xl font-semibold dark:text-white/[.87]">
-                    ${simulation.totalInterest.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    ${simulation.totalInterest.toLocaleString()}
                   </p>
                 </div>
                 <div className="p-4 bg-gray-50 dark:bg-[#2a2a2a] rounded-lg">
@@ -565,7 +565,7 @@ function NewLoanForm() {
               <div className="p-4 bg-gray-50 dark:bg-[#2a2a2a] rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-[#d3d3d3]">Total a Pagar</p>
                 <p className="text-2xl font-bold dark:text-white/[.87]">
-                  ${simulation.totalPayment.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  ${simulation.totalPayment.toLocaleString()}
                 </p>
               </div>
 

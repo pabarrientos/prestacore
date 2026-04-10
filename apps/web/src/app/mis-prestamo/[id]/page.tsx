@@ -61,6 +61,19 @@ interface LoanDetail {
     firstName: string;
     lastName: string;
   } | null;
+  // Refinancing links
+  prestamo_origen?: {
+    id: string;
+    amount: number;
+    status: string;
+  } | null;
+  prestamo_nuevo?: {
+    id: string;
+    amount: number;
+    status: string;
+  } | null;
+  prestamo_nuevo_id?: string | null;
+  prestamo_origen_id?: string | null;
   installments: Installment[];
   payments: Payment[];
 }
@@ -114,15 +127,18 @@ function getRowClass(status: string, dueDate: string): string {
 }
 
 function getPeriodicRate(annualRate: number, frequency: string): number {
+  // La tasa guardada es la tasa anual (ej: 36 = 36% anual)
+  // Para mostrar la tasa del período, dividir por períodos
+  const rate = Number(annualRate);
   switch (frequency) {
     case 'WEEKLY':
-      return Math.round((annualRate / 52) * 10000) / 10000;
+      return Math.round((rate / 52) * 10000) / 10000;
     case 'BIWEEKLY':
-      return Math.round((annualRate / 24) * 10000) / 10000;
+      return Math.round((rate / 24) * 10000) / 10000;
     case 'DAILY':
-      return Math.round((annualRate / 365) * 10000) / 10000;
+      return Math.round((rate / 365) * 10000) / 10000;
     default:
-      return Math.round((annualRate / 12) * 10000) / 10000;
+      return Math.round((rate / 12) * 10000) / 10000;
   }
 }
 
@@ -212,6 +228,24 @@ export default function MisPrestamosDetallePage() {
           <h1 className="text-2xl font-bold dark:text-white/[.87]">Detalle del Préstamo</h1>
         </div>
         <div className="flex items-center gap-2">
+          {/* Link to original loan - only for refinanced loans */}
+          {(loan.prestamo_origen?.id || loan.prestamo_origen_id) && (
+            <a 
+              href={`/mis-prestamo/${loan.prestamo_origen?.id || loan.prestamo_origen_id}`}
+              className="text-xs text-blue-600 hover:underline"
+            >
+              Ver Préstamo Original
+            </a>
+          )}
+          {/* Link to new loan - only for REFINANCIADO loans */}
+          {(loan.prestamo_nuevo?.id || loan.prestamo_nuevo_id) && (
+            <a 
+              href={`/mis-prestamo/${loan.prestamo_nuevo?.id || loan.prestamo_nuevo_id}`}
+              className="text-xs text-blue-600 hover:underline"
+            >
+              Ver Nuevo Préstamo
+            </a>
+          )}
           <span className={`px-3 py-1 text-sm rounded-full ${statusColors[loan.status]}`}>
             {loan.status}
           </span>
@@ -255,6 +289,12 @@ export default function MisPrestamosDetallePage() {
             <p className="text-sm text-gray-500 dark:text-white/38">Creado</p>
             <p className="dark:text-white/[.87]">{formatDate(loan.createdAt)}</p>
           </div>
+          {loan.assignedVendor && (
+            <div>
+              <p className="text-sm text-gray-500 dark:text-white/38">Vendedor</p>
+              <p className="dark:text-white/[.87]">{loan.assignedVendor.firstName} {loan.assignedVendor.lastName}</p>
+            </div>
+          )}
           {loan.purpose && (
             <div>
               <p className="text-sm text-gray-500 dark:text-white/38">Propósito</p>

@@ -114,6 +114,152 @@ router.get('/mine', authMiddleware, requireClientOnly, async (req: AuthRequest, 
   }
 });
 
+// POST /api/loans/request - Client requests a new loan (creates PENDING loan)
+router.post('/request', authMiddleware, requireClientOnly, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const requestSchema = z.object({
+      amount: z.number().positive().min(100),
+      interestRate: z.number().positive().min(0.1).max(500),
+      termMonths: z.number().int().positive().min(1).max(120),
+      frequency: z.enum(['WEEKLY', 'BIWEEKLY', 'MONTHLY', 'DAILY']).default('MONTHLY'),
+      purpose: z.string().optional(),
+      notes: z.string().optional(),
+      startDate: z.string().optional(),
+      schedule: z.array(z.object({
+        number: z.number(),
+        dueDate: z.string(),
+        amount: z.number(),
+        principal: z.number(),
+        interest: z.number(),
+        balance: z.number(),
+      })).optional(),
+    });
+
+    const body = requestSchema.parse(req.body);
+
+    // Get client associated with current user
+    const client = await prisma.client.findUnique({
+      where: { userId: req.user!.userId },
+    });
+
+    if (!client) {
+      res.status(404).json({
+        success: false,
+        error: 'Client not found. Please contact support.',
+      });
+      return;
+    }
+
+    // Check if client already has a pending loan
+    const existingPending = await prisma.loan.findFirst({
+      where: {
+        clientId: client.id,
+        status: LoanStatus.PENDING,
+      },
+    });
+
+    if (existingPending) {
+      res.status(400).json({
+        success: false,
+        error: 'You already have a pending loan request. Please wait for it to be processed.',
+      });
+      return;
+    }
+
+    const startDate = body.startDate ? new Date(body.startDate) : await getNow();
+    
+    let installmentsData: { number: number; dueDate: string; amount: number; principal: number; interest: number; balance: number; }[] = body.schedule || [];
+    let installmentAmount = 0;
+    let totalInterest = 0;
+    let totalPayment = 0;
+
+    if (body.schedule && body.schedule.length > 0) {
+      installmentAmount = body.schedule[0].amount;
+      totalPayment = body.schedule.reduce((sum, item) => sum + item.amount, 0);
+      totalInterest = totalPayment - body.amount;
+    } else {
+      // Calculate from amortization if no schedule provided
+      const amortization = AmortizationService.calculate({
+        amount: body.amount,
+        interestRate: body.interestRate / 100,
+        termMonths: body.termMonths,
+        frequency: body.frequency,
+        startDate,
+      });
+      installmentAmount = amortization.installmentAmount;
+      totalPayment = amortization.totalPayment;
+      totalInterest = amortization.totalInterest;
+      installmentsData = amortization.schedule.map(item => ({
+        number: item.number,
+        dueDate: item.dueDate.toISOString(),
+        amount: item.amount,
+        principal: item.principal,
+        interest: item.interest,
+        balance: item.amount,
+      }));
+    }
+
+    // Create loan with installments in transaction
+    const loan = await prisma.$transaction(async (tx) => {
+      // Create loan
+      const newLoan = await tx.loan.create({
+        data: {
+          clientId: client.id,
+          amount: body.amount,
+          interestRate: body.interestRate,
+          termMonths: body.termMonths,
+          frequency: body.frequency as PaymentFrequency,
+          status: LoanStatus.PENDING,
+          purpose: body.purpose,
+          notes: body.notes,
+          startedAt: startDate,
+          totalInterest,
+          totalPayment,
+          installmentAmount,
+        },
+      });
+
+      // Create installments
+      if (installmentsData.length > 0) {
+        await tx.installment.createMany({
+          data: installmentsData.map(item => ({
+            loanId: newLoan.id,
+            installmentNumber: item.number,
+            dueDate: new Date(item.dueDate),
+            amount: item.amount,
+            principal: item.principal,
+            interest: item.interest,
+            balance: item.balance,
+            capitalBalance: item.balance,
+            status: 'PENDING',
+          })),
+        });
+      }
+
+      return newLoan;
+    });
+
+    res.status(201).json({
+      success: true,
+      data: loan,
+    });
+  } catch (error) {
+    console.error('Client loan request error:', error);
+    if (error instanceof z.ZodError) {
+      res.status(400).json({
+        success: false,
+        error: 'Invalid data',
+        details: error.errors,
+      });
+      return;
+    }
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+    });
+  }
+});
+
 // GET /api/loans/simulate - Public endpoint for loan simulation
 router.post('/simulate', async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -582,7 +728,7 @@ router.delete('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res
 router.patch('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { amount, interestRate, termMonths, frequency, purpose, notes, startDate, schedule, status } = req.body;
+    const { amount, interestRate, termMonths, frequency, purpose, notes, startDate, schedule, status, assignedVendorId } = req.body;
 
     const loan = await prisma.loan.findUnique({ where: { id } });
 
@@ -591,6 +737,20 @@ router.patch('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res:
         success: false,
         error: 'Loan not found',
       });
+      return;
+    }
+
+    // Handle assignedVendorId change (can be done for any loan status)
+    if (assignedVendorId !== undefined) {
+      const updated = await prisma.loan.update({
+        where: { id },
+        data: { assignedVendorId: assignedVendorId || null },
+        include: {
+          client: { include: { user: { select: { firstName: true, lastName: true, email: true, phone: true } } } },
+          assignedVendor: { select: { id: true, firstName: true, lastName: true } },
+        },
+      });
+      res.json({ success: true, data: updated });
       return;
     }
 

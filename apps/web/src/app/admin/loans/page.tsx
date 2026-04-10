@@ -61,8 +61,6 @@ export default function LoansPage() {
   const [loans, setLoans] = useState<Loan[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
-  const [vendorFilter, setVendorFilter] = useState('');
-  const [vendors, setVendors] = useState<{ id: string; firstName: string; lastName: string }[]>([]);
   const [deleting, setDeleting] = useState<string | null>(null);
 
   const handleDelete = async (id: string) => {
@@ -93,21 +91,13 @@ export default function LoansPage() {
 
   useEffect(() => {
     if (token) {
-      Promise.all([
-        fetch(`${API_URL}/api/loans`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${API_URL}/api/users/vendors`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-      ])
-        .then(([loansRes, vendorsRes]) => Promise.all([loansRes.json(), vendorsRes.json()]))
-        .then(([loansData, vendorsData]) => {
-          if (loansData.success) {
-            setLoans(loansData.data.data);
-          }
-          if (vendorsData.success) {
-            setVendors(vendorsData.data);
+      fetch(`${API_URL}/api/loans`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            setLoans(data.data.data);
           }
         })
         .catch(console.error)
@@ -125,8 +115,7 @@ export default function LoansPage() {
     return (
       loan.status.toLowerCase().includes(searchTerm) ||
       clientName.includes(searchTerm) ||
-      vendorName.includes(searchTerm) ||
-      (vendorFilter && loan.assignedVendor?.id === vendorFilter)
+      vendorName.includes(searchTerm)
     );
   });
 
@@ -161,18 +150,6 @@ export default function LoansPage() {
           onChange={(e) => setFilter(e.target.value)}
           className="px-4 py-2 border rounded-lg flex-1 min-h-[44px] dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14]"
         />
-        <select
-          value={vendorFilter}
-          onChange={(e) => setVendorFilter(e.target.value)}
-          className="px-4 py-2 border rounded-lg md:w-48 min-h-[44px] dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14]"
-        >
-          <option value="">Todos los vendedores</option>
-          {vendors.map((vendor) => (
-            <option key={vendor.id} value={vendor.id}>
-              {vendor.firstName} {vendor.lastName}
-            </option>
-          ))}
-        </select>
       </div>
 
       {/* Table */}

@@ -1,6 +1,21 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/lib/auth-context';
+import { useRouter } from 'next/navigation';
+
+const LOAN_STORAGE_KEY = 'pending_loan_request';
+
+interface LoanRequest {
+  amount: number;
+  term: number;
+  frequency: string;
+  installmentAmount: number;
+  totalInterest: number;
+  totalPayment: number;
+  annualRate: number;
+  schedule: ScheduleItem[];
+}
 
 interface RateConfig {
   WEEKLY_BASE_RATE: number;
@@ -40,6 +55,9 @@ const frequencyLabels = {
 };
 
 export default function SimulatorPage() {
+  const { user } = useAuth();
+  const router = useRouter();
+  
   const [formData, setFormData] = useState({
     amount: '',
     term: '12',
@@ -49,6 +67,62 @@ export default function SimulatorPage() {
   const [result, setResult] = useState<SimulationResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const handleRequestLoan = () => {
+    if (!result) return;
+
+    // Calculate periods per year and annual rate like admin does
+    let periodsPerYear = 12;
+    let baseRate = 0;
+    if (rates) {
+      switch (formData.frequency) {
+        case 'WEEKLY':
+          periodsPerYear = 52;
+          baseRate = rates.WEEKLY_BASE_RATE;
+          break;
+        case 'BIWEEKLY':
+          periodsPerYear = 24;
+          baseRate = rates.BIWEEKLY_BASE_RATE;
+          break;
+        case 'DAILY':
+          periodsPerYear = 365;
+          baseRate = rates.DAILY_BASE_RATE;
+          break;
+        case 'MONTHLY':
+        default:
+          periodsPerYear = 12;
+          baseRate = rates.MONTHLY_BASE_RATE;
+      }
+    }
+
+    // Calculate annual rate (same as admin does): baseRate * periodsPerYear
+    // Example: 3% mensal * 12 = 36% anual
+    const annualRate = baseRate * periodsPerYear;
+
+    // Create loan request object
+    const loanRequest: LoanRequest = {
+      amount: parseFloat(formData.amount),
+      term: parseInt(formData.term),
+      frequency: formData.frequency,
+      installmentAmount: result.installmentAmount,
+      totalInterest: result.totalInterest,
+      totalPayment: result.totalPayment,
+      annualRate: annualRate,
+      schedule: result.schedule,
+    };
+
+    // Store in sessionStorage (persists until browser closed)
+    sessionStorage.setItem(LOAN_STORAGE_KEY, JSON.stringify(loanRequest));
+
+    // Check if logged in as client
+    if (user && (user.role === 'CLIENTE' || user.role === 'VENDEDOR' || user.role === 'ADMIN')) {
+      // Redirect to confirmation if authenticated
+      router.push('/solicitar');
+    } else {
+      // Redirect to register if not authenticated
+      router.push('/register');
+    }
+  };
 
   // Cargar tasas al iniciar
   useEffect(() => {
@@ -300,7 +374,7 @@ export default function SimulatorPage() {
                 <div className="p-4 bg-primary-50 rounded-lg dark:bg-[#1a1a1a]">
                   <p className="text-sm text-gray-600 dark:text-white/60">Cuota ({labels.singular})</p>
                   <p className="text-3xl font-bold text-primary-700 dark:text-[#39ff14]">
-                    ${result.installmentAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    ${result.installmentAmount.toLocaleString()}
                   </p>
                   <p className="text-xs text-gray-500 mt-1 dark:text-white/60">
                     {result.schedule.length} pagos {labels.plural}
@@ -310,7 +384,7 @@ export default function SimulatorPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="p-4 bg-gray-50 rounded-lg dark:bg-[#1a1a1a]">
                     <p className="text-sm text-gray-600 dark:text-white/60">Total Intereses</p>
-                    <p className="text-xl font-semibold dark:text-white/[.87]">${result.totalInterest.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+                    <p className="text-xl font-semibold dark:text-white/[.87]">${result.totalInterest.toLocaleString()}</p>
                   </div>
                   <div className="p-4 bg-gray-50 rounded-lg dark:bg-[#1a1a1a]">
                     <p className="text-sm text-gray-600 dark:text-white/60">Nro. de Pagos</p>
@@ -320,7 +394,7 @@ export default function SimulatorPage() {
 
                 <div className="p-4 bg-gray-50 rounded-lg dark:bg-[#1a1a1a]">
                   <p className="text-sm text-gray-600 dark:text-white/60">Total a Pagar</p>
-                  <p className="text-2xl font-bold dark:text-white/[.87]">${result.totalPayment.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+                  <p className="text-2xl font-bold dark:text-white/[.87]">${result.totalPayment.toLocaleString()}</p>
                 </div>
               </div>
             ) : (
@@ -357,11 +431,11 @@ export default function SimulatorPage() {
                     <tr key={item.number} className="border-t dark:border-gray-700">
                       <td className="px-4 py-2 dark:text-white/[.87]">{item.number}</td>
                       <td className="px-4 py-2 dark:text-white/[.87]">{item.date}</td>
-                      <td className="px-4 py-2 text-right dark:text-white/[.87]">${item.payment.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-                      <td className="px-4 py-2 text-right text-green-600 dark:text-green-400">${item.principal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-                      <td className="px-4 py-2 text-right text-red-600 dark:text-red-400">${item.interest.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-                      <td className="px-4 py-2 text-right font-medium dark:text-white/[.87]">${item.capitalBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-                      <td className="px-4 py-2 text-right dark:text-white/[.87]">${item.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                      <td className="px-4 py-2 text-right dark:text-white/[.87]">${item.payment.toLocaleString()}</td>
+                      <td className="px-4 py-2 text-right text-green-600 dark:text-green-400">${item.principal.toLocaleString()}</td>
+                      <td className="px-4 py-2 text-right text-red-600 dark:text-red-400">${item.interest.toLocaleString()}</td>
+                      <td className="px-4 py-2 text-right font-medium dark:text-white/[.87]">${item.capitalBalance.toLocaleString()}</td>
+                      <td className="px-4 py-2 text-right dark:text-white/[.87]">${item.balance.toLocaleString()}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -371,9 +445,13 @@ export default function SimulatorPage() {
         )}
 
         <div className="text-center mt-6">
-          <a href="/register" className="text-primary-600 hover:underline dark:text-[#39ff14] dark:hover:text-[#32e012]">
+          <button
+            onClick={handleRequestLoan}
+            disabled={!result}
+            className="text-primary-600 hover:underline dark:text-[#39ff14] dark:hover:text-[#32e012] disabled:text-gray-400 disabled:cursor-not-allowed disabled:no-underline"
+          >
             Solicitar este préstamo →
-          </a>
+          </button>
         </div>
       </div>
     </main>

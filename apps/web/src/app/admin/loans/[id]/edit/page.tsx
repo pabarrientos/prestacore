@@ -122,8 +122,28 @@ export default function EditLoanPage() {
     }
   }, [token, params.id]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleChange = async (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+    
+    // Si cambia la frecuencia, cargar la tasa correspondiente
+    if (name === 'frequency') {
+      const ratesRes = await fetch(`${API_URL}/api/settings/rates`);
+      const ratesData = await ratesRes.json();
+      if (ratesData.success) {
+        const baseRates = ratesData.data;
+        let newRate = baseRates.MONTHLY_BASE_RATE;
+        if (value === 'WEEKLY') newRate = baseRates.WEEKLY_BASE_RATE;
+        else if (value === 'BIWEEKLY') newRate = baseRates.BIWEEKLY_BASE_RATE;
+        else if (value === 'DAILY') newRate = baseRates.DAILY_BASE_RATE;
+        
+        setFormData(prev => ({ ...prev, [name]: value, customRate: String(newRate) }));
+        setSimulation(null);
+        setError('');
+        setSuccess('');
+        return;
+      }
+    }
+    
     setFormData(prev => ({ ...prev, [name]: value }));
     setError('');
     setSuccess('');
@@ -500,7 +520,7 @@ export default function EditLoanPage() {
               <div className="p-4 bg-primary-50 dark:bg-[#2a2a2a] rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-[#d3d3d3]">Cuota ({labels.singular})</p>
                 <p className="text-2xl font-bold text-primary-700 dark:text-[#39ff14]">
-                  ${simulation.installmentAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  ${simulation.installmentAmount.toLocaleString()}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-white/38 mt-1">
                   {simulation.schedule.length} pagos {labels.plural}
@@ -511,7 +531,7 @@ export default function EditLoanPage() {
                 <div className="p-4 bg-gray-50 dark:bg-[#2a2a2a] rounded-lg">
                   <p className="text-sm text-gray-600 dark:text-[#d3d3d3]">Total Intereses</p>
                   <p className="text-xl font-semibold dark:text-white/[.87]">
-                    ${simulation.totalInterest.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    ${simulation.totalInterest.toLocaleString()}
                   </p>
                 </div>
                 <div className="p-4 bg-gray-50 dark:bg-[#2a2a2a] rounded-lg">
@@ -523,7 +543,7 @@ export default function EditLoanPage() {
               <div className="p-4 bg-gray-50 dark:bg-[#2a2a2a] rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-[#d3d3d3]">Total a Pagar</p>
                 <p className="text-2xl font-bold dark:text-white/[.87]">
-                  ${simulation.totalPayment.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  ${simulation.totalPayment.toLocaleString()}
                 </p>
               </div>
 

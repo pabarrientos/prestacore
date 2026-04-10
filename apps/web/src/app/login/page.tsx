@@ -31,11 +31,17 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
+      
+      // Check if there's a pending loan request
+      const hasPendingRequest = typeof window !== 'undefined' && window.sessionStorage?.getItem('pending_loan_request');
+      
       // Role-based redirect after successful login
       const storedUser = localStorage.getItem('user');
       if (storedUser) {
         const userData = JSON.parse(storedUser);
-        if (userData.role === 'CLIENTE') {
+        if (userData.role === 'CLIENTE' && hasPendingRequest) {
+          router.push('/solicitar');
+        } else if (userData.role === 'CLIENTE') {
           router.push('/mis-prestamo');
         } else {
           router.push('/admin');
