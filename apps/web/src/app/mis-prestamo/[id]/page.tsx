@@ -339,9 +339,11 @@ export default function MisPrestamosDetallePage() {
                 const totalPaidForInstallment = paymentsForInstallment.reduce((sum, p) => sum + Number(p.amount), 0);
                 
                 // Calculate days overdue using timezone-aware current date
-                const nowDate = currentDate || new Date();
-                const dueDate = new Date(inst.dueDate);
-                const daysOverdue = Math.floor((nowDate.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+                // Normalize both dates to midnight for consistent calculation (same as backend)
+                const nowDate = currentDate ? new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate()) : new Date();
+                const dueDateObj = new Date(inst.dueDate);
+                const dueDate = new Date(dueDateObj.getFullYear(), dueDateObj.getMonth(), dueDateObj.getDate());
+                const daysOverdue = Math.ceil((nowDate.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
                 const calculatedMora = daysOverdue > 0 
                   ? Math.round(Number(inst.balance) * moraRate * daysOverdue * 100) / 100
                   : 0;

@@ -634,10 +634,11 @@ export default function LoanDetailPage() {
                 const totalPaidForInstallment = paymentsForInstallment.reduce((sum, p) => sum + Number(p.amount), 0);
                 
                 // Calculate days overdue using timezone-aware current date
-                // Use currentDate from state (fetched with timezone from settings)
-                const nowDate = currentDate || new Date();
-                const dueDate = new Date(inst.dueDate);
-                const daysOverdue = Math.floor((nowDate.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+                // Normalize both dates to midnight for consistent calculation (same as backend)
+                const nowDate = currentDate ? new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate()) : new Date();
+                const dueDateObj = new Date(inst.dueDate);
+                const dueDate = new Date(dueDateObj.getFullYear(), dueDateObj.getMonth(), dueDateObj.getDate());
+                const daysOverdue = Math.ceil((nowDate.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
                 const calculatedMora = daysOverdue > 0 
                   ? Math.round(Number(inst.balance) * moraRate * daysOverdue * 100) / 100 
                   : 0;
@@ -736,7 +737,9 @@ export default function LoanDetailPage() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-white/38 uppercase">Cuota</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-white/38 uppercase">Referencia</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-white/38 uppercase">Notas</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-white/38 uppercase">Acciones</th>
+                  {user?.role === 'ADMIN' && (
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-white/38 uppercase">Acciones</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -758,20 +761,22 @@ export default function LoanDetailPage() {
                     </td>
                     <td className="px-4 py-3 text-sm dark:text-white/[.87]">{payment.reference || '-'}</td>
                     <td className="px-4 py-3 text-sm dark:text-white/[.87]">{payment.notes || '-'}</td>
-                    <td className="px-4 py-3">
-                      <button
-                        onClick={() => handleEditPayment(payment)}
-                        className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm mr-3"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => handleDeletePayment(payment)}
-                        className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm"
-                      >
-                        Eliminar
-                      </button>
-                    </td>
+                    {user?.role === 'ADMIN' && (
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => handleEditPayment(payment)}
+                          className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm mr-3"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => handleDeletePayment(payment)}
+                          className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm"
+                        >
+                          Eliminar
+                        </button>
+                      </td>
+                    )}
                   </tr>
                   );
                 })}

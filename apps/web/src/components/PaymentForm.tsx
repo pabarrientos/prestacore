@@ -133,11 +133,14 @@ export default function PaymentForm({ loanId, payment, preselectedInstallmentId,
     }
   };
 
-  // Effect para cargar mora cuando se selecciona una cuota
+  // Effect para cargar mora Y monto cuando se selecciona una cuota
   useEffect(() => {
     if (selectedInstallmentId && installments.length > 0) {
       const inst = installments.find(i => i.id === selectedInstallmentId);
       if (inst) {
+        // Settear el monto con el balance de la cuota (precarga el amount)
+        setAmount(inst.balance ? Number(inst.balance).toString() : '');
+        // Settear la mora desde los datos locales
         setMoraAmount(inst.moraAmount || 0);
         setOriginalMoraAmount(inst.moraAmount || 0);
         setOriginalDaysOverdue(inst.daysOverdue || 0);
@@ -154,7 +157,7 @@ export default function PaymentForm({ loanId, payment, preselectedInstallmentId,
     if (paymentDate && selectedInstallmentId) {
       recalculateMora(paymentDate);
     }
-  }, [paymentDate]);
+  }, [paymentDate, selectedInstallmentId]);
 
   // Control de acceso por rol
   const canEditMora = user?.role === 'ADMIN' || user?.role === 'VENDEDOR';

@@ -165,8 +165,8 @@ router.get('/balance/:loanId', authMiddleware, requireVendor, async (req: AuthRe
   }
 });
 
-// PUT /api/payments/:id - Edit a payment
-router.put('/:id', authMiddleware, requireVendor, async (req: AuthRequest, res: Response): Promise<void> => {
+// PUT /api/payments/:id - Edit a payment (ADMIN only)
+router.put('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { amount, reference, notes, paymentDate } = req.body;
@@ -512,17 +512,21 @@ router.get('/balance/:loanId/at', authMiddleware, requireVendor, async (req: Aut
     let referenceDate: Date;
     if (date) {
       const dateStr = String(date);
-      const parsed = new Date(dateStr);
-      if (isNaN(parsed.getTime())) {
+      // Parse YYYY-MM-DD as local date (not UTC to avoid timezone shift)
+      const [year, month, day] = dateStr.split('-').map(Number);
+      if (isNaN(year) || isNaN(month) || isNaN(day)) {
         res.status(400).json({
           success: false,
           error: 'Invalid date format. Use YYYY-MM-DD',
         });
         return;
       }
-      referenceDate = parsed;
+      // Create date in local time (midnight)
+      referenceDate = new Date(year, month - 1, day);
     } else {
-      referenceDate = new Date();
+      // Use getNow() from datetime service to use configured timezone
+      const { getNow } = await import('../services/datetime');
+      referenceDate = await getNow();
     }
 
     const balance = await PaymentService.calculateLoanBalanceAt(loanId, referenceDate);
@@ -543,7 +547,8 @@ router.get('/balance/:loanId/at', authMiddleware, requireVendor, async (req: Aut
         totalPaid: balance.totalPaid,
         totalPending: balance.totalPending,
         totalMora: balance.totalMora,
-        calculatedAt: referenceDate.toISOString(),
+        // Return as YYYY-MM-DD to avoid timezone shift when displaying
+        calculatedAt: `${referenceDate.getFullYear()}-${String(referenceDate.getMonth() + 1).padStart(2, '0')}-${String(referenceDate.getDate()).padStart(2, '0')}`,
         installments: balance.installments.map((inst) => ({
           id: inst.id,
           installmentNumber: inst.installmentNumber,
@@ -566,8 +571,8 @@ router.get('/balance/:loanId/at', authMiddleware, requireVendor, async (req: Aut
   }
 });
 
-// DELETE /api/payments/:id - Delete a payment (revert its effects)
-router.delete('/:id', authMiddleware, requireVendor, async (req: AuthRequest, res: Response): Promise<void> => {
+// DELETE /api/payments/:id - Delete a payment (ADMIN only)
+router.delete('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
 
@@ -635,42 +640,9 @@ router.delete('/:id', authMiddleware, requireVendor, async (req: AuthRequest, re
         });
       }
     } else {
-      // Free payment - reverse distribution in FIFO order (same as original distribution)
-      // IMPORTANT: Must include PAID status to revert effects on already paid installments
-      const allInstallments = await prisma.installment.findMany({
-        where: {
-          loanId: payment.loanId,
-          status: { in: ['PENDING', 'OVERDUE', 'PARTIAL', 'PAID'] },
-        },
-        orderBy: [{ dueDate: 'asc' }, { installmentNumber: 'asc' }],
-      });
-
-      for (const inst of allInstallments) {
-        // REVERT COMPLETELY each installment that has any payment (ignore paymentAmount)
-        const originalAmount = Number(inst.amount);
-        const currentPaidAmount = Number(inst.paidAmount);
-        
-        if (currentPaidAmount > 0) {
-          // Always revert the FULL payment on this installment
-          const newPaidAmount = 0;
-          const newBalance = originalAmount;
-          
-          // Determine status based on due date
-          const now = new Date();
-          const isOverdue = new Date(inst.dueDate) < now;
-          const newStatus = isOverdue ? 'OVERDUE' : 'PENDING';
-
-          await prisma.installment.update({
-            where: { id: inst.id },
-            data: {
-              paidAmount: newPaidAmount,
-              balance: newBalance,
-              status: newStatus,
-              paidAt: null,
-            },
-          });
-        }
-      }
+      // Free payment (abono a cuenta) - no associated to any installment
+      // When deleted, should NOT affect installment status because it's not clear which installment it belongs to
+      // Only delete the payment record, keep installment states unchanged
     }
 
     // Delete the payment
