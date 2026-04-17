@@ -120,6 +120,163 @@ router.get('/loan/:loanId', authMiddleware, requireVendor, async (req: AuthReque
   }
 });
 
+// GET /api/payments/by-date - Get payments by date range with filters
+router.get('/by-date', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { fechaInicio, fechaFin, vendedorId, estado, cliente } = req.query;
+    const user = req.user;
+
+    if (!user) {
+      res.status(401).json({
+        success: false,
+        error: 'Unauthorized',
+      });
+      return;
+    }
+
+    // Validate date params
+    let startDate: string;
+    let endDate: string;
+    const { getToday } = await import('../services/datetime');
+
+    if (fechaInicio && fechaFin) {
+      const startStr = String(fechaInicio);
+      const endStr = String(fechaFin);
+
+      // Validate YYYY-MM-DD format
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(startStr) || !/^\d{4}-\d{2}-\d{2}$/.test(endStr)) {
+        res.status(400).json({
+          success: false,
+          error: 'Invalid date format. Use YYYY-MM-DD',
+        });
+        return;
+      }
+
+      startDate = startStr;
+      endDate = endStr;
+
+      if (startDate > endDate) {
+        res.status(400).json({
+          success: false,
+          error: 'fechaInicio cannot be after fechaFin',
+        });
+        return;
+      }
+    } else {
+      // Default: today's date using getToday() which respects timezone
+      const today = await getToday();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      startDate = `${year}-${month}-${day}`;
+      endDate = startDate;
+    }
+
+    // RBAC: Vendedor only sees their own loans - handled in raw query below
+
+    // Fetch payments with related data - use raw SQL for date filtering
+    // Build WHERE clause with filters
+    const clienteFilter = cliente ? `AND (LOWER(u."firstName") LIKE '%${String(cliente).toLowerCase()}%' OR LOWER(u."lastName") LIKE '%${String(cliente).toLowerCase()}%')` : '';
+
+    let payments;
+    if (startDate === endDate) {
+        // Single day query - use ::date cast for proper comparison
+        // Also cast paymentDate to date in SELECT to avoid timezone conversion issues
+        payments = await prisma.$queryRawUnsafe<any[]>(`
+          SELECT p.id, p."clientId", p."loanId", p."installmentId", p.amount, p.type, 
+                 p.status, p.reference, p.notes, p."paymentDate", p."createdAt", p."updatedAt",
+                 p."processedAt",
+                 u."firstName" as "clientFirstName", u."lastName" as "clientLastName",
+                 l."id" as "loanId", l."amount" as "loanAmount", l."assignedVendorId",
+                 i."installmentNumber",
+                 p."paymentDate"::text as "paymentDateLocal",
+                 v."firstName" as "vendorFirstName", v."lastName" as "vendorLastName"
+          FROM "Payment" p
+          JOIN "Client" c ON p."clientId" = c."id"
+          JOIN "User" u ON c."userId" = u."id"
+          JOIN "Loan" l ON p."loanId" = l."id"
+          LEFT JOIN "Installment" i ON p."installmentId" = i."id"
+          LEFT JOIN "User" v ON l."assignedVendorId" = v."id"
+          WHERE p."paymentDate"::date = $1::date
+            ${user.role === 'VENDEDOR' ? `AND l."assignedVendorId" = '${user.userId}'` : ''}
+            ${vendedorId && user.role === 'ADMIN' ? `AND l."assignedVendorId" = '${vendedorId}'` : ''}
+            ${estado ? `AND p.status = '${estado}'` : ''}
+            ${clienteFilter}
+          ORDER BY p."paymentDate" DESC
+        `, startDate);
+      } else {
+        // Date range query
+        payments = await prisma.$queryRawUnsafe<any[]>(`
+          SELECT p.id, p."clientId", p."loanId", p."installmentId", p.amount, p.type, 
+                 p.status, p.reference, p.notes, p."paymentDate", p."createdAt", p."updatedAt",
+                 p."processedAt",
+                 u."firstName" as "clientFirstName", u."lastName" as "clientLastName",
+                 l."id" as "loanId", l."amount" as "loanAmount", l."assignedVendorId",
+                 i."installmentNumber",
+                 p."paymentDate"::text as "paymentDateLocal",
+                 v."firstName" as "vendorFirstName", v."lastName" as "vendorLastName"
+          FROM "Payment" p
+          JOIN "Client" c ON p."clientId" = c."id"
+          JOIN "User" u ON c."userId" = u."id"
+          JOIN "Loan" l ON p."loanId" = l."id"
+          LEFT JOIN "Installment" i ON p."installmentId" = i."id"
+          LEFT JOIN "User" v ON l."assignedVendorId" = v."id"
+          WHERE p."paymentDate"::date >= $1::date AND p."paymentDate"::date <= $2::date
+            ${user.role === 'VENDEDOR' ? `AND l."assignedVendorId" = '${user.userId}'` : ''}
+            ${vendedorId && user.role === 'ADMIN' ? `AND l."assignedVendorId" = '${vendedorId}'` : ''}
+            ${estado ? `AND p.status = '${estado}'` : ''}
+            ${clienteFilter}
+          ORDER BY p."paymentDate" DESC
+        `, startDate, endDate);
+      }
+
+      // Calculate total amount
+      const totalMonto = payments.reduce((sum: number, p: any) => sum + Number(p.amount), 0);
+
+      // Format response - use paymentDateLocal which is already formatted as YYYY-MM-DD from DB
+      const formattedPayments = payments.map((p: any) => {
+        // paymentDateLocal is already in YYYY-MM-DD format from DB
+        const fechaLocal = p.paymentDateLocal || '';
+        
+        return {
+          id: p.id,
+          fecha: fechaLocal,
+          cliente: (p.clientFirstName || '') + ' ' + (p.clientLastName || ''),
+          prestamoId: p.loanId,
+          cuota: p.installmentNumber || null,
+          monto: Number(p.amount),
+          estado: p.status,
+          referencia: p.reference,
+          notas: p.notes,
+          fechaPago: p.paymentDate || p.createdAt,
+          vendedor: p.vendorFirstName && p.vendorLastName 
+            ? `${p.vendorFirstName} ${p.vendorLastName}` 
+            : null,
+        };
+      });
+
+      res.json({
+        success: true,
+        data: {
+          payments: formattedPayments,
+          totalMonto,
+          filtros: {
+            fechaInicio: startDate,
+            fechaFin: endDate,
+            vendedorId: vendedorId || null,
+            estado: estado || null,
+          },
+        },
+      });
+    } catch (error) {
+      console.error('Get payments by date error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error',
+      });
+    }
+});
+
 // GET /api/payments/balance/:loanId - Get loan balance with installments
 router.get('/balance/:loanId', authMiddleware, requireVendor, async (req: AuthRequest, res: Response): Promise<void> => {
   try {

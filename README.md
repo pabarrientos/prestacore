@@ -159,13 +159,26 @@ cd apps/web && pnpm test:e2e
 - `POST /api/auth/login` - Iniciar sesión
 - `POST /api/auth/register` - Registrarse
 - `GET /api/auth/me` - Usuario actual
+- `POST /api/auth/refresh` - Refrescar token
+
+### Clientes
+- `GET /api/clients/search?q=` - Buscar clientes por nombre o email
+- `GET /api/clients` - Listar clientes (Admin/Vendedor)
+- `POST /api/clients` - Crear cliente (Admin)
+- `GET /api/clients/:id` - Ver cliente
+- `PATCH /api/clients/:id` - Editar cliente (Admin)
+- `DELETE /api/clients/:id` - Eliminar cliente (Admin)
 
 ### Préstamos
 - `POST /api/loans/simulate` - Simular préstamo (público)
-- `GET /api/loans` - Listar préstamos
-- `POST /api/loans` - Crear préstamo
+- `GET /api/loans/mine` - Mis préstamos (Cliente)
+- `POST /api/loans/request` - Solicitar préstamo (Cliente)
+- `GET /api/loans` - Listar préstamos (Admin/Vendedor)
+- `POST /api/loans` - Crear préstamo (Vendedor)
 - `GET /api/loans/:id` - Ver préstamo
+- `PATCH /api/loans/:id/approve` - Aprobar préstamo (Admin)
 - `PATCH /api/loans/:id` - Editar o cambiar estado (Admin)
+- `GET /api/loans/:id/schedule` - Ver cronograma de cuotas
 - `GET /api/loans/:id/preview-refinancing` - Previsualizar refinanciación
 - `POST /api/loans/:id/execute-refinancing` - Ejecutar refinanciación
 - `GET /api/loans/:id/preview-cancelacion-anticipada` - Previsualizar cancelación anticipada
@@ -174,10 +187,26 @@ cd apps/web && pnpm test:e2e
 
 ### Pagos
 - `POST /api/payments` - Registrar pago de cuota
+- `GET /api/payments/by-date` - Obtener pagos por rango de fecha (filtros: fechaInicio, fechaFin, vendedorId, estado, cliente)
+- `GET /api/payments/loan/:loanId` - Historial de pagos de un préstamo
+- `GET /api/payments/balance/:loanId` - Balance del préstamo con cuotas
+- `GET /api/payments/balance/:loanId/at?date=YYYY-MM-DD` - Balance en fecha específica (con mora calculada)
+- `PUT /api/payments/:id` - Editar pago (Admin)
+- `DELETE /api/payments/:id` - Eliminar pago (Admin)
+- `POST /api/payments/mora` - Registrar pago de mora
 
 ### Dashboard
 - `GET /api/dashboard` - Métricas del sistema
+- `GET /api/dashboard/recent` - Actividad reciente
 - `GET /api/dashboard/overdue` - Cuotas vencidas
+
+### Usuarios
+- `GET /api/users/vendors` - Listar vendedores (Admin)
+
+### Configuración
+- `GET /api/settings` - Obtener todas las configuraciones
+- `GET /api/settings/rates` - Obtener tasas de interés
+- `PATCH /api/settings` - Actualizar configuraciones (Admin)
 
 ## 🔄 Refinanciación
 

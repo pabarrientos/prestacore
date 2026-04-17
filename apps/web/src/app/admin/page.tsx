@@ -181,11 +181,11 @@ export default function AdminDashboard() {
         </a>
         
         <a
-          href="/simulator"
+          href="/admin/payments"
           className="block p-6 bg-white rounded-lg shadow hover:shadow-md transition dark:bg-[#1e1e1e] dark:hover:shadow-[0_0_15px_rgba(57,255,20,0.15)]"
         >
-          <h3 className="text-lg font-semibold mb-2 dark:text-white/[.87]">Simulador</h3>
-          <p className="text-gray-600 dark:text-white/60">Probar el simulador de préstamos</p>
+          <h3 className="text-lg font-semibold mb-2 dark:text-white/[.87]">Ver Pagos</h3>
+          <p className="text-gray-600 dark:text-white/60">Ver pagos realizados por fecha</p>
         </a>
       </div>
     </div>
