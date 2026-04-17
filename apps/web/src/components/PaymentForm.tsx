@@ -46,7 +46,6 @@ export default function PaymentForm({ loanId, payment, preselectedInstallmentId,
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
-  const [maxAmount, setMaxAmount] = useState<number>(0);
   
   // Mora state
   const [moraAmount, setMoraAmount] = useState<number>(0);
@@ -91,10 +90,6 @@ export default function PaymentForm({ loanId, payment, preselectedInstallmentId,
             (inst: InstallmentOption) => inst.status !== 'PAID'
           );
           setInstallments(pending);
-          // Calculate max amount (total pending + mora)
-          const totalPending = data.data.totalPending || 0;
-          const totalMora = data.data.totalMora || 0;
-          setMaxAmount(totalPending + totalMora);
         }
       })
       .catch((err) => console.error('Error loading installments:', err));
@@ -301,9 +296,16 @@ export default function PaymentForm({ loanId, payment, preselectedInstallmentId,
 
   return (
     <div className="bg-white rounded-lg shadow p-6 dark:bg-[#1e1e1e]">
-      <h3 className="text-lg font-semibold mb-4 dark:text-white/[.87]">
-        {isEditing ? 'Editar Pago' : 'Registrar Pago'}
-      </h3>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-lg font-semibold dark:text-white/[.87]">
+          {isEditing ? 'Editar Pago' : 'Registrar Pago'}
+        </h3>
+        {amount && !isNaN(parseFloat(amount)) && parseFloat(amount) > 0 && (
+          <span className="text-xl font-bold text-primary-600 dark:text-[#39ff14]">
+            ${(parseFloat(amount) + moraAmount).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+          </span>
+        )}
+      </div>
 
       {error && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm dark:bg-red-950/50 dark:border-red-900 dark:text-red-400">
@@ -363,7 +365,27 @@ export default function PaymentForm({ loanId, payment, preselectedInstallmentId,
             required
           />
           <p className="text-xs text-gray-500 mt-1 dark:text-white/60">
-            Máximo: ${maxAmount.toFixed(2)}
+            {amount && !isNaN(parseFloat(amount)) && parseFloat(amount) > 0 && (() => {
+              const currentAmount = parseFloat(amount);
+              const rounded = Math.ceil(currentAmount / 1000) * 1000;
+              const diferencia = parseFloat((rounded - currentAmount).toFixed(2));
+              return (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setMoraAmount(parseFloat((moraAmount + diferencia).toFixed(2)))}
+                    className="text-primary-600 dark:text-[#39ff14] hover:underline cursor-pointer"
+                    title="Sumar diferencia a mora"
+                  >
+                    Diferencia: ${diferencia.toFixed(2)}
+                  </button>
+                  <span className="mx-2 text-gray-400">|</span>
+                  <span className="text-gray-400">
+                    Redondeado: ${rounded}
+                  </span>
+                </>
+              );
+            })()}
           </p>
         </div>
 
