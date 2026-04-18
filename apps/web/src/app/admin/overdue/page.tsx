@@ -312,30 +312,33 @@ export default function OverduePage() {
 
       {/* Payment Modal */}
       {showPaymentModal && selectedLoanId && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-[#1e1e1e] rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto my-8">
-            <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center">
-              <h2 className="text-lg font-semibold dark:text-white/[.87]">Registrar Pago</h2>
-              <button
-                onClick={() => setShowPaymentModal(false)}
-                className="text-gray-400 dark:text-white/38 hover:text-gray-600 dark:hover:text-white/87"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="p-4">
-              <PaymentForm
-                loanId={selectedLoanId}
-                preselectedInstallmentId={selectedInstallmentId}
-                onSuccess={() => {
-                  setShowPaymentModal(false);
-                  loadOverdueData();
-                }}
-                onCancel={() => setShowPaymentModal(false)}
-              />
+        <>
+          <div className="fixed inset-0 z-50 bg-black bg-opacity-50 dark:bg-opacity-70" onClick={() => setShowPaymentModal(false)} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+            <div className="bg-white dark:bg-[#1e1e1e] rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto my-8">
+              <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+                <h2 className="text-lg font-semibold dark:text-white/[.87]">Registrar Pago</h2>
+                <button
+                  onClick={() => setShowPaymentModal(false)}
+                  className="text-gray-400 dark:text-white/38 hover:text-gray-600 dark:hover:text-white/87"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="p-4">
+                <PaymentForm
+                  loanId={selectedLoanId}
+                  preselectedInstallmentId={selectedInstallmentId}
+                  onSuccess={() => {
+                    setShowPaymentModal(false);
+                    loadOverdueData();
+                  }}
+                  onCancel={() => setShowPaymentModal(false)}
+                />
+              </div>
             </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );
