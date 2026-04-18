@@ -352,28 +352,54 @@ router.delete('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res
       return;
     }
 
-    // Check if client has active loans
-    const activeLoans = client.loans.filter(l => l.status === 'ACTIVE' || l.status === 'PENDING');
-    if (activeLoans.length > 0) {
+    // Check if client has loans in ANY status
+    if (client.loans.length > 0) {
       res.status(400).json({
         success: false,
-        error: 'No se puede eliminar un cliente con préstamos activos o pendientes',
+        error: 'No se puede eliminar un cliente con préstamos',
       });
       return;
     }
 
-    // Delete client and user (cascade will handle related records)
+    // Get the user to check if they were a vendor with assigned loans
+    const user = client.userId ? await prisma.user.findUnique({
+      where: { id: client.userId },
+      include: {
+        assignedLoans: true, // Get ALL loans regardless of status
+      },
+    }) : null;
+
+    // Check if user was ever a vendor and has loans assigned
+    const wasVendorWithLoans = user && 
+      user.assignedLoans && 
+      user.assignedLoans.length > 0;
+
     await prisma.$transaction(async (tx) => {
+      // Delete the client
       await tx.client.delete({ where: { id } });
-      // Delete the associated user
+      
+      // If there's an associated user
       if (client.userId) {
-        await tx.user.delete({ where: { id: client.userId } });
+        if (wasVendorWithLoans) {
+          // User was a vendor with assigned loans - only deactivate
+          await tx.user.update({
+            where: { id: client.userId },
+            data: { isActive: false },
+          });
+        } else {
+          // User can be deleted - no loans as vendor
+          await tx.user.delete({ where: { id: client.userId } });
+        }
       }
     });
 
     res.json({
       success: true,
-      data: { message: 'Client deleted successfully' },
+      data: { 
+        message: wasVendorWithLoans 
+          ? 'Cliente eliminado, usuario desactivado (tenía préstamos como vendedor)'
+          : 'Cliente y usuario eliminados correctamente'
+      },
     });
   } catch (error) {
     console.error('Delete client error:', error);

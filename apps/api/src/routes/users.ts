@@ -721,9 +721,7 @@ router.delete('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res
     const currentUser = await prisma.user.findUnique({
       where: { id },
       include: {
-        assignedLoans: {
-          where: { status: 'ACTIVE' },
-        },
+        assignedLoans: true, // Get ALL loans regardless of status
       },
     });
 
@@ -735,8 +733,14 @@ router.delete('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res
       return;
     }
 
-    // Business rule: If has active loans as vendor, only deactivate (not delete)
-    if (currentUser.role === Role.VENDEDOR && currentUser.assignedLoans.length > 0) {
+    // Check if user has a client associated (current or past)
+    const associatedClient = await prisma.client.findUnique({
+      where: { userId: id },
+      include: { loans: true },
+    });
+
+    // If user has associated client with loans, cannot delete - only deactivate
+    if (associatedClient && associatedClient.loans.length > 0) {
       await prisma.user.update({
         where: { id },
         data: { isActive: false },
@@ -744,12 +748,36 @@ router.delete('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res
 
       res.json({
         success: true,
-        data: { message: 'Usuario desactivado (tiene préstamos activos)' },
+        data: { message: 'Usuario desactivado (tiene cliente asociadas con préstamos)' },
       });
       return;
     }
 
-    // Soft delete - deactivate user
+    // Check if user was ever a vendor and has assigned loans (regardless of current role)
+    const wasVendorWithLoans = currentUser.assignedLoans && 
+      currentUser.assignedLoans.length > 0;
+
+    if (wasVendorWithLoans) {
+      // User was a vendor with assigned loans - only deactivate
+      await prisma.user.update({
+        where: { id },
+        data: { isActive: false },
+      });
+
+      res.json({
+        success: true,
+        data: { message: 'Usuario desactivado (fue vendedor con préstamos asignados)' },
+      });
+      return;
+    }
+
+    // User can be deleted - no client with loans and wasn't a vendor with loans
+    // First, delete associated client if exists (no loans)
+    if (associatedClient) {
+      await prisma.client.delete({ where: { id: associatedClient.id } });
+    }
+
+    // Soft delete - deactivate user instead of hard delete (since user records may be referenced)
     await prisma.user.update({
       where: { id },
       data: { isActive: false },
