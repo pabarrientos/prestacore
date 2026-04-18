@@ -127,6 +127,18 @@ export default function UsersPage() {
   const handleDelete = async (user: User) => {
     if (!token) return;
 
+    // Determine what action will happen based on user state
+    let confirmMessage = '';
+    if (user.role === 'CLIENTE') {
+      confirmMessage = 'Este usuario tiene un cliente asociado. ¿Está seguro de que desea eliminarlo? El cliente será eliminado si no tiene préstamos.';
+    } else if (user.role === 'VENDEDOR') {
+      confirmMessage = 'Este usuario es vendedor. ¿Está seguro de que desea eliminarlo? Si tiene préstamos asignados será desactivado.';
+    } else {
+      confirmMessage = '¿Está seguro de que desea eliminar este usuario?';
+    }
+    
+    if (!confirm(confirmMessage)) return;
+
     try {
       const res = await fetch(`${API_URL}/api/users/${user.id}`, {
         method: 'DELETE',
@@ -134,7 +146,10 @@ export default function UsersPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setUsers(users.filter((u) => u.id !== user.id));
+        // Show the result message
+        alert(data.data?.message || 'Operación completada');
+        // Reload users to get fresh data
+        fetchUsers();
       } else {
         alert(data.error || 'Error al eliminar');
       }
