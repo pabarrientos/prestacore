@@ -314,7 +314,7 @@ export default function OverduePage() {
       {showPaymentModal && selectedLoanId && (
         <>
           <div className="fixed inset-0 z-50 bg-black bg-opacity-50 dark:bg-opacity-70" onClick={() => setShowPaymentModal(false)} />
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="bg-white dark:bg-[#1e1e1e] rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto my-8">
               <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center">
                 <h2 className="text-lg font-semibold dark:text-white/[.87]">Registrar Pago</h2>

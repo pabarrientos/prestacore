@@ -367,7 +367,7 @@ export default function PagosPage() {
 
         {/* Payment Detail Modal */}
         {selectedPayment && (
-          <div className="fixed inset-0 z-50 overflow-y-auto" onClick={() => setSelectedPayment(null)}>
+          <div className="fixed inset-0 z-50" onClick={() => setSelectedPayment(null)}>
             <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
               <div className="fixed inset-0 bg-black/50 dark:bg-black/70"></div>
               
