@@ -113,18 +113,17 @@ export async function getDaysOverdue(dueDate: Date | string): Promise<number> {
 
 /**
  * Synchronous version: calculate days overdue from two dates
- * Uses the same approach as backend's getToday() - normalize to midnight using date components
+ * Uses ONLY the date component (YYYY-MM-DD), ignores time completely
+ * This ensures consistency between all pages and backend
  */
 export function calculateDaysOverdueFromDates(now: Date, dueDate: Date | string): number {
-  // Normalize dates to midnight using their date components (same as backend getToday())
-  // This works because now and dueDate already have timezone-aware components
-  const nowOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0);
+  // Extract only date components - completely ignore time
+  const nowYMD = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const dueDateObj = typeof dueDate === 'string' ? new Date(dueDate) : dueDate;
-  const dueDateOnly = new Date(dueDateObj.getFullYear(), dueDateObj.getMonth(), dueDateObj.getDate(), 12, 0, 0);
+  const dueDateYMD = new Date(dueDateObj.getFullYear(), dueDateObj.getMonth(), dueDateObj.getDate());
   
-  // Use floor to match backend behavior (not ceil)
-  const diffTime = nowOnly.getTime() - dueDateOnly.getTime();
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  // Calculate difference in days using date-only values
+  const diffDays = Math.floor((nowYMD.getTime() - dueDateYMD.getTime()) / (1000 * 60 * 60 * 24));
   return Math.max(0, diffDays);
 }
 
