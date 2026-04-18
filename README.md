@@ -252,14 +252,6 @@ Las tasas base se configuran desde `/admin/settings`:
 
 Cada tasa se aplica automáticamente según el período seleccionado al crear el préstamo.
 
-## ⏰ Zona Horaria
-
-El sistema configurable timezone desde `/admin/settings`:
-
-1. La zona horaria afecta el cálculo de cuotas vencidas, mora y cancelaciones anticipadas
-2. Por defecto: America/Argentina/Buenos_Aires
-3. Los cálculos de fecha usan la zona horaria configurada (no UTC del servidor)
-
 ## 🔧 Variables de Entorno
 
 ### Desarrollo
