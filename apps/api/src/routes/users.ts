@@ -771,21 +771,20 @@ router.delete('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res
       return;
     }
 
-    // User can be deleted - no client with loans and wasn't a vendor with loans
-    // First, delete associated client if exists (no loans)
-    if (associatedClient) {
-      await prisma.client.delete({ where: { id: associatedClient.id } });
-    }
+    // User can be fully deleted - no client with loans and wasn't a vendor with loans
+    await prisma.$transaction(async (tx) => {
+      // Delete associated client if exists (no loans)
+      if (associatedClient) {
+        await tx.client.delete({ where: { id: associatedClient.id } });
+      }
 
-    // Soft delete - deactivate user instead of hard delete (since user records may be referenced)
-    await prisma.user.update({
-      where: { id },
-      data: { isActive: false },
+      // Delete the user completely
+      await tx.user.delete({ where: { id } });
     });
 
     res.json({
       success: true,
-      data: { message: 'Usuario eliminado correctamente' },
+      data: { message: 'Usuario y cliente eliminados correctamente' },
     });
   } catch (error) {
     console.error('Delete user error:', error);
