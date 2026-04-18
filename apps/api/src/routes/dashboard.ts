@@ -72,11 +72,12 @@ router.get('/', authMiddleware, requireVendor, async (req: AuthRequest, res: Res
         },
       }),
       
-      // Total collected (completed payments)
+      // Total collected (completed payments) - filter by vendor's loans
       prisma.payment.aggregate({
         _sum: { amount: true },
         where: { 
           status: PaymentStatus.COMPLETED,
+          loan: whereClause,
         },
       }),
 
