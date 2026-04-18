@@ -112,11 +112,9 @@ const installmentStatusColors: Record<string, string> = {
 
 function isOverdue(dueDate: string, status: string): boolean {
   if (status === 'PAID') return false;
-  const due = new Date(dueDate);
-  due.setHours(0, 0, 0, 0);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return due < today;
+  // Use string-based date comparison (date-only, no time)
+  const daysOverdue = calculateDaysOverdueFromStringSync(dueDate);
+  return daysOverdue > 0;
 }
 
 function getRowClass(status: string, dueDate: string): string {
@@ -359,11 +357,9 @@ export default function MisPrestamosDetallePage() {
                 else if (isRefinanced && inst.status === 'CANCELADA_POR_REFINANCIACION') {
                   dynamicStatus = 'CANCELADA_POR_REFINANCIACION';
                 }
-                // Fifth check: no payment - check if overdue based on date
+                // Fifth check: no payment - check if overdue based on daysOverdue (date-only)
                 else {
-                  const now = new Date();
-                  const dueDate = new Date(inst.dueDate);
-                  dynamicStatus = dueDate < now ? 'OVERDUE' : 'PENDING';
+                  dynamicStatus = daysOverdue > 0 ? 'OVERDUE' : 'PENDING';
                 }
                 
                 return [...acc, { ...inst, capitalBalance, dynamicStatus, totalPaid: totalPaidForInstallment, calculatedMora, daysOverdue }];

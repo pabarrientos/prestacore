@@ -59,6 +59,17 @@ export async function getToday(): Promise<Date> {
 }
 
 /**
+ * Verifica si una fecha está vencida (solo compara día, ignora hora)
+ * Compara YYYY-MM-DD de ambas fechas
+ */
+export async function isDateBeforeToday(checkDate: Date | string): Promise<boolean> {
+  const today = await getToday();
+  const dateObj = typeof checkDate === 'string' ? new Date(checkDate) : checkDate;
+  const checkDateOnly = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+  return checkDateOnly < today;
+}
+
+/**
  * Invalidate cache (para usar después de actualizar settings)
  */
 export function invalidateTimezoneCache(): void {

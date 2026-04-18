@@ -13,7 +13,7 @@ const prisma = new PrismaClient();
 router.get('/', authMiddleware, requireVendor, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const whereClause: any = {};
-    const now = await getNow();
+    const todayDateOnly = await getToday();
 
     // Filter by role
     if (req.user!.role === Role.VENDEDOR) {
@@ -82,10 +82,11 @@ router.get('/', authMiddleware, requireVendor, async (req: AuthRequest, res: Res
       }),
 
       // Overdue installments - dynamic calculation based on dueDate - EXCLUDE PENDING, PAID, DEFAULTED and REFINANCIADO loans
+      // Use getToday() to compare only dates (no time)
       prisma.installment.findMany({
         where: {
           status: { not: InstallmentStatus.PAID },
-          dueDate: { lt: now }, // All installments with dueDate < now
+          dueDate: { lt: todayDateOnly }, // Compare using date-only
           loan: overdueLoanFilter,
         },
         select: {

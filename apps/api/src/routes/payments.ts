@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { requireVendor, requireAdmin } from '../middleware/rbac';
 import { PaymentService } from '../services/payment';
+import { getToday } from '../services/datetime';
 import { PrismaClient, InstallmentStatus, LoanStatus } from '@prisma/client';
 
 const router: ReturnType<typeof Router> = Router();
@@ -780,9 +781,11 @@ router.delete('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res
         } else if (newPaidAmount > 0) {
           newStatus = InstallmentStatus.PARTIAL;
         } else {
-          // Check if overdue based on due date
-          const now = new Date();
-          const isOverdue = new Date(installment.dueDate) < now;
+          // Check if overdue based on due date (date-only comparison)
+          const todayOnly = await getToday();
+          const dueDate = new Date(installment.dueDate);
+          const dueDateOnly = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+          const isOverdue = dueDateOnly < todayOnly;
           newStatus = isOverdue ? InstallmentStatus.OVERDUE : InstallmentStatus.PENDING;
         }
 

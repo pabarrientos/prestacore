@@ -9,7 +9,7 @@ import {
 } from '@prisma/client';
 import { MoraService } from './mora';
 import { getRate } from './settings';
-import { getNow } from './datetime';
+import { getToday } from './datetime';
 
 const prisma = new PrismaClient();
 
@@ -60,9 +60,9 @@ export class CancelacionAnticipadaService {
       return null;
     }
 
-    // Get the daily mora rate from settings
+    // Get the daily mora rate from settings and today's date (date-only)
     const dailyRate = await getRate('MORA_RATE');
-    const now = await getNow();
+    const todayOnly = await getToday();
 
     // Find the first unpaid installment (not PAID, ordered by dueDate)
     const firstUnpaidInstallment = loan.installments.find(
@@ -87,15 +87,19 @@ export class CancelacionAnticipadaService {
       capitalPendiente = Number(loan.amount) - totalPrincipalPaid;
     }
 
-    // Get all overdue installments (not PAID, dueDate < now)
+    // Get all overdue installments (not PAID, dueDate < today) - date-only comparison
     const overdueInstallments = loan.installments.filter(
-      (inst) => inst.status !== InstallmentStatus.PAID && new Date(inst.dueDate) < now
+      (inst) => {
+        if (inst.status === InstallmentStatus.PAID) return false;
+        const dueDateOnly = new Date(new Date(inst.dueDate).getFullYear(), new Date(inst.dueDate).getMonth(), new Date(inst.dueDate).getDate());
+        return dueDateOnly < todayOnly;
+      }
     );
 
     // Calculate dynamic mora for each overdue installment (like /admin/overdue)
     let interesesVencidos = 0;
     for (const inst of overdueInstallments) {
-      const daysOverdue = await MoraService.calculateDaysOverdue(inst.dueDate, now);
+      const daysOverdue = await MoraService.calculateDaysOverdue(inst.dueDate, todayOnly);
       if (daysOverdue > 0) {
         const moraResult = MoraService.calculate({
           installmentAmount: Number(inst.balance),
