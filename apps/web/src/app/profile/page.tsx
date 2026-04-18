@@ -32,6 +32,7 @@ export default function ProfilePage() {
 
   // Password change state
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
@@ -127,7 +128,7 @@ export default function ProfilePage() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          currentPassword: '',
+          currentPassword,
           newPassword,
         }),
       });
@@ -332,6 +333,19 @@ export default function ProfilePage() {
           <form onSubmit={handleChangePassword} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-500 dark:text-white/60 mb-1">
+                Contraseña Actual
+              </label>
+              <input
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                required
+                className="w-full px-3 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14] min-h-[44px]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-500 dark:text-white/60 mb-1">
                 Nueva Contraseña
               </label>
               <input
@@ -366,6 +380,7 @@ export default function ProfilePage() {
                 type="button"
                 onClick={() => {
                   setIsChangingPassword(false);
+                  setCurrentPassword('');
                   setNewPassword('');
                   setConfirmPassword('');
                   setPasswordError('');
