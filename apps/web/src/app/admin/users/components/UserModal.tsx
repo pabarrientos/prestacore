@@ -173,7 +173,7 @@ export function UserModal({ isOpen, onClose, onSubmit, user, mode }: UserModalPr
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 dark:bg-black/70"
@@ -181,7 +181,7 @@ export function UserModal({ isOpen, onClose, onSubmit, user, mode }: UserModalPr
       />
 
       {/* Modal */}
-      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md dark:bg-[#1e1e1e]">
+      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md dark:bg-[#1e1e1e] my-8">
         <div className="flex items-center justify-between p-4 border-b dark:border-gray-700">
           <h2 className="text-lg font-semibold dark:text-white/[.87]">{getTitle()}</h2>
           <button
