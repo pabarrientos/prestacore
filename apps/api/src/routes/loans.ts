@@ -742,14 +742,57 @@ router.patch('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res:
 
     // Handle assignedVendorId change (can be done for any loan status)
     if (assignedVendorId !== undefined) {
-      const updated = await prisma.loan.update({
+      const newVendorId = assignedVendorId || null;
+
+      // Recorrer toda la cadena de préstamos (both prestamo_origen_id and prestamo_nuevo_id)
+      const loanIdsToUpdate = new Set<string>();
+      
+      // Función para recorreRPrestamo la cadena hacia atrás (prestamo_origen_id)
+      const traverseBackwards = async (loanId: string) => {
+        const loan = await prisma.loan.findUnique({ 
+          where: { id: loanId },
+          select: { prestamo_origen_id: true },
+        });
+        if (loan?.prestamo_origen_id) {
+          loanIdsToUpdate.add(loan.prestamo_origen_id);
+          await traverseBackwards(loan.prestamo_origen_id);
+        }
+      };
+      
+      // Función para recorrer la cadena hacia adelante (prestamo_nuevo_id)
+      const traverseForwards = async (loanId: string) => {
+        const loan = await prisma.loan.findUnique({ 
+          where: { id: loanId },
+          select: { prestamo_nuevo_id: true },
+        });
+        if (loan?.prestamo_nuevo_id) {
+          loanIdsToUpdate.add(loan.prestamo_nuevo_id);
+          await traverseForwards(loan.prestamo_nuevo_id);
+        }
+      };
+      
+      // Recorrer ambas direcciones
+      await traverseBackwards(id);
+      await traverseForwards(id);
+      
+      // Incluir el préstamo actual
+      loanIdsToUpdate.add(id);
+      
+      // Actualizar todos los préstamos en la cadena
+      await prisma.loan.updateMany({
+        where: { id: { in: Array.from(loanIdsToUpdate) } },
+        data: { assignedVendorId: newVendorId },
+      });
+      
+      // Obtener el préstamo actualizado para retornar
+      const updated = await prisma.loan.findUnique({
         where: { id },
-        data: { assignedVendorId: assignedVendorId || null },
         include: {
           client: { include: { user: { select: { firstName: true, lastName: true, email: true, phone: true } } } },
           assignedVendor: { select: { id: true, firstName: true, lastName: true } },
         },
       });
+      
       res.json({ success: true, data: updated });
       return;
     }
