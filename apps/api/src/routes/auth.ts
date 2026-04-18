@@ -23,6 +23,11 @@ const registerSchema = z.object({
   role: z.enum(['CLIENTE', 'VENDEDOR']).default('CLIENTE'),
 });
 
+// Helper to check if password is hashed (bcrypt hashes start with $2)
+const isPasswordHashed = (password: string): boolean => {
+  return password.startsWith('$2a$') || password.startsWith('$2b$') || password.startsWith('$2y$');
+};
+
 // POST /api/auth/login
 router.post('/login', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -32,7 +37,7 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
       where: { email: body.email },
     });
 
-    if (!user || !user.isActive) {
+    if (!user) {
       res.status(401).json({
         success: false,
         error: 'Invalid credentials',
@@ -41,13 +46,39 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const validPassword = await bcrypt.compare(body.password, user.passwordHash);
+    let validPassword = false;
+
+    if (isPasswordHashed(user.passwordHash)) {
+      // Password is hashed - verify normally
+      validPassword = await bcrypt.compare(body.password, user.passwordHash);
+    } else {
+      // Password is plaintext - auto-migration
+      if (user.passwordHash === body.password) {
+        // Plaintext password matches - hash and update
+        const newPasswordHash = await bcrypt.hash(body.password, 10);
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { passwordHash: newPasswordHash },
+        });
+        validPassword = true;
+      }
+    }
+
     if (!validPassword) {
       res.status(401).json({
         success: false,
         error: 'Invalid credentials',
       });
       console.error('Invalid credentials')
+      return;
+    }
+
+    // Check isActive AFTER password validation
+    if (!user.isActive) {
+      res.status(403).json({
+        success: false,
+        error: 'Usuario desactivado',
+      });
       return;
     }
 

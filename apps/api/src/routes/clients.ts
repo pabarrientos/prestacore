@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { PrismaClient, Role } from '@prisma/client';
 import { z } from 'zod';
+import bcrypt from 'bcryptjs';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { requireAdmin, requireVendor } from '../middleware/rbac';
 
@@ -154,9 +155,9 @@ router.post('/', authMiddleware, requireAdmin, async (req: AuthRequest, res: Res
 
     // Create user and client in transaction
     const result = await prisma.$transaction(async (tx) => {
-      // Create user
+      // Create user with hashed password
       const { password } = body;
-      const passwordHash = password; // In production, hash the password
+      const passwordHash = await bcrypt.hash(password, 10);
 
       const user = await tx.user.create({
         data: {
