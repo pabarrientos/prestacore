@@ -482,7 +482,7 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
                   </button>
                 </>
               )}
-              <p className="text-xs text-orange-600 mt-1 dark:text-orange-500">Mora dinámica (como /admin/overdue)</p>
+              <p className="text-xs text-orange-600 mt-1 dark:text-orange-500">Mora dinámica</p>
             </div>
             <div>
               <p className="text-sm text-orange-700 dark:text-orange-500">Pagos Atrasados</p>

@@ -5,6 +5,7 @@ import {
   PaymentStatus,
   PaymentMethod,
   Loan,
+  Payment,
 } from '@prisma/client';
 import { MoraService } from './mora';
 import { getRate } from './settings';
@@ -26,6 +27,8 @@ export interface DebtBreakdown {
 export interface ExecuteCancellationResult {
   success: boolean;
   loan?: Loan;
+  paymentMora?: Payment | null;
+  payment?: Payment;
   error?: string;
 }
 
@@ -181,16 +184,56 @@ export class CancelacionAnticipadaService {
 
       // Execute atomic transaction
       const result = await prisma.$transaction(async (tx) => {
-        // Step 1: Create extraordinary payment (no installmentId)
+        let paymentMora;
+        
+        // Step 1a: If mora was modified manually, create separate mora payment with tracking info
+        // Check if user explicitly modified the mora (different from calculated)
+        if (interesesVencidosManual !== undefined && interesesVencidosManual !== calculation.interesesVencidos) {
+          const originalMora = calculation.interesesVencidos;
+          const modifiedMora = interesesVencidosManual;
+          
+          paymentMora = await tx.payment.create({
+            data: {
+              clientId: loan.clientId,
+              loanId: loanId,
+              amount: modifiedMora,
+              type: 'MANUAL',
+              method: PaymentMethod.EFECTIVO,
+              status: PaymentStatus.COMPLETED,
+              notes: `Mora cancelación anticipada. Original: $${originalMora.toFixed(2)}. Modificado a: $${modifiedMora.toFixed(2)}`,
+              paymentDate: new Date(),
+              processedAt: new Date(),
+            },
+          });
+        } else if (effectiveInteresesVencidos > 0) {
+          // Mora calculated (not modified) - track with original value
+          paymentMora = await tx.payment.create({
+            data: {
+              clientId: loan.clientId,
+              loanId: loanId,
+              amount: effectiveInteresesVencidos,
+              type: 'MANUAL',
+              method: PaymentMethod.EFECTIVO,
+              status: PaymentStatus.COMPLETED,
+              notes: `Mora cancelación anticipada. Original: $${effectiveInteresesVencidos.toFixed(2)}`,
+              paymentDate: new Date(),
+              processedAt: new Date(),
+            },
+          });
+        }
+
+        // Step 1b: Create payment for the remaining amount (capital + atrasados)
+        const remainingAmount = calculation.capitalPendiente + calculation.pagosAtrasados;
         const payment = await tx.payment.create({
           data: {
             clientId: loan.clientId,
             loanId: loanId,
-            amount: totalCancelar,
+            amount: remainingAmount,
             type: 'EXTRAORDINARY',
             method: PaymentMethod.EFECTIVO,
             status: PaymentStatus.COMPLETED,
             notes: 'Cancelación anticipada - pago único por todo el saldo',
+            paymentDate: new Date(),
             processedAt: new Date(),
           },
         });
@@ -208,6 +251,7 @@ export class CancelacionAnticipadaService {
         });
 
         return {
+          paymentMora,
           payment,
           loan: updatedLoan,
         };

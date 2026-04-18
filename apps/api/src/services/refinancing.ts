@@ -316,6 +316,7 @@ export class RefinancingService {
               method: PaymentMethod.EFECTIVO,
               status: PaymentStatus.COMPLETED,
               notes: `Pago excepcional por refinanciación - reduce nuevo capital`,
+              paymentDate: new Date(),
               processedAt: new Date(),
             },
           });
@@ -382,6 +383,27 @@ export class RefinancingService {
             prestamo_nuevo_id: newLoan.id,
           },
         });
+
+        // Step 6: If mora was modified manually, create a $0 payment with tracking info on the NEW loan
+        // Only track if the user explicitly modified the mora value (different from calculated)
+        if (interesesVencidosManual !== undefined && interesesVencidosManual !== calculation.interesesVencidos) {
+          const originalMora = calculation.interesesVencidos;
+          const modifiedMora = interesesVencidosManual;
+          
+          await tx.payment.create({
+            data: {
+              clientId: oldLoan.clientId,
+              loanId: newLoan.id, // IMPORTANT: payment goes on the NEW loan (the active one)
+              amount: 0,
+              type: 'MANUAL',
+              method: PaymentMethod.EFECTIVO,
+              status: PaymentStatus.COMPLETED,
+              notes: `Mora refinanciación. Original: $${originalMora.toFixed(2)}. Modificado a: $${modifiedMora.toFixed(2)}`,
+              paymentDate: loanStartDate, // Use the new loan's start date
+              processedAt: loanStartDate,
+            },
+          });
+        }
 
         return {
           oldLoan: updatedOldLoan,
