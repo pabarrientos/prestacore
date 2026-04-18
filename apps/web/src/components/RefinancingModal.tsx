@@ -162,10 +162,8 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
       })
       .finally(() => setLoading(false));
 
-    // Cargar fecha de inicio con timezone
-    getTodayString().then((dateStr: string) => {
-      setFechaInicio(dateStr);
-    });
+    // Cargar fecha de inicio
+    setFechaInicio(getTodayString());
   }, [loanId]);
 
   // Update rate when frequency changes (if not manually set)

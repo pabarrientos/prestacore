@@ -91,19 +91,9 @@ export default function PagosPage() {
 
   // Load initial date (today) and fetch data
   useEffect(() => {
-    const loadInitialData = async () => {
-      try {
-        const today = await getTodayString();
-        setFechaInicio(today);
-        setFechaFin(today);
-      } catch (error) {
-        console.error('Error loading initial date:', error);
-        const today = new Date().toISOString().split('T')[0];
-        setFechaInicio(today);
-        setFechaFin(today);
-      }
-    };
-    loadInitialData();
+    const today = getTodayString();
+    setFechaInicio(today);
+    setFechaFin(today);
   }, []);
 
   // Fetch vendors for filter (admin only)

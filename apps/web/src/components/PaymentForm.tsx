@@ -71,10 +71,8 @@ export default function PaymentForm({ loanId, payment, preselectedInstallmentId,
       // Si es edición, usar la fecha del pago
       setPaymentDate(payment.paymentDate.split('T')[0]);
     } else {
-      // Si es nuevo pago, usar la fecha de hoy en la timezone configurada
-      getTodayString().then((dateStr: string) => {
-        setPaymentDate(dateStr);
-      });
+      // Si es nuevo pago, usar la fecha de hoy
+      setPaymentDate(getTodayString());
     }
   }, [payment]);
 
@@ -160,9 +158,7 @@ export default function PaymentForm({ loanId, payment, preselectedInstallmentId,
         setOriginalMoraAmount(inst.moraAmount || 0);
         setOriginalDaysOverdue(inst.daysOverdue || 0);
         // Usar la fecha actual para el cálculo
-        getTodayString().then((dateStr: string) => {
-          setMoraCalculatedAt(dateStr);
-        });
+        setMoraCalculatedAt(getTodayString());
       }
     }
   }, [selectedInstallmentId, installments]);

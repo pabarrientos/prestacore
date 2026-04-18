@@ -90,10 +90,8 @@ function NewLoanForm() {
       })
       .catch(console.error);
 
-    // Cargar fecha inicial con timezone
-    getTodayString().then((dateStr: string) => {
-      setFormData(prev => ({ ...prev, startDate: dateStr }));
-    });
+    // Cargar fecha inicial
+    setFormData(prev => ({ ...prev, startDate: getTodayString() }));
   }, []);
 
   // Buscar clientes
