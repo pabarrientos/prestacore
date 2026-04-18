@@ -4,7 +4,6 @@ import { PrismaClient } from '@prisma/client';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { requireAdmin } from '../middleware/rbac';
 import { invalidateRatesCache } from '../services/settings';
-import { invalidateTimezoneCache } from '../services/datetime';
 
 const router: ReturnType<typeof Router> = Router();
 const prisma = new PrismaClient();
@@ -101,12 +100,9 @@ router.patch('/', authMiddleware, requireAdmin, async (req: AuthRequest, res: Re
       },
     });
 
-    // Invalidate cache if updating a rate or timezone
+    // Invalidate cache if updating rates
     if (['WEEKLY_BASE_RATE', 'BIWEEKLY_BASE_RATE', 'MONTHLY_BASE_RATE', 'DAILY_BASE_RATE', 'MORA_RATE'].includes(body.key)) {
       invalidateRatesCache();
-    }
-    if (body.key === 'TIMEZONE') {
-      invalidateTimezoneCache();
     }
 
     res.json({

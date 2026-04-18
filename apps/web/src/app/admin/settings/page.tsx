@@ -343,57 +343,6 @@ export default function SettingsPage() {
           </p>
         </div>
       </div>
-
-      {/* Zona Horaria */}
-      <div className="bg-white rounded-lg shadow p-6 dark:bg-[#1e1e1e]">
-        <h2 className="text-lg font-semibold mb-4 dark:text-white/[.87]">Zona Horaria</h2>
-        <p className="text-sm text-gray-500 mb-4 dark:text-white/60">
-          La zona horaria se usa para calcular las cuotas vencidas, mora y cancelaciones anticipadas.
-        </p>
-        
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
-            Timezone
-          </label>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <select
-              value={(settings.TIMEZONE?.value) || 'America/Argentina/Buenos_Aires'}
-              onChange={(e) => {
-                // Ensure the setting object exists with value and description
-                // const currentValue = settings.TIMEZONE?.value || 'America/Argentina/Buenos_Aires';
-                setSettings({
-                  ...settings,
-                  TIMEZONE: { 
-                    value: e.target.value, 
-                    description: settings.TIMEZONE?.description || null 
-                  },
-                });
-              }}
-              className="flex-1 px-4 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14]"
-            >
-              <option value="America/Argentina/Buenos_Aires">Argentina (Buenos Aires)</option>
-              <option value="America/New_York">Estados Unidos (Nueva York)</option>
-              <option value="America/Mexico_City">México</option>
-              <option value="America/Bogota">Colombia</option>
-              <option value="America/Santiago">Chile</option>
-              <option value="America/Lima">Perú</option>
-              <option value="Europe/Madrid">España (Madrid)</option>
-              <option value="Europe/London">Reino Unido (Londres)</option>
-              <option value="UTC">UTC</option>
-            </select>
-            <button
-              onClick={() => handleSave('TIMEZONE')}
-              disabled={saving}
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 dark:bg-[#39ff14] dark:text-black dark:hover:bg-[#32e012] dark:hover:shadow-[0_0_15px_rgba(57,255,20,0.4)] transition"
-            >
-              Guardar
-            </button>
-          </div>
-          <p className="text-xs text-gray-500 mt-1 dark:text-white/60">
-            Valor actual: {settings.TIMEZONE?.value || 'America/Argentina/Buenos_Aires'}
-          </p>
-        </div>
-      </div>
     </div>
   );
 }
