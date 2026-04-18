@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { getNow } from '@/lib/datetime';
+import { getNow, calculateDaysOverdueFromDates } from '@/lib/datetime';
 import PaymentForm from '@/components/PaymentForm';
 import RefinancingModal from '@/components/RefinancingModal';
 import CancelacionAnticipadaModal from '@/components/CancelacionAnticipadaModal';
@@ -633,12 +633,8 @@ export default function LoanDetailPage() {
                 const paymentsForInstallment = loan.payments?.filter(p => p.installmentId === inst.id) || [];
                 const totalPaidForInstallment = paymentsForInstallment.reduce((sum, p) => sum + Number(p.amount), 0);
                 
-                // Calculate days overdue using timezone-aware current date
-                // Normalize both dates to midnight for consistent calculation (same as backend)
-                const nowDate = currentDate ? new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate()) : new Date();
-                const dueDateObj = new Date(inst.dueDate);
-                const dueDate = new Date(dueDateObj.getFullYear(), dueDateObj.getMonth(), dueDateObj.getDate());
-                const daysOverdue = Math.ceil((nowDate.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+                // Calculate days overdue using helper with currentDate from timezone (same as backend)
+                const daysOverdue = currentDate ? calculateDaysOverdueFromDates(currentDate, inst.dueDate) : 0;
                 const calculatedMora = daysOverdue > 0 
                   ? Math.round(Number(inst.balance) * moraRate * daysOverdue * 100) / 100 
                   : 0;

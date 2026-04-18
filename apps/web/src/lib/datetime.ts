@@ -47,7 +47,31 @@ async function fetchTimezone(): Promise<string> {
  */
 export async function getNow(): Promise<Date> {
   const timezone = await getTimezone();
-  return new Date(new Date().toLocaleString('en-US', { timeZone: timezone }));
+  const now = new Date();
+  
+  // Use Intl to get the current date in the target timezone
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+  
+  const parts = formatter.formatToParts(now);
+  const getPart = (type: string) => parts.find(p => p.type === type)?.value || '0';
+  
+  return new Date(
+    parseInt(getPart('year')),
+    parseInt(getPart('month')) - 1,
+    parseInt(getPart('day')),
+    parseInt(getPart('hour')),
+    parseInt(getPart('minute')),
+    parseInt(getPart('second'))
+  );
 }
 
 /**
@@ -79,12 +103,26 @@ export async function isOverdue(dueDate: Date | string): Promise<boolean> {
 }
 
 /**
- * Calculate days overdue
+ * Calculate days overdue - replicates MoraService.calculateDaysOverdue from backend
+ * Uses timezone-aware calculation with date normalization to midnight
  */
 export async function getDaysOverdue(dueDate: Date | string): Promise<number> {
   const now = await getNow();
+  return calculateDaysOverdueFromDates(now, dueDate);
+}
+
+/**
+ * Synchronous version: calculate days overdue from two dates
+ * Both dates should be normalized to midnight
+ */
+export function calculateDaysOverdueFromDates(now: Date, dueDate: Date | string): number {
   const dueDateObj = typeof dueDate === 'string' ? new Date(dueDate) : dueDate;
-  const diffTime = now.getTime() - dueDateObj.getTime();
+  
+  // Normalize both dates to midnight
+  const nowOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const dueDateOnly = new Date(dueDateObj.getFullYear(), dueDateObj.getMonth(), dueDateObj.getDate());
+  
+  const diffTime = nowOnly.getTime() - dueDateOnly.getTime();
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   return Math.max(0, diffDays);
 }
