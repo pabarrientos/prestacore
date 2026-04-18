@@ -94,6 +94,58 @@ export async function getTodayString(): Promise<string> {
 }
 
 /**
+ * Calculate days overdue using string comparison
+ * This completely avoids timezone conversion issues with Date objects
+ */
+export async function getDaysOverdueFromString(dueDate: Date | string): Promise<number> {
+  const todayStr = await getTodayString();
+  const dueDateStr = typeof dueDate === 'string' 
+    ? new Date(dueDate).toISOString().split('T')[0]  // Extract YYYY-MM-DD from ISO string
+    : new Date(dueDate).toISOString().split('T')[0];
+  
+  const today = new Date(todayStr);
+  const due = new Date(dueDateStr);
+  
+  const diffDays = Math.floor((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24));
+  return Math.max(0, diffDays);
+}
+
+/**
+ * Sync version: calculate days overdue using string dates
+ * Use cached today string for performance
+ */
+let cachedTodayStr: string | null = null;
+let cachedTodayTime = 0;
+
+function getTodayDateOnly(): Date {
+  const now = Date.now();
+  if (!cachedTodayStr || now - cachedTodayTime > 60000) {
+    // Get today's date in Argentina timezone
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Argentina/Buenos_Aires',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    cachedTodayStr = formatter.format(new Date());
+    cachedTodayTime = now;
+  }
+  return new Date(cachedTodayStr);
+}
+
+export function calculateDaysOverdueFromStringSync(dueDate: Date | string): number {
+  const today = getTodayDateOnly();
+  // Extract YYYY-MM-DD from the due date string
+  const dueDateStr = typeof dueDate === 'string' 
+    ? dueDate.split('T')[0]
+    : new Date(dueDate).toISOString().split('T')[0];
+  
+  const due = new Date(dueDateStr);
+  const diffDays = Math.floor((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24));
+  return Math.max(0, diffDays);
+}
+
+/**
  * Check if a date (from DB) is overdue compared to the current timezone date
  */
 export async function isOverdue(dueDate: Date | string): Promise<boolean> {
