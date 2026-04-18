@@ -24,6 +24,7 @@ export default function ProfilePage() {
 
   // Edit form state
   const [isEditing, setIsEditing] = useState(false);
+  const [email, setEmail] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
@@ -31,6 +32,7 @@ export default function ProfilePage() {
 
   // Password change state
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
@@ -40,13 +42,14 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!token) return;
 
-    fetch(`${API_URL}/api/auth/me`, {
+    fetch(`${API_URL}/api/users/me`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => res.json())
       .then((data) => {
         if (data.success) {
           setUserData(data.data);
+          setEmail(data.data.email);
           setFirstName(data.data.firstName);
           setLastName(data.data.lastName);
           setPhone(data.data.phone || '');
@@ -64,22 +67,24 @@ export default function ProfilePage() {
     setError('');
 
     try {
-      const res = await fetch(`${API_URL}/api/users/${userData.id}`, {
+      const res = await fetch(`${API_URL}/api/users/me`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          firstName,
-          lastName,
-          phone: phone || null,
+          email: email || undefined,
+          firstName: firstName || undefined,
+          lastName: lastName || undefined,
+          phone: phone || undefined,
         }),
       });
       const data = await res.json();
 
       if (data.success) {
         setUserData(data.data);
+        setEmail(data.data.email);
         setIsEditing(false);
         // Update localStorage
         const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
@@ -114,17 +119,18 @@ export default function ProfilePage() {
       return;
     }
 
-    // Verify current password first (this requires an endpoint that doesn't exist in backend)
-    // For now, we'll assume the backend will validate this
-    // We'll use a simple approach - just try to change via the API
+    // Verify current password first using the /me endpoint
     try {
-      const res = await fetch(`${API_URL}/api/users/${userData.id}/password`, {
+      const res = await fetch(`${API_URL}/api/users/me`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ newPassword }),
+        body: JSON.stringify({
+          currentPassword,
+          newPassword,
+        }),
       });
       const data = await res.json();
 
@@ -191,12 +197,21 @@ export default function ProfilePage() {
         )}
 
         <div className="grid gap-4">
-          {/* Email - readonly */}
+          {/* Email - editable in edit mode */}
           <div>
             <label className="block text-sm font-medium text-gray-500 dark:text-white/60 mb-1">
               Email
             </label>
-            <p className="dark:text-white/[.87]">{userData.email}</p>
+            {isEditing ? (
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-3 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14] min-h-[44px]"
+              />
+            ) : (
+              <p className="dark:text-white/[.87]">{userData.email}</p>
+            )}
           </div>
 
           {/* Role - readonly */}
@@ -266,6 +281,7 @@ export default function ProfilePage() {
               <button
                 onClick={() => {
                   setIsEditing(false);
+                  setEmail(userData.email);
                   setFirstName(userData.firstName);
                   setLastName(userData.lastName);
                   setPhone(userData.phone || '');
@@ -317,6 +333,19 @@ export default function ProfilePage() {
           <form onSubmit={handleChangePassword} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-500 dark:text-white/60 mb-1">
+                Contraseña Actual
+              </label>
+              <input
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                required
+                className="w-full px-3 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14] min-h-[44px]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-500 dark:text-white/60 mb-1">
                 Nueva Contraseña
               </label>
               <input
@@ -351,6 +380,7 @@ export default function ProfilePage() {
                 type="button"
                 onClick={() => {
                   setIsChangingPassword(false);
+                  setCurrentPassword('');
                   setNewPassword('');
                   setConfirmPassword('');
                   setPasswordError('');

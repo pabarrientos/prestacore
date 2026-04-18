@@ -788,8 +788,10 @@ export default function LoanDetailPage() {
 
       {/* Payment Form Modal */}
       {showPaymentForm && loan && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4">
-          <div className="max-w-lg w-full">
+        <>
+          <div className="fixed inset-0 z-50 bg-black bg-opacity-50 dark:bg-opacity-70" onClick={() => { setShowPaymentForm(false); setEditingPayment(null); }} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="max-w-lg w-full my-8 max-h-[90vh] overflow-y-auto">
             <PaymentForm
               loanId={loan.id}
               payment={editingPayment || undefined}
@@ -801,12 +803,15 @@ export default function LoanDetailPage() {
             />
           </div>
         </div>
+        </>
       )}
 
       {/* Refinancing Modal */}
       {showRefinancing && loan && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4">
-          <div className="w-full max-w-lg sm:max-w-2xl md:max-w-4xl">
+        <>
+          <div className="fixed inset-0 z-50 bg-black bg-opacity-50 dark:bg-opacity-70" onClick={() => setShowRefinancing(false)} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="w-full max-w-lg sm:max-w-2xl md:max-w-4xl my-8 max-h-[90vh] overflow-y-auto">
             <RefinancingModal
               loanId={loan.id}
               onSuccess={() => {
@@ -826,12 +831,15 @@ export default function LoanDetailPage() {
             />
           </div>
         </div>
+        </>
       )}
 
       {/* Cancelacion Anticipada Modal */}
       {showCancelacionAnticipada && loan && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4">
-          <div className="w-full max-w-lg md:max-w-2xl">
+        <>
+          <div className="fixed inset-0 z-50 bg-black bg-opacity-50 dark:bg-opacity-70" onClick={() => setShowCancelacionAnticipada(false)} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="w-full max-w-lg md:max-w-2xl my-8 max-h-[90vh] overflow-y-auto">
             <CancelacionAnticipadaModal
               loanId={loan.id}
               onSuccess={() => {
@@ -851,6 +859,7 @@ export default function LoanDetailPage() {
             />
           </div>
         </div>
+        </>
       )}
     </div>
   );

@@ -46,9 +46,6 @@ export function UserTable({
   };
 
   const handleDelete = async (user: User) => {
-    if (!confirm(`¿Está seguro de que desea ${user.isActive ? 'desactivar' : 'eliminar'} este usuario?`)) {
-      return;
-    }
     setActionLoading(user.id);
     try {
       await onDelete(user);
@@ -181,8 +178,8 @@ export function UserTable({
                       </button>
                     )}
 
-                    {/* Delete - only if not current user and is active */}
-                    {user.id !== currentUserId && user.isActive && (
+                    {/* Delete - only if not current user */}
+                    {user.id !== currentUserId && (
                       <button
                         onClick={() => handleDelete(user)}
                         disabled={actionLoading === user.id}

@@ -16,9 +16,18 @@ const createUserSchema = z.object({
   lastName: z.string().min(1),
   role: z.enum(['ADMIN', 'VENDEDOR', 'CLIENTE']),
   phone: z.string().optional(),
+  // Client-specific fields (optional - used when role is CLIENTE)
+  dni: z.string().optional(),
+  dateOfBirth: z.string().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  occupation: z.string().optional(),
+  employer: z.string().optional(),
+  monthlyIncome: z.number().optional(),
 });
 
 const updateUserSchema = z.object({
+  email: z.string().email().optional(),
   firstName: z.string().min(1).optional(),
   lastName: z.string().min(1).optional(),
   phone: z.string().optional(),
@@ -31,6 +40,164 @@ const updateRoleSchema = z.object({
 
 const updatePasswordSchema = z.object({
   newPassword: z.string().min(8, 'Password debe tener al menos 8 caracteres'),
+});
+
+// Schema for profile update (user themselves)
+const updateProfileSchema = z.object({
+  email: z.string().email().optional(),
+  firstName: z.string().min(1).optional(),
+  lastName: z.string().min(1).optional(),
+  phone: z.string().optional(),
+  currentPassword: z.string().optional(),
+  newPassword: z.string().min(8).optional(),
+});
+
+// GET /api/users/me - Get current user profile
+router.get('/me', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.userId;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        isActive: true,
+        createdAt: true,
+        client: {
+          select: {
+            id: true,
+            dni: true,
+            dateOfBirth: true,
+            address: true,
+            city: true,
+            occupation: true,
+            employer: true,
+            monthlyIncome: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        error: 'Usuario no encontrado',
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      data: user,
+    });
+  } catch (error) {
+    console.error('Get profile error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+    });
+  }
+});
+
+// PATCH /api/users/me - Update current user profile
+router.patch('/me', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.userId;
+    const body = updateProfileSchema.parse(req.body);
+
+    const currentUser = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!currentUser) {
+      res.status(404).json({
+        success: false,
+        error: 'Usuario no encontrado',
+      });
+      return;
+    }
+
+    // Check if email is being changed
+    if (body.email && body.email !== currentUser.email) {
+      // Check if new email is already taken
+      const existingUser = await prisma.user.findUnique({ where: { email: body.email } });
+      if (existingUser) {
+        res.status(400).json({
+          success: false,
+          error: 'El email ya está registrado',
+        });
+        return;
+      }
+    }
+
+    // If changing password, verify current password
+    if (body.newPassword) {
+      if (!body.currentPassword) {
+        res.status(400).json({
+          success: false,
+          error: 'Debe ingresar la contraseña actual para cambiar la contraseña',
+        });
+        return;
+      }
+
+      const isValid = await bcrypt.compare(body.currentPassword, currentUser.passwordHash);
+      if (!isValid) {
+        res.status(400).json({
+          success: false,
+          error: 'La contraseña actual es incorrecta',
+        });
+        return;
+      }
+    }
+
+    // Update user data
+    const updateData: Record<string, unknown> = {};
+    if (body.email) updateData.email = body.email;
+    if (body.firstName) updateData.firstName = body.firstName;
+    if (body.lastName) updateData.lastName = body.lastName;
+    if (body.phone !== undefined) updateData.phone = body.phone;
+    if (body.newPassword) updateData.passwordHash = await bcrypt.hash(body.newPassword, 10);
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        isActive: true,
+        createdAt: true,
+      },
+    });
+
+    res.json({
+      success: true,
+      data: user,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({
+        success: false,
+        error: 'Validation error',
+        details: error.errors,
+      });
+      return;
+    }
+
+    console.error('Update profile error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+    });
+  }
 });
 
 // GET /api/users - List all users (admin only)
@@ -112,33 +279,78 @@ router.post('/', authMiddleware, requireAdmin, async (req: AuthRequest, res: Res
       return;
     }
 
+    // For CLIENTE role, require client-specific fields
+    if (body.role === Role.CLIENTE) {
+      if (!body.dni || !body.dateOfBirth) {
+        res.status(400).json({
+          success: false,
+          error: 'DNI y fecha de nacimiento son requeridos para clientes',
+        });
+        return;
+      }
+
+      // Check if DNI already exists
+      const existingClient = await prisma.client.findUnique({
+        where: { dni: body.dni },
+      });
+
+      if (existingClient) {
+        res.status(400).json({
+          success: false,
+          error: 'El DNI ya está registrado',
+        });
+        return;
+      }
+    }
+
     // Hash password
     const passwordHash = await bcrypt.hash(body.password, 10);
 
-    const user = await prisma.user.create({
-      data: {
-        email: body.email,
-        passwordHash,
-        role: body.role as Role,
-        firstName: body.firstName,
-        lastName: body.lastName,
-        phone: body.phone,
-      },
-      select: {
-        id: true,
-        email: true,
-        role: true,
-        firstName: true,
-        lastName: true,
-        phone: true,
-        isActive: true,
-        createdAt: true,
-      },
+    // Create user and optionally client in transaction
+    const result = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          email: body.email,
+          passwordHash,
+          role: body.role as Role,
+          firstName: body.firstName,
+          lastName: body.lastName,
+          phone: body.phone,
+        },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          firstName: true,
+          lastName: true,
+          phone: true,
+          isActive: true,
+          createdAt: true,
+        },
+      });
+
+      // If role is CLIENTE, create client record
+      if (body.role === Role.CLIENTE) {
+        await tx.client.create({
+          data: {
+            userId: user.id,
+            dni: body.dni!,
+            dateOfBirth: new Date(body.dateOfBirth!),
+            address: body.address,
+            city: body.city,
+            occupation: body.occupation,
+            employer: body.employer,
+            monthlyIncome: body.monthlyIncome || 0,
+          },
+        });
+      }
+
+      return user;
     });
 
     res.status(201).json({
       success: true,
-      data: user,
+      data: result,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -243,7 +455,7 @@ router.patch('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res:
     }
 
     // Get current user to check business rules
-const currentUser = await prisma.user.findUnique({
+    const currentUser = await prisma.user.findUnique({
       where: { id },
       include: {
         assignedLoans: {
@@ -254,6 +466,7 @@ const currentUser = await prisma.user.findUnique({
             ],
           },
         },
+        client: true,
       },
     });
 
@@ -263,6 +476,18 @@ const currentUser = await prisma.user.findUnique({
         error: 'Usuario no encontrado',
       });
       return;
+    }
+
+    // Check if email is being changed and if it's already taken
+    if (body.email && body.email !== currentUser.email) {
+      const existingUser = await prisma.user.findUnique({ where: { email: body.email } });
+      if (existingUser) {
+        res.status(400).json({
+          success: false,
+          error: 'El email ya está registrado',
+        });
+        return;
+      }
     }
 
     // Business rule: If last active admin, cannot deactivate
@@ -283,7 +508,7 @@ const currentUser = await prisma.user.findUnique({
     const user = await prisma.user.update({
       where: { id },
       data: {
-        firstName: body.firstName,
+        email: body.email,
         lastName: body.lastName,
         phone: body.phone,
         isActive: body.isActive,
@@ -368,24 +593,48 @@ router.patch('/:id/role', authMiddleware, requireAdmin, async (req: AuthRequest,
       }
     }
 
-    const user = await prisma.user.update({
-      where: { id },
-      data: { role: body.role as Role },
-      select: {
-        id: true,
-        email: true,
-        role: true,
-        firstName: true,
-        lastName: true,
-        phone: true,
-        isActive: true,
-        createdAt: true,
-      },
+    // Update user and create client if changing to CLIENTE
+    const result = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.update({
+        where: { id },
+        data: { role: body.role as Role },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          firstName: true,
+          lastName: true,
+          phone: true,
+          isActive: true,
+          createdAt: true,
+        },
+      });
+
+      // If changing to CLIENTE and user doesn't have a client record, create one
+      if (body.role === Role.CLIENTE) {
+        const existingClient = await tx.client.findUnique({
+          where: { userId: id },
+        });
+
+        if (!existingClient) {
+          // Create empty client record - admin must fill in details later
+          await tx.client.create({
+            data: {
+              userId: id,
+              dni: '',
+              dateOfBirth: new Date(),
+              monthlyIncome: 0,
+            },
+          });
+        }
+      }
+
+      return user;
     });
 
     res.json({
       success: true,
-      data: user,
+      data: result,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -472,9 +721,7 @@ router.delete('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res
     const currentUser = await prisma.user.findUnique({
       where: { id },
       include: {
-        assignedLoans: {
-          where: { status: 'ACTIVE' },
-        },
+        assignedLoans: true, // Get ALL loans regardless of status
       },
     });
 
@@ -486,8 +733,14 @@ router.delete('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res
       return;
     }
 
-    // Business rule: If has active loans as vendor, only deactivate (not delete)
-    if (currentUser.role === Role.VENDEDOR && currentUser.assignedLoans.length > 0) {
+    // Check if user has a client associated (current or past)
+    const associatedClient = await prisma.client.findUnique({
+      where: { userId: id },
+      include: { loans: true },
+    });
+
+    // If user has associated client with loans, cannot delete - only deactivate
+    if (associatedClient && associatedClient.loans.length > 0) {
       await prisma.user.update({
         where: { id },
         data: { isActive: false },
@@ -495,20 +748,43 @@ router.delete('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res
 
       res.json({
         success: true,
-        data: { message: 'Usuario desactivado (tiene préstamos activos)' },
+        data: { message: 'Usuario desactivado (tiene cliente asociadas con préstamos)' },
       });
       return;
     }
 
-    // Soft delete - deactivate user
-    await prisma.user.update({
-      where: { id },
-      data: { isActive: false },
+    // Check if user was ever a vendor and has assigned loans (regardless of current role)
+    const wasVendorWithLoans = currentUser.assignedLoans && 
+      currentUser.assignedLoans.length > 0;
+
+    if (wasVendorWithLoans) {
+      // User was a vendor with assigned loans - only deactivate
+      await prisma.user.update({
+        where: { id },
+        data: { isActive: false },
+      });
+
+      res.json({
+        success: true,
+        data: { message: 'Usuario desactivado (fue vendedor con préstamos asignados)' },
+      });
+      return;
+    }
+
+    // User can be fully deleted - no client with loans and wasn't a vendor with loans
+    await prisma.$transaction(async (tx) => {
+      // Delete associated client if exists (no loans)
+      if (associatedClient) {
+        await tx.client.delete({ where: { id: associatedClient.id } });
+      }
+
+      // Delete the user completely
+      await tx.user.delete({ where: { id } });
     });
 
     res.json({
       success: true,
-      data: { message: 'Usuario eliminado correctamente' },
+      data: { message: 'Usuario y cliente eliminados correctamente' },
     });
   } catch (error) {
     console.error('Delete user error:', error);
