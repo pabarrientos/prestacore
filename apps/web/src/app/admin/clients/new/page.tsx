@@ -71,7 +71,7 @@ export default function NewClientPage() {
     }
   };
 
-  if (user?.role !== 'ADMIN') {
+  if (user?.role !== 'ADMIN' && user?.role !== 'VENDEDOR') {
     return (
       <div className="text-center py-12 dark:bg-[#121212]">
         <p className="text-red-600 dark:text-red-400">No tienes permisos para crear clientes</p>
