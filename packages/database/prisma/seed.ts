@@ -90,6 +90,7 @@ async function main() {
     { key: 'MONTHLY_BASE_RATE', value: '30', description: 'Tasa mensual base para calcular anual (ej: 30 * 12 meses)' },
     { key: 'DAILY_BASE_RATE', value: '1', description: 'Tasa diaria base para calcular anual (ej: 1 * 365 días)' },
     { key: 'TIMEZONE', value: 'America/Argentina/Buenos_Aires', description: 'Valor actual: America/Argentina/Buenos_Aires' },
+    { key: 'ROUNDING_UNIT', value: '1000', description: 'Unidad mínima de redondeo para cálculos de moneda' },
   ];
 
   for (const setting of settings) {

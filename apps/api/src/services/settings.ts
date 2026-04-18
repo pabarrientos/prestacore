@@ -68,7 +68,23 @@ export function invalidateRatesCache(): void {
   ratesCacheTime = 0;
 }
 
+/**
+ * Obtiene la unidad de redondeo configurada
+ */
+export async function getRoundingUnit(): Promise<number> {
+  try {
+    const setting = await prisma.setting.findUnique({
+      where: { key: 'ROUNDING_UNIT' },
+    });
+    return setting ? parseInt(setting.value, 10) : 1000;
+  } catch (error) {
+    console.error('Error getting rounding unit:', error);
+    return 1000;
+  }
+}
+
 export default {
   getRate,
+  getRoundingUnit,
   invalidateRatesCache,
 };

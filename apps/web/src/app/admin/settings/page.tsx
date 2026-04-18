@@ -276,6 +276,41 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      {/* Redondeo */}
+      <div className="bg-white rounded-lg shadow p-6 mb-6 dark:bg-[#1e1e1e]">
+        <h2 className="text-lg font-semibold mb-4 dark:text-white/[.87]">Redondeo</h2>
+        <p className="text-sm text-gray-500 mb-4 dark:text-white/60">
+          Unidad mínima de redondeo para cálculos de moneda en formularios de pago.
+        </p>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
+            Unidad de Redondeo ($)
+          </label>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input
+              type="number"
+              step="1"
+              min="1"
+              value={settings.ROUNDING_UNIT?.value || ''}
+              onChange={(e) => handleChange('ROUNDING_UNIT', e.target.value)}
+              className="flex-1 px-4 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14]"
+              placeholder="1000"
+            />
+            <button
+              onClick={() => handleSave('ROUNDING_UNIT')}
+              disabled={saving}
+              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 dark:bg-[#39ff14] dark:text-black dark:hover:bg-[#32e012] dark:hover:shadow-[0_0_15px_rgba(57,255,20,0.4)] transition"
+            >
+              Guardar
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 mt-1 dark:text-white/60">
+            Default: 1000
+          </p>
+        </div>
+      </div>
+
       {/* Mora */}
       <div className="bg-white rounded-lg shadow p-6 mb-6 dark:bg-[#1e1e1e]">
         <h2 className="text-lg font-semibold mb-4 dark:text-white/[.87]">Interés por Mora</h2>

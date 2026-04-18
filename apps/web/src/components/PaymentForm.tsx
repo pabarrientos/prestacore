@@ -54,6 +54,9 @@ export default function PaymentForm({ loanId, payment, preselectedInstallmentId,
   const [moraCalculatedAt, setMoraCalculatedAt] = useState<string>('');
   const [moraLoading, setMoraLoading] = useState(false);
 
+  // Rounding unit (configurable from settings)
+  const [roundingUnit, setRoundingUnit] = useState<number>(1000);
+
   const isEditing = !!payment?.id;
 
   useEffect(() => {
@@ -94,6 +97,23 @@ export default function PaymentForm({ loanId, payment, preselectedInstallmentId,
       })
       .catch((err) => console.error('Error loading installments:', err));
   }, [loanId]);
+
+  // Cargar configuración de redondeo
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    fetch(`${API_URL}/api/settings`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.data.ROUNDING_UNIT) {
+          setRoundingUnit(parseInt(data.data.ROUNDING_UNIT.value, 10) || 1000);
+        }
+      })
+      .catch((err) => console.error('Error loading rounding unit:', err));
+  }, []);
 
   // Función para recalcular mora cuando cambia la fecha de pago
   const recalculateMora = async (date: string) => {
@@ -367,7 +387,7 @@ export default function PaymentForm({ loanId, payment, preselectedInstallmentId,
           <p className="text-xs text-gray-500 mt-1 dark:text-white/60">
             {amount && !isNaN(parseFloat(amount)) && parseFloat(amount) > 0 && (() => {
               const currentAmount = parseFloat(amount);
-              const rounded = Math.ceil(currentAmount / 1000) * 1000;
+              const rounded = Math.ceil(currentAmount / roundingUnit) * roundingUnit;
               const diferencia = parseFloat((rounded - currentAmount).toFixed(2));
               return (
                 <>
