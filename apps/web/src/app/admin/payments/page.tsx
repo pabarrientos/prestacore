@@ -169,7 +169,7 @@ export default function PagosPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6 dark:text-white/[.87]">Ver Pagos</h1>
+      <h1 className="text-2xl font-bold mb-6 dark:text-white/[.87]">Control de Pagos</h1>
 
       {/* Filters */}
       <div className="mb-6 p-4 bg-white rounded-lg shadow dark:bg-[#1e1e1e]">
