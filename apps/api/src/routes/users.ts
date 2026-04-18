@@ -158,6 +158,33 @@ router.post('/', authMiddleware, requireAdmin, async (req: AuthRequest, res: Res
   }
 });
 
+// GET /api/users/vendors - Get all vendors (admin only)
+router.get('/vendors', authMiddleware, requireAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const vendors = await prisma.user.findMany({
+      where: { role: Role.VENDEDOR },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+      },
+      orderBy: { firstName: 'asc' },
+    });
+
+    res.json({
+      success: true,
+      data: vendors,
+    });
+  } catch (error) {
+    console.error('Error fetching vendors:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+    });
+  }
+});
+
 // GET /api/users/:id - Get user by ID (admin only)
 router.get('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -485,33 +512,6 @@ router.delete('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res
     });
   } catch (error) {
     console.error('Delete user error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-    });
-  }
-});
-
-// GET /api/users/vendors - Get all vendors (admin only) - already exists
-router.get('/vendors', authMiddleware, requireAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    const vendors = await prisma.user.findMany({
-      where: { role: Role.VENDEDOR },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-      },
-      orderBy: { firstName: 'asc' },
-    });
-
-    res.json({
-      success: true,
-      data: vendors,
-    });
-  } catch (error) {
-    console.error('Error fetching vendors:', error);
     res.status(500).json({
       success: false,
       error: 'Internal server error',
