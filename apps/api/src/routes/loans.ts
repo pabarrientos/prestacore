@@ -367,7 +367,14 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise
     res.json({
       success: true,
       data: {
-        data: loans,
+        data: loans.map(loan => ({
+          ...loan,
+          amount: Number(loan.amount),
+          interestRate: Number(loan.interestRate),
+          totalInterest: Number(loan.totalInterest),
+          totalPayment: Number(loan.totalPayment),
+          installmentAmount: Number(loan.installmentAmount),
+        })),
         total,
         page: pageNum,
         limit: limitNum,
@@ -930,7 +937,20 @@ router.patch('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res:
 
     res.json({
       success: true,
-      data: loanWithDetails,
+      data: loanWithDetails ? {
+        ...loanWithDetails,
+        amount: Number(loanWithDetails.amount),
+        interestRate: Number(loanWithDetails.interestRate),
+        totalInterest: Number(loanWithDetails.totalInterest),
+        totalPayment: Number(loanWithDetails.totalPayment),
+        installmentAmount: Number(loanWithDetails.installmentAmount),
+        installments: loanWithDetails.installments.map(inst => ({
+          ...inst,
+          amount: Number(inst.amount),
+          balance: Number(inst.balance),
+          paidAmount: Number(inst.paidAmount),
+        })),
+      } : null,
     });
   } catch (error) {
     console.error('Update loan error:', error);
@@ -961,7 +981,12 @@ router.get('/:id/schedule', authMiddleware, async (req: AuthRequest, res: Respon
 
     res.json({
       success: true,
-      data: installments,
+      data: installments.map(inst => ({
+        ...inst,
+        amount: Number(inst.amount),
+        balance: Number(inst.balance),
+        paidAmount: Number(inst.paidAmount),
+      })),
     });
   } catch (error) {
     console.error('Get schedule error:', error);

@@ -41,14 +41,6 @@ interface ApiResponse {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-// Helper para formatear moneda argentina
-function formatARS(value: number): string {
-  const fixed = Number(value).toFixed(2);
-  const parts = fixed.split('.');
-  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  return parts.join(',');
-}
-
 // Helper para formatear fecha YYYY-MM-DD a DD/MM/YYYY
 function formatDateDisplay(fecha: string): string {
   if (!fecha) return '-';
@@ -251,7 +243,7 @@ export default function PagosPage() {
           <div>
             <p className="text-sm text-gray-500 dark:text-white/60">Total Pagos</p>
             <p className="text-3xl font-bold text-gray-900 dark:text-white/[.87]">
-              ${formatARS(totalMonto)}
+              ${totalMonto.toLocaleString()}
             </p>
           </div>
           <div className="text-right">
@@ -338,7 +330,7 @@ export default function PagosPage() {
                       {payment.cuota ? `#${payment.cuota}` : '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium dark:text-white/[.87]">
-                      ${formatARS(payment.monto)}
+                      ${payment.monto.toLocaleString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(payment.estado)}`}>

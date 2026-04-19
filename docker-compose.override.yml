@@ -9,13 +9,15 @@ services:
     image: node:20-bullseye-slim
     container_name: prestamos-api-dev
     working_dir: /app
-    command: sh -c "npm install -g pnpm@latest && pnpm install --frozen-lockfile && cd packages/database && pnpm exec prisma generate && pnpm --filter @prestamos/api dev"
+    command: sh -c "apt-get update && apt-get install -y locales && sed -i '/es_AR.UTF-8/s/^# //' /etc/locale.gen && locale-gen es_AR.UTF-8 && npm install -g pnpm@latest && pnpm install --frozen-lockfile && cd packages/database && pnpm exec prisma generate && pnpm --filter @prestamos/api dev"
     environment:
       DATABASE_URL: postgresql://prestamos:prestamos_dev@postgres:5432/prestamos?schema=public
       PORT: 3001
       NODE_ENV: development
       JWT_SECRET: ${JWT_SECRET:-dev-secret-key}
       JWT_EXPIRES_IN: 7d
+      LANG: es_AR.UTF-8
+      LC_ALL: es_AR.UTF-8
     ports:
       - "3001:3001"
     volumes:
@@ -39,10 +41,12 @@ services:
     image: node:20-bullseye-slim
     container_name: prestamos-web-dev
     working_dir: /app
-    command: sh -c "npm install -g pnpm@latest && pnpm install --frozen-lockfile && pnpm --filter @prestamos/web dev -p 3000"
+    command: sh -c "apt-get update && apt-get install -y locales && sed -i '/es_AR.UTF-8/s/^# //' /etc/locale.gen && locale-gen es_AR.UTF-8 && npm install -g pnpm@latest && pnpm install --frozen-lockfile && pnpm --filter @prestamos/web dev -p 3000"
     environment:
       NEXT_PUBLIC_API_URL: http://pabarrientos.duckdns.org:3001
       NODE_ENV: development
+      LANG: es_AR.UTF-8
+      LC_ALL: es_AR.UTF-8
     ports:
       - "3000:3000"
     volumes:

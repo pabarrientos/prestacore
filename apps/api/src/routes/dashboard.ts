@@ -158,8 +158,8 @@ router.get('/', authMiddleware, requireVendor, async (req: AuthRequest, res: Res
         activeLoans,
         pendingApprovals,
         futureCollectionAmount: Math.round(futureCollectionAmount * 100) / 100,
-        totalDisbursed: totalDisbursed._sum.amount || 0,
-        totalCollected: totalCollected._sum.amount || 0,
+        totalDisbursed: Number(totalDisbursed._sum.amount) || 0,
+        totalCollected: Number(totalCollected._sum.amount) || 0,
         statusBreakdown,
         // Extended metrics
         totalOverdueInstallments,

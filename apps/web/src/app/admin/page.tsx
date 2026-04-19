@@ -22,14 +22,6 @@ interface DashboardMetrics {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-// Helper para formatear moneda argentina (necesario para valores de Prisma)
-function formatARS(value: number): string {
-  const fixed = Number(value).toFixed(2);
-  const parts = fixed.split('.');
-  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  return parts.join(',');
-}
-
 export default function AdminDashboard() {
   const { token } = useAuth();
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
@@ -96,7 +88,7 @@ export default function AdminDashboard() {
         <div className="bg-white rounded-lg shadow p-6 dark:bg-[#1e1e1e]">
           <p className="text-sm text-gray-500 dark:text-white/60">Total Desembolsado</p>
           <p className="text-3xl font-bold text-gray-900 dark:text-white/[.87]">
-            ${formatARS(metrics?.totalDisbursed || 0)}
+            ${(metrics?.totalDisbursed || 0).toLocaleString()}
           </p>
         </div>
 
@@ -104,7 +96,7 @@ export default function AdminDashboard() {
         <div className="bg-white rounded-lg shadow p-6 dark:bg-[#1e1e1e]">
           <p className="text-sm text-gray-500 dark:text-white/60">Total Cobrado</p>
           <p className="text-3xl font-bold text-green-600 dark:text-green-400">
-            ${formatARS(metrics?.totalCollected || 0)}
+            ${(metrics?.totalCollected || 0).toLocaleString()}
           </p>
         </div>
 

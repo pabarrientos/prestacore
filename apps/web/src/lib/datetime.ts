@@ -3,8 +3,6 @@
  * No timezone needed (all calculations use date-only)
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-
 /**
  * Get today's date as YYYY-MM-DD string (local time)
  */

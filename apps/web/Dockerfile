@@ -34,6 +34,14 @@ FROM node:20-slim AS production
 
 WORKDIR /app
 
+# Install Argentine locale (es_AR.UTF-8)
+RUN apt-get update && apt-get install -y locales && \
+    sed -i '/es_AR.UTF-8/s/^# //' /etc/locale.gen && \
+    locale-gen es_AR.UTF-8
+
+ENV LANG=es_AR.UTF-8
+ENV LC_ALL=es_AR.UTF-8
+
 # Copy everything from builder
 COPY --from=builder /app .
 
