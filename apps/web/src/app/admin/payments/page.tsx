@@ -377,7 +377,7 @@ export default function PagosPage() {
                         </div>
                         <div>
                           <p className="text-sm font-medium text-gray-500 dark:text-white/60">Monto</p>
-                          <p className="text-sm text-gray-900 dark:text-white/[.87]">${formatARS(selectedPayment.monto)}</p>
+                          <p className="text-sm text-gray-900 dark:text-white/[.87]">${(selectedPayment.monto).toLocaleString()}</p>
                         </div>
                         <div>
                           <p className="text-sm font-medium text-gray-500 dark:text-white/60">Estado</p>
