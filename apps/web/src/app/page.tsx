@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 interface Stats {
   activeLoans: number;
@@ -36,8 +37,20 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen">
+      {/* Header with Theme Toggle */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-[#121212]/80 backdrop-blur-md border-b dark:border-gray-800">
+        <div className="max-w-6xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
+          <Link href="/" className="text-xl font-bold text-primary-600 dark:text-[#39ff14]">
+            Préstamos
+          </Link>
+          <div className="flex items-center gap-4">
+            <ThemeToggle />
+          </div>
+        </div>
+      </header>
+
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-primary-600 to-primary-800 dark:from-[#1a1a1a] dark:to-[#121212] py-20 md:py-32">
+      <section className="relative bg-gradient-to-br from-primary-600 to-primary-800 dark:from-[#1a1a1a] dark:to-[#121212] py-20 md:py-32 pt-24">
         {/* Background pattern */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTM2IDM2djZoLTN2LTJoNnptMjItMjJ2MmgtMnYtNGgydjJ6bS0yOCAyOHYyaC0ydi0yaDJ2MnptMjItMjJ2MmgtMnYtNGgydjJ6bS0yOCAyOHYyaC0ydi0yaDJ2MnptMjItMjJ2MmgtMnYtNGgydjJ6IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==')] bg-repeat"></div>
