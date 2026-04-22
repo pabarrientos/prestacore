@@ -11,6 +11,7 @@ interface Loan {
   termMonths: number;
   frequency: 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY' | 'DAILY';
   status: string;
+  amortizationSystem: string;
   purpose: string | null;
   notes: string | null;
   startedAt: string | null;
@@ -49,6 +50,12 @@ const frequencyLabels: Record<string, { plural: string; singular: string }> = {
   DAILY: { plural: 'diarios', singular: 'diario' },
 };
 
+const SYSTEM_OPTIONS = [
+  { value: 'FRENCH', label: 'Sistema Francés', description: 'Cuota fija' },
+  { value: 'GERMAN', label: 'Sistema Alemán', description: 'Capital constante' },
+  { value: 'FLAT_RATE', label: 'Sistema de Tasa Plana', description: 'Interés fijo' },
+] as const;
+
 export default function EditLoanPage() {
   const params = useParams();
   const router = useRouter();
@@ -65,6 +72,7 @@ export default function EditLoanPage() {
     term: '',
     frequency: 'MONTHLY',
     customRate: '',
+    amortizationSystem: 'FRENCH' as typeof SYSTEM_OPTIONS[number]['value'],
     purpose: '',
     notes: '',
     startDate: '',
@@ -106,6 +114,7 @@ export default function EditLoanPage() {
               term: String(l.termMonths),
               frequency: l.frequency,
               customRate: periodicRate.toFixed(4),
+              amortizationSystem: (l.amortizationSystem as typeof SYSTEM_OPTIONS[number]['value']) || 'FRENCH',
               purpose: l.purpose || '',
               notes: l.notes || '',
               startDate,
@@ -151,15 +160,11 @@ export default function EditLoanPage() {
     setSimulation(null);
   };
 
-  const simulateLoan = () => {
+  const simulateLoan = async () => {
     const amount = parseFloat(formData.amount);
     const term = parseInt(formData.term);
     const frequency = formData.frequency;
     const customRate = parseFloat(formData.customRate);
-    
-    // Parse date without timezone issues
-    const [year, month, day] = formData.startDate.split('-').map(Number);
-    const startDate = new Date(year, month - 1, day);
 
     if (isNaN(amount) || amount <= 0) {
       setError('Ingrese un monto válido');
@@ -173,86 +178,62 @@ export default function EditLoanPage() {
       setError('Ingrese una tasa válida');
       return;
     }
-    if (isNaN(startDate.getTime())) {
-      setError('Ingrese una fecha de inicio válida');
-      return;
-    }
 
     setSimulating(true);
+    setError('');
 
-    let periodsPerYear: number;
-    switch (frequency) {
-      case 'WEEKLY': periodsPerYear = 52; break;
-      case 'BIWEEKLY': periodsPerYear = 24; break;
-      case 'DAILY': periodsPerYear = 365; break;
-      default: periodsPerYear = 12;
-    }
-
-    const annualRate = customRate * periodsPerYear / 100;
-    const periodicRate = annualRate / periodsPerYear;
-    const totalPeriods = term;
-
-    let installmentAmount: number;
-    if (periodicRate === 0) {
-      installmentAmount = amount / totalPeriods;
-    } else {
-      const factor = Math.pow(1 + periodicRate, totalPeriods);
-      installmentAmount = amount * (periodicRate * factor) / (factor - 1);
-    }
-    installmentAmount = Math.round(installmentAmount * 100) / 100;
-
-    // Calculate schedule and totals correctly
-    const schedule: ScheduleItem[] = [];
-    let balance = amount;
-    let totalPaymentCalculated = 0;
-
-    for (let i = 1; i <= totalPeriods; i++) {
-      const interest = Math.round(balance * periodicRate * 100) / 100;
-      let principal = installmentAmount - interest;
-      
-      if (i === totalPeriods) {
-        principal = balance;
-      }
-      
-      principal = Math.round(principal * 100) / 100;
-      balance = Math.round((balance - principal) * 100) / 100;
-      if (balance < 0) balance = 0;
-
-      const paymentAmount = principal + interest;
-      totalPaymentCalculated += paymentAmount;
-
-      // Calculate date correctly
-      const paymentDate = new Date(startDate);
-      if (frequency === 'WEEKLY') {
-        paymentDate.setDate(startDate.getDate() + i * 7);
-      } else if (frequency === 'BIWEEKLY') {
-        paymentDate.setDate(startDate.getDate() + i * 14);
-      } else if (frequency === 'DAILY') {
-        paymentDate.setDate(startDate.getDate() + i);
-      } else {
-        paymentDate.setMonth(startDate.getMonth() + i);
+    try {
+      let periodsPerYear: number;
+      switch (frequency) {
+        case 'WEEKLY': periodsPerYear = 52; break;
+        case 'BIWEEKLY': periodsPerYear = 24; break;
+        case 'DAILY': periodsPerYear = 365; break;
+        default: periodsPerYear = 12;
       }
 
-      schedule.push({
-        number: i,
-        date: `${String(paymentDate.getDate()).padStart(2, '0')}/${String(paymentDate.getMonth() + 1).padStart(2, '0')}/${paymentDate.getFullYear()}`,
-        payment: Math.round(paymentAmount * 100) / 100,
-        principal,
-        interest,
-        balance,
+      const annualRate = customRate * periodsPerYear;
+
+      const response = await fetch(`${API_URL}/api/loans/simulate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount,
+          interestRate: annualRate,
+          termMonths: term,
+          frequency,
+          amortizationSystem: formData.amortizationSystem,
+          startDate: formData.startDate || undefined,
+        }),
       });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        setError(data.error || 'Error al simular');
+        setSimulating(false);
+        return;
+      }
+
+      // Map backend response to frontend format
+      setSimulation({
+        installmentAmount: data.data.installmentAmount,
+        totalInterest: data.data.totalInterest,
+        totalPayment: data.data.totalPayment,
+        annualRate: data.data.annualRate,
+        schedule: data.data.schedule.map((item: any) => ({
+          number: item.number,
+          date: new Date(item.dueDate).toLocaleDateString('es-ES'),
+          payment: item.amount,
+          principal: item.principal,
+          interest: item.interest,
+          balance: item.balance,
+        })),
+      });
+    } catch (err) {
+      setError('Error de conexión');
+    } finally {
+      setSimulating(false);
     }
-
-    const totalInterest = totalPaymentCalculated - amount;
-
-    setSimulation({
-      installmentAmount,
-      totalInterest: Math.round(totalInterest * 100) / 100,
-      totalPayment: Math.round(totalPaymentCalculated * 100) / 100,
-      annualRate: Math.round(annualRate * 10000) / 10000,
-      schedule,
-    });
-    setSimulating(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -300,6 +281,7 @@ export default function EditLoanPage() {
           interestRate: annualRate,
           termMonths: term,
           frequency: formData.frequency,
+          amortizationSystem: formData.amortizationSystem,
           purpose: formData.purpose || null,
           notes: formData.notes || null,
           startDate: formData.startDate,
@@ -490,6 +472,27 @@ export default function EditLoanPage() {
               className="w-full px-4 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white/[.87]"
               rows={3}
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-[#d3d3d3] mb-1">
+              Sistema de Amortización
+            </label>
+            <select
+              name="amortizationSystem"
+              value={formData.amortizationSystem}
+              onChange={handleChange}
+              className="w-full px-4 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white/[.87]"
+            >
+              {SYSTEM_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1 dark:text-white/38">
+              {SYSTEM_OPTIONS.find(s => s.value === formData.amortizationSystem)?.description}
+            </p>
           </div>
 
           <div className="flex gap-4">

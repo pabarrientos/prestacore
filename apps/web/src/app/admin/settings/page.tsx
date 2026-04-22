@@ -343,6 +343,41 @@ export default function SettingsPage() {
           </p>
         </div>
       </div>
+
+      {/* Sistema de Amortización */}
+      <div className="bg-white rounded-lg shadow p-6 mb-6 dark:bg-[#1e1e1e]">
+        <h2 className="text-lg font-semibold mb-4 dark:text-white/[.87]">Sistema de Amortización</h2>
+        <p className="text-sm text-gray-500 mb-4 dark:text-white/60">
+          Sistema por defecto para nuevos préstamos. Puede cambiarse individualmente en el simulador, creación de préstamos o refinanciación.
+        </p>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
+            Sistema Default
+          </label>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <select
+              value={settings.defaultAmortizationSystem?.value || 'FRENCH'}
+              onChange={(e) => handleChange('defaultAmortizationSystem', e.target.value)}
+              className="flex-1 px-4 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14]"
+            >
+              <option value="FRENCH">Sistema Francés — Cuota fija, interés sobre saldo</option>
+              <option value="GERMAN">Sistema Alemán — Capital constante, interés decreciente</option>
+              <option value="FLAT_RATE">Sistema de Tasa Plana — Interés sobre capital original</option>
+            </select>
+            <button
+              onClick={() => handleSave('defaultAmortizationSystem')}
+              disabled={saving}
+              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 dark:bg-[#39ff14] dark:text-black dark:hover:bg-[#32e012] dark:hover:shadow-[0_0_15px_rgba(57,255,20,0.4)] transition"
+            >
+              Guardar
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 mt-1 dark:text-white/60">
+            {settings.defaultAmortizationSystem?.description}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

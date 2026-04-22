@@ -60,6 +60,12 @@ enum CollectionActionType {
   PROMISE     // Promesa de pago
 }
 
+enum AmortizationSystemType {
+  FRENCH    // Sistema Francés: cuota fija, interés sobre saldo decreciente
+  GERMAN    // Sistema Alemán: capital constante, interés sobre saldo restante
+  FLAT_RATE // Sistema Tasa Plana: interés sobre capital original
+}
+
 enum PaymentMethod {
   EFECTIVO
   TRANSFERENCIA
@@ -124,6 +130,7 @@ model Loan {
   termMonths        Int           // Número de pagos (semanas/quincenas/meses según frecuencia)
   frequency         PaymentFrequency @default(MONTHLY)
   status            LoanStatus    @default(PENDING)
+  amortizationSystem AmortizationSystemType @default(FRENCH)
   purpose           String?
   notes             String?
   approvedAt        DateTime?

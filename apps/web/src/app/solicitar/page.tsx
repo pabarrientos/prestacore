@@ -14,6 +14,7 @@ interface LoanRequest {
   totalInterest: number;
   totalPayment: number;
   annualRate: number;
+  amortizationSystem: string;
   schedule: Array<{
     number: number;
     date: string;
@@ -32,6 +33,12 @@ const frequencyLabels: Record<string, { label: string }> = {
   BIWEEKLY: { label: 'quincenal' },
   MONTHLY: { label: 'mensual' },
   DAILY: { label: 'diario' },
+};
+
+const SYSTEM_LABELS: Record<string, string> = {
+  FRENCH: 'Sistema Francés',
+  GERMAN: 'Sistema Alemán',
+  FLAT_RATE: 'Sistema de Tasa Plana',
 };
 
 export default function SolicitarPage() {
@@ -102,6 +109,7 @@ export default function SolicitarPage() {
         interestRate: loanRequest.annualRate,
         termMonths: loanRequest.term,
         frequency: loanRequest.frequency,
+        amortizationSystem: loanRequest.amortizationSystem,
         schedule: loanRequest.schedule.map(item => ({
           number: item.number,
           dueDate: parseSpanishDate(item.date),
@@ -266,6 +274,12 @@ export default function SolicitarPage() {
               <p className="text-sm text-gray-500 dark:text-white/60">Cuota</p>
               <p className="text-xl font-bold text-primary-600 dark:text-[#39ff14]">
                 ${loanRequest.installmentAmount.toLocaleString()}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500 dark:text-white/60">Sistema</p>
+              <p className="text-xl font-bold dark:text-white/[.87]">
+                {SYSTEM_LABELS[loanRequest.amortizationSystem] || loanRequest.amortizationSystem}
               </p>
             </div>
           </div>

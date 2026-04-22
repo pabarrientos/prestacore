@@ -1,6 +1,72 @@
 import { PrismaClient } from '@prisma/client';
+import { AmortizationSystemType } from './amortization';
 
 const prisma = new PrismaClient();
+
+// Re-export the enum from local amortization service
+export { AmortizationSystemType } from './amortization';
+
+const VALID_SYSTEMS = new Set(['FRENCH', 'GERMAN', 'FLAT_RATE']);
+const DEFAULT_SYSTEM: AmortizationSystemType = AmortizationSystemType.FRENCH;
+const SYSTEM_KEY = 'defaultAmortizationSystem';
+
+/**
+ * Get the default amortization system from settings.
+ * Falls back to FRENCH if not configured.
+ */
+export async function getDefaultAmortizationSystem(): Promise<AmortizationSystemType> {
+  try {
+    const setting = await prisma.setting.findUnique({
+      where: { key: SYSTEM_KEY },
+    });
+    if (setting && VALID_SYSTEMS.has(setting.value)) {
+      return setting.value as AmortizationSystemType;
+    }
+    return DEFAULT_SYSTEM;
+  } catch (error) {
+    console.error('Error getting default amortization system:', error);
+    return DEFAULT_SYSTEM;
+  }
+}
+
+/**
+ * Set the default amortization system in settings.
+ * Throws if value is not a valid enum value.
+ */
+export async function setDefaultAmortizationSystem(system: AmortizationSystemType): Promise<void> {
+  if (!VALID_SYSTEMS.has(system)) {
+    throw new Error(`Invalid amortization system: ${system}. Must be one of: FRENCH, GERMAN, FLAT_RATE`);
+  }
+  await prisma.setting.upsert({
+    where: { key: SYSTEM_KEY },
+    update: { value: system },
+    create: { key: SYSTEM_KEY, value: system, description: 'Sistema de amortización por defecto para nuevos préstamos' },
+  });
+}
+
+/**
+ * Seed default amortization system if not present.
+ * Called on app startup.
+ */
+export async function seedDefaultAmortizationSystem(): Promise<void> {
+  const existing = await prisma.setting.findUnique({
+    where: { key: SYSTEM_KEY },
+  });
+  if (!existing) {
+    await prisma.setting.create({
+      data: {
+        key: SYSTEM_KEY,
+        value: DEFAULT_SYSTEM,
+        description: 'Sistema de amortización por defecto para nuevos préstamos',
+      },
+    });
+    console.log(`[Settings] Seeded default amortization system: ${DEFAULT_SYSTEM}`);
+  }
+}
+
+// ============================================
+// Rate Settings
+// ============================================
 
 // Cache para no consultar la DB en cada llamada
 let ratesCache: Record<string, number> | null = null;
@@ -87,4 +153,7 @@ export default {
   getRate,
   getRoundingUnit,
   invalidateRatesCache,
+  getDefaultAmortizationSystem,
+  setDefaultAmortizationSystem,
+  seedDefaultAmortizationSystem,
 };

@@ -7,16 +7,22 @@ import { AmortizationService } from '../services/amortization';
 import { RefinancingService } from '../services/refinancing';
 import { CancelacionAnticipadaService } from '../services/cancelacion-anticipada';
 import { getNow } from '../services/datetime';
+import { getDefaultAmortizationSystem } from '../services/settings';
+import { AmortizationSystemType } from '../services/amortization';
 
 const router: ReturnType<typeof Router> = Router();
 const prisma = new PrismaClient();
 
 // Validation schemas
+const amortizationSystemSchema = z.enum(['FRENCH', 'GERMAN', 'FLAT_RATE']).optional();
+
 const simulationSchema = z.object({
-  amount: z.number().positive().min(1000).max(100000),
-  interestRate: z.number().positive().min(1).max(50),
+  amount: z.number().positive().min(100), // No max limit - can be configured in settings
+  interestRate: z.number().positive().min(0.1).max(2000), // Allow up to 2000% annual rate for high inflation scenarios
   termMonths: z.number().int().positive().min(1).max(60),
   frequency: z.enum(['WEEKLY', 'BIWEEKLY', 'MONTHLY', 'DAILY']).default('MONTHLY'),
+  amortizationSystem: amortizationSystemSchema,
+  startDate: z.string().optional(),
 });
 
 const createLoanSchema = z.object({
@@ -28,6 +34,7 @@ const createLoanSchema = z.object({
   purpose: z.string().optional(),
   notes: z.string().optional(),
   startDate: z.string().optional(),
+  amortizationSystem: amortizationSystemSchema,
   schedule: z.array(z.object({
     number: z.number(),
     dueDate: z.string(),
@@ -125,6 +132,7 @@ router.post('/request', authMiddleware, requireClientOnly, async (req: AuthReque
       purpose: z.string().optional(),
       notes: z.string().optional(),
       startDate: z.string().optional(),
+      amortizationSystem: amortizationSystemSchema,
       schedule: z.array(z.object({
         number: z.number(),
         dueDate: z.string(),
@@ -167,6 +175,8 @@ router.post('/request', authMiddleware, requireClientOnly, async (req: AuthReque
     }
 
     const startDate = body.startDate ? new Date(body.startDate) : await getNow();
+    const systemFromBody = body.amortizationSystem as AmortizationSystemType | undefined;
+    const amortizationSystem = systemFromBody ?? (await getDefaultAmortizationSystem());
     
     let installmentsData: { number: number; dueDate: string; amount: number; principal: number; interest: number; balance: number; }[] = body.schedule || [];
     let installmentAmount = 0;
@@ -185,6 +195,7 @@ router.post('/request', authMiddleware, requireClientOnly, async (req: AuthReque
         termMonths: body.termMonths,
         frequency: body.frequency,
         startDate,
+        amortizationSystem,
       });
       installmentAmount = amortization.installmentAmount;
       totalPayment = amortization.totalPayment;
@@ -216,6 +227,7 @@ router.post('/request', authMiddleware, requireClientOnly, async (req: AuthReque
           totalInterest,
           totalPayment,
           installmentAmount,
+          amortizationSystem,
         },
       });
 
@@ -260,16 +272,22 @@ router.post('/request', authMiddleware, requireClientOnly, async (req: AuthReque
   }
 });
 
-// GET /api/loans/simulate - Public endpoint for loan simulation
+// POST /api/loans/simulate - Public endpoint for loan simulation
 router.post('/simulate', async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const body = simulationSchema.parse(req.body);
+
+    // Use default from settings if not provided
+    const systemFromBody = body.amortizationSystem as AmortizationSystemType | undefined;
+    const system = systemFromBody ?? (await getDefaultAmortizationSystem());
 
     const result = AmortizationService.calculate({
       amount: body.amount,
       interestRate: body.interestRate / 100, // Convert percentage to decimal
       termMonths: body.termMonths,
       frequency: body.frequency,
+      amortizationSystem: system,
+      startDate: body.startDate ? new Date(body.startDate) : undefined,
     });
 
     // Convert dates to ISO strings for JSON serialization
@@ -511,6 +529,8 @@ router.post('/', authMiddleware, requireVendor, async (req: AuthRequest, res: Re
 
     // Calculate amortization with start date - use schedule from frontend if provided
     const startDate = body.startDate ? new Date(body.startDate) : await getNow();
+    const systemFromBody = body.amortizationSystem as AmortizationSystemType | undefined;
+    const amortizationSystem = systemFromBody ?? (await getDefaultAmortizationSystem());
     
     let installmentsData: { number: number; dueDate: string; amount: number; principal: number; interest: number; balance: number; }[] = body.schedule || [];
     let installmentAmount = 0;
@@ -530,6 +550,7 @@ router.post('/', authMiddleware, requireVendor, async (req: AuthRequest, res: Re
         termMonths: body.termMonths,
         frequency: body.frequency,
         startDate,
+        amortizationSystem,
       });
       installmentsData = amortization.schedule.map(item => ({
         number: item.number,
@@ -562,6 +583,7 @@ router.post('/', authMiddleware, requireVendor, async (req: AuthRequest, res: Re
           totalInterest,
           totalPayment,
           installmentAmount,
+          amortizationSystem,
         },
       });
 
@@ -735,7 +757,7 @@ router.delete('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res
 router.patch('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { amount, interestRate, termMonths, frequency, purpose, notes, startDate, schedule, status, assignedVendorId } = req.body;
+    const { amount, interestRate, termMonths, frequency, purpose, notes, startDate, schedule, status, assignedVendorId, amortizationSystem } = req.body;
 
     const loan = await prisma.loan.findUnique({ where: { id } });
 
@@ -869,12 +891,14 @@ router.patch('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res:
       totalInterest = totalPayment - (amount ? Number(amount) : Number(loan.amount));
     } else {
       // Recalculate amortization
+      const system = amortizationSystem || loan.amortizationSystem;
       const amortization = AmortizationService.calculate({
         amount: amount || Number(loan.amount),
         interestRate: (interestRate || Number(loan.interestRate)) / 100,
         termMonths: termMonths || loan.termMonths,
         frequency: frequency || loan.frequency,
         startDate: parsedStartDate,
+        amortizationSystem: system,
       });
       installmentsData = amortization.schedule.map(item => ({
         number: item.number,
@@ -904,6 +928,7 @@ router.patch('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res:
           totalPayment,
           installmentAmount,
           startedAt: parsedStartDate,
+          amortizationSystem: amortizationSystem || undefined,
         },
       });
 
@@ -1009,13 +1034,14 @@ const executeRefinancingSchema = z.object({
   fechaInicio: z.string(),
   pagoInicial: z.number().min(0).optional(),
   interesesVencidosManual: z.number().min(0).optional(),
+  amortizationSystem: amortizationSystemSchema,
 });
 
 // GET /api/loans/:id/preview-refinancing - Preview refinancing (PUBLIC - no auth)
 router.get('/:id/preview-refinancing', async (req, res): Promise<void> => {
   try {
     const { id } = req.params;
-    const { nuevaTasaInteres, cantidadCuotas, nuevaFrecuencia, pagoInicial, interesesVencidosManual, fechaInicio } = req.query;
+    const { nuevaTasaInteres, cantidadCuotas, nuevaFrecuencia, pagoInicial, interesesVencidosManual, fechaInicio, amortizationSystem } = req.query;
 
     // Calculate debt breakdown
     const calculation = await RefinancingService.calculateNewCapital(id);
@@ -1056,6 +1082,10 @@ router.get('/:id/preview-refinancing', async (req, res): Promise<void> => {
     // Parse start date (fechaInicio) or use current date in timezone
     const startDate = fechaInicio ? new Date(fechaInicio as string) : await getNow();
 
+    // Get default amortization system from settings
+    const defaultSystem = await getDefaultAmortizationSystem();
+    const system = (amortizationSystem as string) as any || defaultSystem;
+
     const response: any = {
       success: true,
       data: {
@@ -1082,6 +1112,7 @@ router.get('/:id/preview-refinancing', async (req, res): Promise<void> => {
         termMonths: term,
         frequency: frequency,
         startDate: startDate,
+        amortizationSystem: system,
       });
 
       response.data.previewAmortization = {
@@ -1115,7 +1146,7 @@ router.post('/:id/execute-refinancing', authMiddleware, requireAdmin, async (req
     const { id: loanId } = req.params;
     const body = executeRefinancingSchema.parse(req.body);
 
-    const { nuevaTasaInteres, cantidadCuotas, nuevaFrecuencia, fechaInicio, pagoInicial, interesesVencidosManual } = body;
+    const { nuevaTasaInteres, cantidadCuotas, nuevaFrecuencia, fechaInicio, pagoInicial, interesesVencidosManual, amortizationSystem } = body;
 
     // Parse the first due date
     const startDate = fechaInicio ? new Date(fechaInicio) : await getNow();
@@ -1140,6 +1171,7 @@ router.post('/:id/execute-refinancing', authMiddleware, requireAdmin, async (req
       notes: pagoInicial ? `Pago inicial: ${pagoInicial}` : undefined,
       capitalExtra: pagoInicial || undefined,
       interesesVencidosManual,
+      amortizationSystem: amortizationSystem,
     });
 
     if (!result.success) {

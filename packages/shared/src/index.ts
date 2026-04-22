@@ -116,6 +116,12 @@ export enum CollectionActionType {
   PROMISE = 'PROMISE',
 }
 
+export enum AmortizationSystemType {
+  FRENCH = 'FRENCH',
+  GERMAN = 'GERMAN',
+  FLAT_RATE = 'FLAT_RATE',
+}
+
 export interface CollectionAction {
   id: string;
   loanId: string;

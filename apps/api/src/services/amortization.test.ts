@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { AmortizationService } from './amortization';
+import { AmortizationService, AmortizationSystemType } from './amortization';
 import { PaymentFrequency } from '@prisma/client';
 
 describe('AmortizationService', () => {
@@ -248,6 +248,196 @@ describe('AmortizationService', () => {
       );
 
       expect(remaining).toBe(10000);
+    });
+  });
+
+  // ========== GERMAN SYSTEM TESTS ==========
+  describe('German amortization system', () => {
+    it('should calculate German system correctly', () => {
+      const result = AmortizationService.calculate({
+        amount: 100000,
+        interestRate: 0.12, // 12% annual = 1% monthly
+        termMonths: 12,
+        frequency: PaymentFrequency.MONTHLY,
+        startDate: new Date('2024-01-01'),
+        amortizationSystem: AmortizationSystemType.GERMAN,
+      });
+
+      // First payment: principal 8333.33 + interest 1000 = 9333.33
+      expect(result.amortizationSystem).toBe(AmortizationSystemType.GERMAN);
+      expect(result.schedule).toHaveLength(12);
+      
+      // First payment - principal payment should be constant
+      const firstPrincipal = result.schedule[0].principal;
+      expect(firstPrincipal).toBeCloseTo(8333.33, 0);
+      
+      // Last payment has smaller interest
+      const lastInterest = result.schedule[result.schedule.length - 1].interest;
+      expect(lastInterest).toBeLessThan(result.schedule[0].interest);
+    });
+
+    it('should have decreasing interest in German system', () => {
+      const result = AmortizationService.calculate({
+        amount: 100000,
+        interestRate: 0.12,
+        termMonths: 12,
+        frequency: PaymentFrequency.MONTHLY,
+        amortizationSystem: AmortizationSystemType.GERMAN,
+      });
+
+      // Interest should decrease over time
+      for (let i = 1; i < result.schedule.length; i++) {
+        expect(result.schedule[i].interest).toBeLessThan(result.schedule[i - 1].interest);
+      }
+    });
+
+    it('should have constant principal payment in German system', () => {
+      const result = AmortizationService.calculate({
+        amount: 12000,
+        interestRate: 0.12,
+        termMonths: 12,
+        frequency: PaymentFrequency.MONTHLY,
+        amortizationSystem: AmortizationSystemType.GERMAN,
+      });
+
+      // Principal payment should be constant (1000 per period)
+      const principalPayment = 12000 / 12;
+      for (const row of result.schedule) {
+        expect(row.principal).toBeCloseTo(principalPayment, 0);
+      }
+    });
+
+    it('should calculate German with zero rate', () => {
+      const result = AmortizationService.calculate({
+        amount: 12000,
+        interestRate: 0,
+        termMonths: 12,
+        frequency: PaymentFrequency.MONTHLY,
+        amortizationSystem: AmortizationSystemType.GERMAN,
+      });
+
+      // With zero rate, all payments = principal only
+      expect(result.totalInterest).toBe(0);
+      expect(result.installmentAmount).toBe(1000); // 12000 / 12
+    });
+  });
+
+  // ========== FLAT RATE SYSTEM TESTS ==========
+  describe('Flat Rate amortization system', () => {
+    it('should calculate Flat Rate system correctly', () => {
+      const result = AmortizationService.calculate({
+        amount: 100000,
+        interestRate: 0.12, // 12% annual = 1% monthly
+        termMonths: 12,
+        frequency: PaymentFrequency.MONTHLY,
+        startDate: new Date('2024-01-01'),
+        amortizationSystem: AmortizationSystemType.FLAT_RATE,
+      });
+
+      // Interest = principal * rate every period (constant)
+      expect(result.amortizationSystem).toBe(AmortizationSystemType.FLAT_RATE);
+      expect(result.schedule).toHaveLength(12);
+      
+      // Each period has same interest (1000 = 100000 * 0.01)
+      const firstInterest = result.schedule[0].interest;
+      expect(firstInterest).toBeCloseTo(1000, 0);
+    });
+
+    it('should have constant interest in Flat Rate system', () => {
+      const result = AmortizationService.calculate({
+        amount: 100000,
+        interestRate: 0.12,
+        termMonths: 12,
+        frequency: PaymentFrequency.MONTHLY,
+        amortizationSystem: AmortizationSystemType.FLAT_RATE,
+      });
+
+      // Interest should be constant throughout
+      for (const row of result.schedule) {
+        expect(row.interest).toBeCloseTo(result.schedule[0].interest, 0);
+      }
+    });
+
+    it('should have constant total payment in Flat Rate system', () => {
+      const result = AmortizationService.calculate({
+        amount: 12000,
+        interestRate: 0.12,
+        termMonths: 12,
+        frequency: PaymentFrequency.MONTHLY,
+        amortizationSystem: AmortizationSystemType.FLAT_RATE,
+      });
+
+      // Total payment should be constant
+      const firstPayment = result.schedule[0].amount;
+      for (const row of result.schedule) {
+        expect(row.amount).toBeCloseTo(firstPayment, 0);
+      }
+    });
+
+    it('should calculate Flat Rate with zero rate', () => {
+      const result = AmortizationService.calculate({
+        amount: 12000,
+        interestRate: 0,
+        termMonths: 12,
+        frequency: PaymentFrequency.MONTHLY,
+        amortizationSystem: AmortizationSystemType.FLAT_RATE,
+      });
+
+      expect(result.totalInterest).toBe(0);
+      expect(result.installmentAmount).toBe(1000); // 12000 / 12
+    });
+  });
+
+  // ========== EDGE CASES ==========
+  describe('edge cases', () => {
+    it('should handle single period loan with FRENCH', () => {
+      const result = AmortizationService.calculate({
+        amount: 10000,
+        interestRate: 0.12,
+        termMonths: 1,
+        frequency: PaymentFrequency.MONTHLY,
+        amortizationSystem: AmortizationSystemType.FRENCH,
+      });
+
+      expect(result.schedule).toHaveLength(1);
+      expect(result.schedule[0].principal).toBeCloseTo(10000, 0);
+    });
+
+    it('should handle single period loan with GERMAN', () => {
+      const result = AmortizationService.calculate({
+        amount: 10000,
+        interestRate: 0.12,
+        termMonths: 1,
+        frequency: PaymentFrequency.MONTHLY,
+        amortizationSystem: AmortizationSystemType.GERMAN,
+      });
+
+      expect(result.schedule).toHaveLength(1);
+      expect(result.schedule[0].principal).toBeCloseTo(10000, 0);
+    });
+
+    it('should handle single period loan with FLAT_RATE', () => {
+      const result = AmortizationService.calculate({
+        amount: 10000,
+        interestRate: 0.12,
+        termMonths: 1,
+        frequency: PaymentFrequency.MONTHLY,
+        amortizationSystem: AmortizationSystemType.FLAT_RATE,
+      });
+
+      expect(result.schedule).toHaveLength(1);
+      expect(result.schedule[0].principal).toBeCloseTo(10000, 0);
+    });
+
+    it('should default to FRENCH when no system specified', () => {
+      const result = AmortizationService.calculate({
+        amount: 10000,
+        interestRate: 0.12,
+        termMonths: 12,
+        frequency: PaymentFrequency.MONTHLY,
+      });
+
+      expect(result.amortizationSystem).toBe(AmortizationSystemType.FRENCH);
     });
   });
 });

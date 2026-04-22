@@ -6,6 +6,20 @@ import { useRouter } from 'next/navigation';
 
 const LOAN_STORAGE_KEY = 'pending_loan_request';
 
+// Amortization system options with Spanish labels
+const SYSTEM_OPTIONS = [
+  { value: 'FRENCH', label: 'Sistema Francés', description: 'Cuota fija, interés sobre saldo' },
+  { value: 'GERMAN', label: 'Sistema Alemán', description: 'Capital constante, interés decreciente' },
+  { value: 'FLAT_RATE', label: 'Sistema de Tasa Plana', description: 'Interés sobre capital original' },
+] as const;
+
+type AmortizationSystem = typeof SYSTEM_OPTIONS[number]['value'];
+
+interface DefaultSystemConfig {
+  defaultAmortizationSystem: AmortizationSystem;
+  label: string;
+}
+
 interface LoanRequest {
   amount: number;
   term: number;
@@ -14,6 +28,7 @@ interface LoanRequest {
   totalInterest: number;
   totalPayment: number;
   annualRate: number;
+  amortizationSystem: AmortizationSystem;
   schedule: ScheduleItem[];
 }
 
@@ -41,6 +56,7 @@ interface SimulationResult {
   totalInterest: number;
   totalPayment: number;
   annualRate: number;
+  amortizationSystem: AmortizationSystem;
   schedule: ScheduleItem[];
 }
 
@@ -62,8 +78,10 @@ export default function SimulatorPage() {
     amount: '',
     term: '12',
     frequency: 'MONTHLY',
+    amortizationSystem: 'FRENCH' as AmortizationSystem,
   });
   const [rates, setRates] = useState<RateConfig | null>(null);
+  const [defaultSystem, setDefaultSystem] = useState<AmortizationSystem>('FRENCH');
   const [result, setResult] = useState<SimulationResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -71,35 +89,7 @@ export default function SimulatorPage() {
   const handleRequestLoan = () => {
     if (!result) return;
 
-    // Calculate periods per year and annual rate like admin does
-    let periodsPerYear = 12;
-    let baseRate = 0;
-    if (rates) {
-      switch (formData.frequency) {
-        case 'WEEKLY':
-          periodsPerYear = 52;
-          baseRate = rates.WEEKLY_BASE_RATE;
-          break;
-        case 'BIWEEKLY':
-          periodsPerYear = 24;
-          baseRate = rates.BIWEEKLY_BASE_RATE;
-          break;
-        case 'DAILY':
-          periodsPerYear = 365;
-          baseRate = rates.DAILY_BASE_RATE;
-          break;
-        case 'MONTHLY':
-        default:
-          periodsPerYear = 12;
-          baseRate = rates.MONTHLY_BASE_RATE;
-      }
-    }
-
-    // Calculate annual rate (same as admin does): baseRate * periodsPerYear
-    // Example: 3% mensal * 12 = 36% anual
-    const annualRate = baseRate * periodsPerYear;
-
-    // Create loan request object
+    // Create loan request object using values from backend calculation
     const loanRequest: LoanRequest = {
       amount: parseFloat(formData.amount),
       term: parseInt(formData.term),
@@ -107,7 +97,8 @@ export default function SimulatorPage() {
       installmentAmount: result.installmentAmount,
       totalInterest: result.totalInterest,
       totalPayment: result.totalPayment,
-      annualRate: annualRate,
+      annualRate: result.annualRate,
+      amortizationSystem: result.amortizationSystem,
       schedule: result.schedule,
     };
 
@@ -124,13 +115,20 @@ export default function SimulatorPage() {
     }
   };
 
-  // Cargar tasas al iniciar
+  // Cargar tasas y sistema por defecto al iniciar
   useEffect(() => {
-    fetch(`${API_URL}/api/settings/rates`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          setRates(data.data);
+    Promise.all([
+      fetch(`${API_URL}/api/settings/rates`).then(res => res.json()),
+      fetch(`${API_URL}/api/settings/default-amortization-system`).then(res => res.json()),
+    ])
+      .then(([ratesData, systemData]) => {
+        if (ratesData.success) {
+          setRates(ratesData.data);
+        }
+        if (systemData.success) {
+          const sys = systemData.data.defaultAmortizationSystem as AmortizationSystem;
+          setDefaultSystem(sys);
+          setFormData(prev => ({ ...prev, amortizationSystem: sys }));
         }
       })
       .catch(console.error)
@@ -142,7 +140,7 @@ export default function SimulatorPage() {
     setError('');
   };
 
-  const calculateLoan = () => {
+  const calculateLoan = async () => {
     if (!rates) return;
 
     const amount = parseFloat(formData.amount);
@@ -186,77 +184,58 @@ export default function SimulatorPage() {
         periodsPerYear = 12;
     }
 
-    const annualRate = baseRate * periodsPerYear / 100;
-    const periodicRate = annualRate / periodsPerYear;
-    
-    // El plazo "term" ahora representa directamente la cantidad de cuotas
-    // 1 semana = 1 cuota semanal, 1 quincena = 1 cuota quincenal, etc.
-    const totalPeriods = term;
+    const annualRate = baseRate * periodsPerYear;
 
-    // French amortization formula: C = P * [r(1+r)^n] / [(1+r)^n - 1]
-    let installmentAmount: number;
-    if (periodicRate === 0) {
-      installmentAmount = amount / totalPeriods;
-    } else {
-      const factor = Math.pow(1 + periodicRate, totalPeriods);
-      installmentAmount = amount * (periodicRate * factor) / (factor - 1);
-    }
-    installmentAmount = Math.round(installmentAmount * 100) / 100;
+    setLoading(true);
+    setError('');
 
-    const totalPayment = installmentAmount * totalPeriods;
-    const totalInterest = totalPayment - amount;
-
-    // Generar cronograma
-    const schedule: ScheduleItem[] = [];
-    let balance = amount;
-    const today = new Date();
-
-    for (let i = 1; i <= totalPeriods; i++) {
-      // Saldo capital ANTES de pagar esta cuota
-      const capitalBalanceBefore = balance;
-      
-      const interest = Math.round(balance * periodicRate * 100) / 100;
-      let principal = installmentAmount - interest;
-      
-      // Ajuste para el último pago
-      if (i === totalPeriods) {
-        principal = balance;
-      }
-      
-      principal = Math.round(principal * 100) / 100;
-      balance = Math.round((balance - principal) * 100) / 100;
-      if (balance < 0) balance = 0;
-
-      // Calcular fecha según frecuencia
-      const paymentDate = new Date(today);
-      if (frequency === 'WEEKLY') {
-        paymentDate.setDate(today.getDate() + i * 7);
-      } else if (frequency === 'BIWEEKLY') {
-        paymentDate.setDate(today.getDate() + i * 14);
-      } else if (frequency === 'DAILY') {
-        paymentDate.setDate(today.getDate() + i);
-      } else {
-        paymentDate.setMonth(today.getMonth() + i);
-      }
-
-      schedule.push({
-        number: i,
-        date: paymentDate.toLocaleDateString('es-ES'),
-        payment: Math.round((principal + interest) * 100) / 100,
-        principal,
-        interest,
-        balance,
-        capitalBalance: capitalBalanceBefore,
+    try {
+      // Call backend to calculate with the selected amortization system
+      const response = await fetch(`${API_URL}/api/loans/simulate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount,
+          interestRate: annualRate,
+          termMonths: term,
+          frequency,
+          amortizationSystem: formData.amortizationSystem,
+        }),
       });
-    }
 
-    setResult({
-      installmentAmount,
-      totalInterest: Math.round(totalInterest * 100) / 100,
-      totalPayment: Math.round(totalPayment * 100) / 100,
-      annualRate: Math.round(annualRate * 10000) / 10000,
-      schedule,
-    });
+      const data = await response.json();
+
+      if (!data.success) {
+        setError(data.error || 'Error al calcular');
+        return;
+      }
+
+      // Map backend response to frontend format
+      const backendData = data.data;
+      setResult({
+        installmentAmount: backendData.installmentAmount,
+        totalInterest: backendData.totalInterest,
+        totalPayment: backendData.totalPayment,
+        annualRate: backendData.annualRate,
+        amortizationSystem: backendData.amortizationSystem,
+        schedule: backendData.schedule.map((item: any) => ({
+          number: item.number,
+          date: new Date(item.dueDate).toLocaleDateString('es-ES'),
+          payment: item.amount,
+          principal: item.principal,
+          interest: item.interest,
+          balance: item.balance,
+          capitalBalance: item.capitalBalance || item.balance,
+        })),
+      });
+    } catch (err) {
+      console.error('Simulation error:', err);
+      setError('Error de conexión con el servidor');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const labels = frequencyLabels[formData.frequency as keyof typeof frequencyLabels] || frequencyLabels.MONTHLY;
@@ -355,6 +334,33 @@ export default function SimulatorPage() {
                   </p>
                 )}
               </div>
+
+              <div className="p-3 bg-gray-50 rounded-lg dark:bg-[#1a1a1a]">
+                <p className="text-sm text-gray-600 dark:text-white/60">Sistema de Amortización</p>
+                {user?.role === 'ADMIN' || user?.role === 'VENDEDOR' ? (
+                  <select
+                    name="amortizationSystem"
+                    value={formData.amortizationSystem}
+                    onChange={handleChange}
+                    className="w-full px-2 py-1 border rounded dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87]"
+                  >
+                    {SYSTEM_OPTIONS.map(opt => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <>
+                    <p className="font-medium dark:text-white/[.87]">
+                      {SYSTEM_OPTIONS.find(s => s.value === (result?.amortizationSystem || formData.amortizationSystem))?.label || 'Sistema Francés'}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-white/60">
+                      {SYSTEM_OPTIONS.find(s => s.value === (result?.amortizationSystem || formData.amortizationSystem))?.description}
+                    </p>
+                  </>
+                )}
+              </div>
               
               <button
                 onClick={calculateLoan}
@@ -378,6 +384,7 @@ export default function SimulatorPage() {
                   </p>
                   <p className="text-xs text-gray-500 mt-1 dark:text-white/60">
                     {result.schedule.length} pagos {labels.plural}
+                    {' '} · {SYSTEM_OPTIONS.find(s => s.value === result.amortizationSystem)?.label}
                   </p>
                 </div>
 
@@ -411,6 +418,7 @@ export default function SimulatorPage() {
             <h2 className="text-xl font-semibold mb-4 dark:text-white/[.87]">Tabla de Amortización</h2>
             <p className="text-sm text-gray-500 mb-4 dark:text-white/60">
               Cronograma de {result.schedule.length} pagos {labels.plural}
+              {' '} — {SYSTEM_OPTIONS.find(s => s.value === result.amortizationSystem)?.label}
             </p>
             
             <div className="overflow-x-auto">
@@ -452,6 +460,25 @@ export default function SimulatorPage() {
           >
             Solicitar este préstamo →
           </button>
+        </div>
+
+        {/* Navigation links */}
+        <div className="text-center mt-4 flex justify-center gap-4 text-sm">
+          {user?.role === 'ADMIN' || user?.role === 'VENDEDOR' ? (
+            <a
+              href="/admin"
+              className="text-primary-600 hover:underline dark:text-[#39ff14]"
+            >
+              Panel Admin →
+            </a>
+          ) : user?.role === 'CLIENTE' ? (
+            <a
+              href="/mis-prestamo"
+              className="text-primary-600 hover:underline dark:text-[#39ff14]"
+            >
+              Mis Préstamos →
+            </a>
+          ) : null}
         </div>
       </div>
     </main>

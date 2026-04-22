@@ -6,28 +6,28 @@ export default function HomePage() {
           Sistema de Préstamos
         </h1>
         <p className="text-base md:text-xl text-gray-600 mb-8 dark:text-white/60">
-          Gestión integral de préstamos personales con sistema de amortización francés
+          Gestión integral de préstamos personales con múltiples sistemas de amortización
         </p>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
           <div className="p-6 border rounded-lg shadow-sm bg-white dark:bg-[#1e1e1e] dark:border-[#333333] hover:shadow-md dark:hover:shadow-[0_0_15px_rgba(57,255,20,0.15)] transition">
             <h3 className="text-xl font-semibold mb-3 dark:text-white/[.87]">Simulador</h3>
             <p className="text-gray-600 dark:text-white/60">
-              Calcula tu préstamo con nuestro simulador interactivo
+              Calcula tu préstamo con simulador interactivo - Francés, Alemán o Tasa Plana
             </p>
           </div>
           
           <div className="p-6 border rounded-lg shadow-sm bg-white dark:bg-[#1e1e1e] dark:border-[#333333] hover:shadow-md dark:hover:shadow-[0_0_15px_rgba(57,255,20,0.15)] transition">
-            <h3 className="text-xl font-semibold mb-3 dark:text-white/[.87]">Solicita</h3>
+            <h3 className="text-xl font-semibold mb-3 dark:text-white/[.87]">Múltiples Sistemas</h3>
             <p className="text-gray-600 dark:text-white/60">
-              Envía tu solicitud de préstamo en minutos
+              Sistema Francés, Alemán y Tasa Plana - configurable en settings
             </p>
           </div>
           
           <div className="p-6 border rounded-lg shadow-sm bg-white dark:bg-[#1e1e1e] dark:border-[#333333] hover:shadow-md dark:hover:shadow-[0_0_15px_rgba(57,255,20,0.15)] transition">
             <h3 className="text-xl font-semibold mb-3 dark:text-white/[.87]">Gestiona</h3>
             <p className="text-gray-600 dark:text-white/60">
-              Panel de administración para gestionar tu cartera
+              Panel de administración para gestionar tu cartera de préstamos
             </p>
           </div>
         </div>

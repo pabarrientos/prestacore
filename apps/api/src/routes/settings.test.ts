@@ -101,6 +101,65 @@ describe('Settings API', () => {
     });
   });
 
+  describe('GET /api/settings/default-amortization-system', () => {
+    it('should return default amortization system', async () => {
+      // Seed the setting first
+      await prisma.setting.upsert({
+        where: { key: 'defaultAmortizationSystem' },
+        update: { value: 'FRENCH' },
+        create: { key: 'defaultAmortizationSystem', value: 'FRENCH', description: 'Default system' },
+      });
+
+      const res = await request(app)
+        .get('/api/settings/default-amortization-system')
+        .expect(200);
+
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.defaultAmortizationSystem).toBeDefined();
+      expect(['FRENCH', 'GERMAN', 'FLAT_RATE']).toContain(res.body.data.defaultAmortizationSystem);
+      expect(res.body.data.label).toBeDefined();
+    });
+  });
+
+  describe('PATCH /api/settings/default-amortization-system', () => {
+    it('should update default amortization system as admin', async () => {
+      // Seed setting first
+      await prisma.setting.upsert({
+        where: { key: 'defaultAmortizationSystem' },
+        update: { value: 'FRENCH' },
+        create: { key: 'defaultAmortizationSystem', value: 'FRENCH', description: 'Default system' },
+      });
+
+      const res = await request(app)
+        .patch('/api/settings/default-amortization-system')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ system: 'GERMAN' })
+        .expect(200);
+
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.defaultAmortizationSystem).toBe('GERMAN');
+    });
+
+    it('should reject invalid amortization system', async () => {
+      const res = await request(app)
+        .patch('/api/settings/default-amortization-system')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ system: 'INVALID' })
+        .expect(400);
+
+      expect(res.body.success).toBe(false);
+    });
+
+    it('should fail without authentication', async () => {
+      const res = await request(app)
+        .patch('/api/settings/default-amortization-system')
+        .send({ system: 'GERMAN' })
+        .expect(401);
+
+      expect(res.body.success).toBe(false);
+    });
+  });
+
   describe('PATCH /api/settings - DAILY_BASE_RATE', () => {
     it('should update DAILY_BASE_RATE as admin', async () => {
       const res = await request(app)

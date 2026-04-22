@@ -162,6 +162,71 @@ describe('Loans API', () => {
       expect(res.body.data.totalInterest).toBeGreaterThan(0);
       expect(res.body.data.installmentAmount).toBeGreaterThan(1000);
     });
+
+    it('should simulate with FRENCH system', async () => {
+      const res = await request(app)
+        .post('/api/loans/simulate')
+        .send({
+          amount: 10000,
+          interestRate: 15,
+          termMonths: 6,
+          frequency: 'MONTHLY',
+          amortizationSystem: 'FRENCH',
+        })
+        .expect(200);
+
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.amortizationSystem).toBe('FRENCH');
+      expect(res.body.data.installmentAmount).toBeGreaterThan(0);
+    });
+
+    it('should simulate with GERMAN system', async () => {
+      const res = await request(app)
+        .post('/api/loans/simulate')
+        .send({
+          amount: 10000,
+          interestRate: 12,
+          termMonths: 6,
+          frequency: 'MONTHLY',
+          amortizationSystem: 'GERMAN',
+        })
+        .expect(200);
+
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.amortizationSystem).toBe('GERMAN');
+    });
+
+    it('should simulate with FLAT_RATE system', async () => {
+      const res = await request(app)
+        .post('/api/loans/simulate')
+        .send({
+          amount: 10000,
+          interestRate: 12,
+          termMonths: 6,
+          frequency: 'MONTHLY',
+          amortizationSystem: 'FLAT_RATE',
+        })
+        .expect(200);
+
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.amortizationSystem).toBe('FLAT_RATE');
+    });
+
+    it('should use default system when not specified', async () => {
+      const res = await request(app)
+        .post('/api/loans/simulate')
+        .send({
+          amount: 10000,
+          interestRate: 15,
+          termMonths: 6,
+          frequency: 'MONTHLY',
+        })
+        .expect(200);
+
+      expect(res.body.success).toBe(true);
+      // Should default to FRENCH
+      expect(['FRENCH', 'GERMAN', 'FLAT_RATE']).toContain(res.body.data.amortizationSystem);
+    });
   });
 
   describe('POST /api/loans (protected)', () => {
@@ -182,6 +247,42 @@ describe('Loans API', () => {
       expect(res.body.success).toBe(true);
       expect(res.body.data.status).toBe('PENDING');
       expect(res.body.data.installments).toHaveLength(12);
+    });
+
+    it('should create loan with GERMAN amortization system', async () => {
+      const res = await request(app)
+        .post('/api/loans')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          clientId: testClientId,
+          amount: 6000,
+          interestRate: 12,
+          termMonths: 6,
+          frequency: 'MONTHLY',
+          amortizationSystem: 'GERMAN',
+        })
+        .expect(201);
+
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.amortizationSystem).toBe('GERMAN');
+    });
+
+    it('should create loan with FLAT_RATE amortization system', async () => {
+      const res = await request(app)
+        .post('/api/loans')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          clientId: testClientId,
+          amount: 6000,
+          interestRate: 12,
+          termMonths: 6,
+          frequency: 'MONTHLY',
+          amortizationSystem: 'FLAT_RATE',
+        })
+        .expect(201);
+
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.amortizationSystem).toBe('FLAT_RATE');
     });
 
     it('should create loan as vendor', async () => {

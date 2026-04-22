@@ -9,7 +9,7 @@ import {
 } from '@prisma/client';
 import { AmortizationService } from './amortization';
 import { MoraService } from './mora';
-import { getRate } from './settings';
+import { getRate, getDefaultAmortizationSystem } from './settings';
 import { getToday } from './datetime';
 
 const prisma = new PrismaClient();
@@ -34,6 +34,7 @@ export interface CreateRefinancingInput {
   notes?: string;                // Optional notes
   capitalExtra?: number;        // Extra payment from customer to reduce new loan amount
   interesesVencidosManual?: number; // Manual override for interesesVencidos
+  amortizationSystem?: string;   // FRENCH, GERMAN, or FLAT_RATE (defaults to settings)
 }
 
 export interface ExecuteRefinancingResult {
@@ -237,7 +238,7 @@ export class RefinancingService {
    * 5. Link: new.prestamo_origen_id = old.id, old.prestamo_refinanciado_id = new.id
    */
   static async executeRefinancing(input: CreateRefinancingInput): Promise<ExecuteRefinancingResult> {
-    const { loanId, newInterestRate, newTermMonths, newFrequency, startDate, notes, capitalExtra, interesesVencidosManual } = input;
+    const { loanId, newInterestRate, newTermMonths, newFrequency, startDate, notes, capitalExtra, interesesVencidosManual, amortizationSystem } = input;
 
     try {
       // Validate eligibility first
@@ -289,6 +290,11 @@ export class RefinancingService {
 
       const loanStartDate = startDate || new Date();
 
+      // Get default amortization system from settings if not provided
+      const effectiveSystem = amortizationSystem 
+        ? (amortizationSystem as any)
+        : await getDefaultAmortizationSystem();
+
       // Execute atomic transaction
       const result = await prisma.$transaction(async (tx) => {
         // Step 1: Mark old loan as REFINANCIADO
@@ -338,6 +344,7 @@ export class RefinancingService {
           termMonths: newTermMonths,
           frequency: newFrequency,
           startDate: loanStartDate,
+          amortizationSystem: effectiveSystem,
         });
 
         // Create the new loan

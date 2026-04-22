@@ -9,6 +9,7 @@ import settingsRoutes from './routes/settings';
 import clientsRoutes from './routes/clients';
 import paymentRoutes from './routes/payments';
 import userRoutes from './routes/users';
+import { seedDefaultAmortizationSystem } from './services/settings';
 
 config();
 
@@ -41,6 +42,11 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 
 // Only start server if not in test mode
 if (process.env.NODE_ENV !== 'test') {
+  // Seed default settings on startup
+  seedDefaultAmortizationSystem().catch(err => {
+    console.error('Failed to seed default amortization system:', err);
+  });
+
   app.listen(PORT, () => {
     console.log(`🚀 API server running on port ${PORT}`);
   });

@@ -1,13 +1,17 @@
 # Sistema de Gestión de Préstamos Personales
 
-Sistema web integral para la gestión de préstamos personales con sistema de amortización francés.
+Sistema web integral para la gestión de préstamos personales con múltiples sistemas de amortización.
 
 ## 🚀 Características
 
 - **Gestión de Préstamos**: Creación, seguimiento y administración de préstamos
-- **Sistema de Amortización Francés**: Cálculo automático de cuotas fijas
+- **Múltiples Sistemas de Amortización**: 
+  - **Sistema Francés**: Cuota fija, interés sobre saldo decreciente
+  - **Sistema Alemán**: Capital constante, interés decreciente
+  - **Sistema de Tasa Plana**: Interés fijo sobre capital original
+- **Configurable**: El sistema default se configura en `/admin/settings`
 - **Gestión de Cobros**: Registro de pagos y seguimiento de cuotas vencidas
-- **Simulador Público**: Herramienta de simulación de préstamos para clientes
+- **Simulador Público**: Herramienta de simulación interactiva para clientes
 - **Roles**: Administrador, Vendedor, Cliente
 - **Dashboard**: Métricas en tiempo real (total prestado, cobranza, mora)
 - **API REST**: Comunicación entre frontend y backend
@@ -206,6 +210,8 @@ cd apps/web && pnpm test:e2e
 ### Configuración
 - `GET /api/settings` - Obtener todas las configuraciones
 - `GET /api/settings/rates` - Obtener tasas de interés
+- `GET /api/settings/default-amortization-system` - Obtener sistema de amortización default
+- `PATCH /api/settings/default-amortization-system` - Actualizar sistema default (Admin)
 - `PATCH /api/settings` - Actualizar configuraciones (Admin)
 
 ## 🔄 Refinanciación
@@ -251,6 +257,32 @@ Las tasas base se configuran desde `/admin/settings`:
 4. **Tasa diaria**: Ejemplo: 0.5% × 365 días = 182.5% anual
 
 Cada tasa se aplica automáticamente según el período seleccionado al crear el préstamo.
+
+## 💰 Sistemas de Amortización
+
+El sistema soporta 3 sistemas de amortización configurables:
+
+| Sistema | Descripción | Fórmula |
+|---------|-------------|----------|
+| **Francés** | Cuota fija, interés sobre saldo | `P × [r(1+r)^n] / [(1+r)^n - 1]` |
+| **Alemán** | Capital constante, interés decreciente | Capital = P/n, Interés = Saldo × r |
+| **Tasa Plana** | Interés fijo sobre capital original | Interés = P × r (constante) |
+
+### Configuración del Sistema Default
+
+Desde `/admin/settings` podés configurar el sistema de amortización por defecto:
+
+- **Sistema Francés** (default): Cuota fija, recomendado para la mayoría de clientes
+- **Sistema Alemán**: Cuota inicial más alta, interés total menor
+- **Sistema de Tasa Plana**: Cuotas constantes, interés total mayor
+
+El sistema default se precarga automáticamente en:
+- Simulador público (`/simulator`)
+- Creación de préstamos (`/admin/loans/new`)
+- Edición de préstamos (`/admin/loans/[id]/edit`)
+- Refinanciación
+
+**Usuarios con rol ADMIN o VENDEDOR** pueden cambiar el sistema en el formulario. ** clientes** ven el sistema usado pero no pueden cambiarlo (excepto en el simulador si tienen ese rol).
 
 ## 🔧 Variables de Entorno
 

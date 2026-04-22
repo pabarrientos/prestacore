@@ -50,6 +50,12 @@ const frequencyOptions = [
   { value: 'DAILY', label: 'Diario', periodsPerYear: 365 },
 ];
 
+const systemOptions = [
+  { value: 'FRENCH', label: 'Sistema Francés' },
+  { value: 'GERMAN', label: 'Sistema Alemán' },
+  { value: 'FLAT_RATE', label: 'Sistema de Tasa Plana' },
+] as const;
+
 // Default annual rate to use as base (fallback if settings not available)
 const DEFAULT_ANNUAL_RATE = 0.36;
 
@@ -75,6 +81,7 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
   const [nuevaTasaInteres, setNuevaTasaInteres] = useState<string>('');
   const [fechaInicio, setFechaInicio] = useState<string>(''); // Se carga en useEffect con timezone
   const [pagoInicial, setPagoInicial] = useState<string>('0');
+  const [nuevoSistema, setNuevoSistema] = useState<string>('FRENCH');
   
   // Manual override for interesesVencidos
   const [interesesVencidosManual, setInteresesVencidosManual] = useState<string>('');
@@ -140,6 +147,16 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
           // Set initial period rate based on frequency
           const periodRate = calculatePeriodRate();
           setNuevaTasaInteres(periodRate.toFixed(2));
+        }
+      })
+      .catch(console.error);
+
+    // Fetch default amortization system
+    fetch(`${API_URL}/api/settings/default-amortization-system`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setNuevoSistema(data.data.defaultAmortizationSystem);
         }
       })
       .catch(console.error);
@@ -229,6 +246,7 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
         nuevaFrecuencia,
         pagoInicial: pagoInicial || '0',
         fechaInicio,
+        amortizationSystem: nuevoSistema,
       });
       
       // Add manual interesesVencidos if modified
@@ -292,6 +310,7 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
           fechaInicio,
           pagoInicial: parseFloat(pagoInicial) || undefined,
           interesesVencidosManual: interesesVencidosModificado ? currentInteresesVencidos : undefined,
+          amortizationSystem: nuevoSistema,
         }),
       });
       const data = await res.json();
@@ -513,6 +532,22 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14]"
               >
                 {frequencyOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
+                Sistema de Amortización
+              </label>
+              <select
+                value={nuevoSistema}
+                onChange={(e) => setNuevoSistema(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14]"
+              >
+                {systemOptions.map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
                   </option>

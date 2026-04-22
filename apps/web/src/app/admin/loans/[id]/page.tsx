@@ -18,6 +18,7 @@ interface LoanDetail {
   totalInterest: number;
   totalPayment: number;
   installmentAmount: number;
+  amortizationSystem: string;
   purpose: string | null;
   notes: string | null;
   createdAt: string;
@@ -564,6 +565,15 @@ export default function LoanDetailPage() {
               <p className="dark:text-white/[.87]">{loan.purpose}</p>
             </div>
           )}
+          <div>
+            <p className="text-sm text-gray-500 dark:text-white/38">Sistema de Amortización</p>
+            <p className="dark:text-white/[.87]">
+              {loan.amortizationSystem === 'FRENCH' ? 'Sistema Francés' :
+               loan.amortizationSystem === 'GERMAN' ? 'Sistema Alemán' :
+               loan.amortizationSystem === 'FLAT_RATE' ? 'Sistema de Tasa Plana' :
+               loan.amortizationSystem || 'Sistema Francés'}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -592,8 +602,14 @@ export default function LoanDetailPage() {
 
       {/* Installments Table */}
       <div className="bg-white dark:bg-[#1e1e1e] rounded-lg shadow overflow-hidden">
-        <div className="p-4 border-b dark:border-gray-700">
+        <div className="p-4 border-b dark:border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <h2 className="text-lg font-semibold dark:text-white/[.87]">Cronograma de Pagos</h2>
+          <p className="text-sm text-gray-500 dark:text-white/60">
+            {loan.amortizationSystem === 'FRENCH' ? 'Sistema Francés' :
+             loan.amortizationSystem === 'GERMAN' ? 'Sistema Alemán' :
+             loan.amortizationSystem === 'FLAT_RATE' ? 'Sistema de Tasa Plana' :
+             loan.amortizationSystem || 'Sistema Francés'}
+          </p>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
