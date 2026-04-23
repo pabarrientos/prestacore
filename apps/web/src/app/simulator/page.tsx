@@ -15,11 +15,6 @@ const SYSTEM_OPTIONS = [
 
 type AmortizationSystem = typeof SYSTEM_OPTIONS[number]['value'];
 
-interface DefaultSystemConfig {
-  defaultAmortizationSystem: AmortizationSystem;
-  label: string;
-}
-
 interface LoanRequest {
   amount: number;
   term: number;
@@ -81,7 +76,6 @@ export default function SimulatorPage() {
     amortizationSystem: 'FRENCH' as AmortizationSystem,
   });
   const [rates, setRates] = useState<RateConfig | null>(null);
-  const [defaultSystem, setDefaultSystem] = useState<AmortizationSystem>('FRENCH');
   const [result, setResult] = useState<SimulationResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -127,7 +121,6 @@ export default function SimulatorPage() {
         }
         if (systemData.success) {
           const sys = systemData.data.defaultAmortizationSystem as AmortizationSystem;
-          setDefaultSystem(sys);
           setFormData(prev => ({ ...prev, amortizationSystem: sys }));
         }
       })
