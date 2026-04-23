@@ -203,7 +203,7 @@ router.get('/by-date', authMiddleware, async (req: AuthRequest, res: Response): 
             ${vendedorId && user.role === 'ADMIN' ? `AND l."assignedVendorId" = '${vendedorId}'` : ''}
             ${estado ? `AND p.status = '${estado}'` : ''}
             ${clienteFilter}
-          ORDER BY p."paymentDate" DESC
+          ORDER BY p."paymentDate" DESC, p."loanId" DESC
         `, startDate);
       } else {
         // Date range query
@@ -227,7 +227,7 @@ router.get('/by-date', authMiddleware, async (req: AuthRequest, res: Response): 
             ${vendedorId && user.role === 'ADMIN' ? `AND l."assignedVendorId" = '${vendedorId}'` : ''}
             ${estado ? `AND p.status = '${estado}'` : ''}
             ${clienteFilter}
-          ORDER BY p."paymentDate" DESC
+          ORDER BY p."paymentDate" DESC, p."loanId" DESC
         `, startDate, endDate);
       }
 

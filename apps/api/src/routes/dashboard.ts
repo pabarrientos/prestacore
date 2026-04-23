@@ -264,27 +264,26 @@ router.get('/overdue', authMiddleware, requireVendor, async (req: AuthRequest, r
       whereClause.dueDate = { ...whereClause.dueDate, lte: new Date(to as string) };
     }
 
-    const overdueInstallments = await prisma.installment.findMany({
-      where: whereClause,
-      orderBy: [{ dueDate: 'asc' }, { installmentNumber: 'asc' }],
-      include: {
-        loan: {
-          select: {
-            id: true,
-            amount: true,
-            termMonths: true,
-            client: {
-              select: {
-                id: true,
-                user: {
-                  select: { firstName: true, lastName: true, phone: true },
-                },
-              },
-            },
-          },
-        },
-      },
-    });
+    const overdueInstallments = await prisma.$queryRawUnsafe<any[]>(`
+      SELECT 
+        i.id, i."loanId", i."installmentNumber", i."dueDate", i.amount, i.balance, i.status,
+        l.amount as "loanAmount", l."termMonths",
+        c.id as "clientId",
+        u."firstName" as "clientFirstName", u."lastName" as "clientLastName", u.phone,
+        i."dueDate"::text as "dueDateLocal"
+      FROM "Installment" i
+      JOIN "Loan" l ON i."loanId" = l.id
+      JOIN "Client" c ON l."clientId" = c.id
+      JOIN "User" u ON c."userId" = u.id
+      WHERE i.status != 'PAID'
+        AND i."dueDate" < $1
+        AND l.status NOT IN ('PENDING', 'PAID', 'DEFAULTED', 'REFINANCIADO')
+        ${req.user!.role === Role.VENDEDOR ? `AND l."assignedVendorId" = '${req.user!.userId}'` : ''}
+        ${vendorId ? `AND l."assignedVendorId" = '${vendorId}'` : ''}
+        ${from ? `AND i."dueDate" >= '${from}'` : ''}
+        ${to ? `AND i."dueDate" <= '${to}'` : ''}
+      ORDER BY u."lastName" ASC, u."firstName" ASC, l.id ASC, i."dueDate" ASC, i."installmentNumber" ASC
+    `, now);
 
     // Calculate summary
     let totalOverdue = 0;
@@ -294,7 +293,9 @@ router.get('/overdue', authMiddleware, requireVendor, async (req: AuthRequest, r
 
     // Process installments with timezone-aware days overdue calculation
     const installments = await Promise.all(overdueInstallments.map(async (inst) => {
-      const daysOverdue = await MoraService.calculateDaysOverdue(inst.dueDate, now);
+      // Parse dueDate from raw query (comes as string or Date depending on driver)
+      const dueDate = inst.dueDate instanceof Date ? inst.dueDate : new Date(inst.dueDate);
+      const daysOverdue = await MoraService.calculateDaysOverdue(dueDate, now);
       const moraAmount = daysOverdue > 0
         ? MoraService.calculate({
             installmentAmount: Number(inst.balance),
@@ -321,26 +322,26 @@ router.get('/overdue', authMiddleware, requireVendor, async (req: AuthRequest, r
       });
 
       // Count remaining installments
-      const remainingCount = inst.loan.termMonths - inst.installmentNumber + 1;
+      const remainingCount = inst.termMonths - inst.installmentNumber + 1;
 
       return {
         id: inst.id,
         installmentNumber: inst.installmentNumber,
-        dueDate: inst.dueDate.toISOString(),
+        dueDate: inst.dueDateLocal || dueDate.toISOString(),
         amount: Number(inst.amount),
         balance: Number(inst.balance),
         moraAmount,
         daysOverdue,
         status: inst.status,
         loan: {
-          id: inst.loan.id,
-          amount: Number(inst.loan.amount),
+          id: inst.loanId,
+          amount: Number(inst.loanAmount),
           remainingInstallments: remainingCount,
         },
         client: {
-          id: inst.loan.client.id,
-          name: inst.loan.client.user.firstName + ' ' + inst.loan.client.user.lastName,
-          phone: inst.loan.client.user.phone || '',
+          id: inst.clientId,
+          name: (inst.clientFirstName || '') + ' ' + (inst.clientLastName || ''),
+          phone: inst.phone || '',
         },
       };
     }));

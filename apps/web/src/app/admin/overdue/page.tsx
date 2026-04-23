@@ -37,11 +37,12 @@ interface OverdueSummary {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-// Helper function to format date
+// Helper function to format date — handles both ISO (T) and DB space format (YYYY-MM-DD HH:MM:SS)
 function formatDate(dateStr: string): string {
-  const datePart = dateStr.split('T')[0];
+  if (!dateStr) return '-';
+  const datePart = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr.split(' ')[0];
   const [year, month, day] = datePart.split('-');
-  return `${day}/${month}/${year}`;
+  return new Date(`${year}-${month}-${day}`).toLocaleDateString();
 }
 
 export default function OverduePage() {
