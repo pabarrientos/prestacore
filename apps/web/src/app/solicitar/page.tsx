@@ -279,7 +279,7 @@ export default function SolicitarPage() {
             Detalles del Préstamo
           </h2>
           
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <p className="text-sm text-gray-500 dark:text-white/60">Monto Solicitado</p>
               <p className="text-xl font-bold dark:text-white/[.87]">
@@ -313,7 +313,7 @@ export default function SolicitarPage() {
           </div>
 
           <div className="mt-4 pt-4 border-t dark:border-gray-700">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-gray-500 dark:text-white/60">Total Intereses</p>
                 <p className="dark:text-white/[.87]">

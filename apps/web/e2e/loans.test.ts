@@ -127,10 +127,7 @@ test.describe('DAILY Settings', () => {
   test('should show DAILY_BASE_RATE setting in admin', async ({ page }) => {
     await page.goto('/admin/settings');
 
-    // Check for DAILY base rate input
-    const dailyRateInput = page.locator('input[name="DAILY_BASE_RATE"], #DAILY_BASE_RATE, [data-testid="daily-base-rate"]');
-    
-    // Should either be visible or have the label present
+    // Check for DAILY base rate setting present in page
     const settingsPage = await page.content();
     expect(settingsPage).toMatch(/tasa.*diario|daily/i);
   });

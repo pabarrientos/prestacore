@@ -155,7 +155,7 @@ export default function PagosPage() {
 
       {/* Filters */}
       <div className="mb-6 p-4 bg-white rounded-lg shadow dark:bg-[#1e1e1e]">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           {/* Fecha Inicio */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-white/87 mb-1">

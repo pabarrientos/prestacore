@@ -149,7 +149,7 @@ export default function OverduePage() {
       {summary && summary.byDays.length > 0 && (
         <div className="bg-white dark:bg-[#1e1e1e] rounded-lg shadow p-6 mb-6">
           <h2 className="text-lg font-semibold mb-4 dark:text-white/[.87]">Distribución por Antigüedad</h2>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
             {summary.byDays.map((item) => (
               <div key={item.range} className="text-center p-3 bg-gray-50 dark:bg-[#2a2a2a] rounded-lg">
                 <p className="text-sm font-medium dark:text-white/[.87]">{item.range}</p>

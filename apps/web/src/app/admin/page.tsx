@@ -119,7 +119,7 @@ export default function AdminDashboard() {
       {metrics?.overdueByDays && metrics.overdueByDays.length > 0 && (
         <div className="mt-6 bg-white rounded-lg shadow p-6 dark:bg-[#1e1e1e]">
           <h2 className="text-lg font-semibold mb-4 dark:text-white/[.87]">Distribución de Mora por Antigüedad</h2>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
             {metrics.overdueByDays.map((item) => (
               <div key={item.range} className="text-center p-4 bg-gray-50 rounded-lg dark:bg-[#1a1a1a]">
                 <p className="text-sm font-medium dark:text-white/[.87]">{item.range}</p>
@@ -136,7 +136,7 @@ export default function AdminDashboard() {
       {/* Estado de Préstamos */}
       <div className="mt-8 bg-white rounded-lg shadow p-6 dark:bg-[#1e1e1e]">
         <h2 className="text-lg font-semibold mb-4 dark:text-white/[.87]">Estado de Préstamos</h2>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
           {metrics?.statusBreakdown && Object.entries(metrics.statusBreakdown).map(([status, count]) => (
             <div key={status} className="text-center p-4 bg-gray-50 rounded-lg dark:bg-[#1a1a1a]">
               <p className="text-2xl font-bold dark:text-white/[.87]">{count}</p>
