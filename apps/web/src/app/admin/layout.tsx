@@ -77,10 +77,26 @@ export default function AdminLayout({
       <nav className="bg-white shadow-sm dark:bg-[#1a1a1a] dark:shadow-none dark:border-b dark:border-[#333333]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center h-auto sm:h-16 py-2 sm:py-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-xl font-bold text-primary-700 dark:text-[#39ff14]">Préstamos Admin</h1>
-              <span className="text-sm text-gray-500 dark:text-white/60">|</span>
-              <span className="hidden sm:inline text-sm text-gray-600 dark:text-white/60">
+            <div className="flex items-center">
+              {/* Logo */}
+              <svg width="140" height="40" viewBox="0 0 140 40" xmlns="http://www.w3.org/2000/svg">              
+                <circle cx="20" cy="20" r="16" stroke="var(--logo-primary)" strokeWidth="3" fill="none"/>
+                
+                <path d="M12 24 L18 18 L22 22 L28 14" 
+                      stroke="var(--logo-primary)" strokeWidth="3" 
+                      fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+
+                <text x="42" y="26" fontSize="18" fontFamily="Inter, sans-serif" fontWeight="600">
+                  <tspan fill="var(--logo-text)">Presta</tspan>
+                  <tspan fill="var(--logo-primary)">Core</tspan>
+                </text>
+              </svg>
+
+              {/* Separador */}
+              <span className="mx-3 text-gray-400 dark:text-white/40">•</span>
+
+              {/* Usuario */}
+              <span className="hidden sm:inline text-sm text-gray-600 dark:text-white/60 whitespace-nowrap">
                 {user.firstName} {user.lastName} ({user.role})
               </span>
             </div>

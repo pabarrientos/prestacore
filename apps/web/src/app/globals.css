@@ -43,6 +43,10 @@
   --loan-pending: #ca8a04;
   --loan-overdue: #dc2626;
   --loan-active: #2563eb;
+
+  /* Logo colors - Light */
+  --logo-primary:#0284c7;
+  --logo-text: #111827;
 }
 
 .dark {
@@ -82,6 +86,68 @@
   --loan-pending: #facc15;
   --loan-overdue: #f87171;
   --loan-active: #60a5fa;
+
+  /* Logo colors - Dark */
+  --logo-primary: #39ff14;
+  --logo-text: #ffffff;
+}
+
+.logo svg {
+  transition: all 0.3s ease;
+}
+
+.logo:hover svg {
+  transform: scale(1.05);
+}
+
+/* Círculo aparece */
+.logo-circle {
+  opacity: 0;
+  transform: scale(0.8);
+  transform-origin: center;
+  animation: circleIn 0.4s ease-out forwards;
+}
+
+/* Línea se dibuja */
+.logo-path {
+  stroke-dasharray: 40;
+  stroke-dashoffset: 40;
+  animation: drawLine 0.5s ease-out forwards;
+  animation-delay: 0.2s;
+}
+
+/* Texto aparece */
+.logo-text {
+  opacity: 0;
+  transform: translateY(4px);
+  animation: textIn 0.4s ease-out forwards;
+  animation-delay: 0.35s;
+}
+
+.logo-anim {
+  animation: none;
+}
+
+/* Keyframes */
+
+@keyframes circleIn {
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes drawLine {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes textIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ============================================
