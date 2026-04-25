@@ -119,7 +119,7 @@ export default function SettingsPage() {
       <div className="bg-white rounded-lg shadow p-6 mb-6 dark:bg-[#1e1e1e]">
         <h2 className="text-lg font-semibold mb-4 dark:text-white/[.87]">Tasas de Interés</h2>
         <p className="text-sm text-gray-500 mb-4 dark:text-white/60">
-          Estas tasas se usan para calcular el interés anual. Ejemplo: tasa semanal 7.5 × 52 semanas = 390% anual
+          Estas tasas se usan para calcular el interés anual. Ejemplo: tasa semanal 7.5 × 48 semanas = 360% anual
         </p>
         
         <div className="space-y-4">

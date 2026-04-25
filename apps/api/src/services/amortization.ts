@@ -392,13 +392,13 @@ export class AmortizationService {
   private static getPaymentsPerYear(frequency: PaymentFrequency): number {
     switch (frequency) {
       case PaymentFrequency.WEEKLY:
-        return 52;
+        return 48;
       case PaymentFrequency.BIWEEKLY:
-        return 26;
+        return 24;
       case PaymentFrequency.MONTHLY:
         return 12;
       case PaymentFrequency.DAILY:
-        return 365;
+        return 360;
     }
   }
 

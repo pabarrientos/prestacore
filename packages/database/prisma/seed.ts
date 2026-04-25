@@ -85,10 +85,10 @@ async function main() {
     { key: 'DEFAULT_INTEREST_RATE', value: '0.15', description: 'Tasa de interés anual por defecto' },
     { key: 'DEFAULT_TERM_MONTHS', value: '12', description: 'Plazo por defecto en meses' },
     // Tasas base por frecuencia (mensual = 30 * 12 = 360% anual)
-    { key: 'WEEKLY_BASE_RATE', value: '7.5', description: 'Tasa semanal base para calcular anual (ej: 7.5 * 52 semanas)' },
+    { key: 'WEEKLY_BASE_RATE', value: '7.5', description: 'Tasa semanal base para calcular anual (ej: 7.5 * 48 semanas)' },
     { key: 'BIWEEKLY_BASE_RATE', value: '15', description: 'Tasa quincenal base para calcular anual (ej: 15 * 24 quincenas)' },
     { key: 'MONTHLY_BASE_RATE', value: '30', description: 'Tasa mensual base para calcular anual (ej: 30 * 12 meses)' },
-    { key: 'DAILY_BASE_RATE', value: '1', description: 'Tasa diaria base para calcular anual (ej: 1 * 365 días)' },
+    { key: 'DAILY_BASE_RATE', value: '1', description: 'Tasa diaria base para calcular anual (ej: 1 * 360 días)' },
     { key: 'ROUNDING_UNIT', value: '1000', description: 'Unidad mínima de redondeo para cálculos de moneda' },
   ];
 
