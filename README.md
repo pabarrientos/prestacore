@@ -1,6 +1,8 @@
-# Sistema de Gestión de Préstamos Personales
+# PrestaCore
 
 Sistema web integral para la gestión de préstamos personales con múltiples sistemas de amortización.
+
+![PrestaCore Logo](apps/web/src/app/icon.svg)
 
 ## 🚀 Características
 
