@@ -1,11 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useAuth } from '@/lib/auth-context';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
 export default function HomePage() {
-  const { user } = useAuth();
 
   return (
     <main className="min-h-screen">

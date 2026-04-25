@@ -2,7 +2,9 @@
 
 Sistema web integral para la gestión de préstamos personales con múltiples sistemas de amortización.
 
-![PrestaCore Logo](apps/web/src/app/logo.svg)
+<!-- ![PrestaCore Logo](apps/web/src/app/logo.svg) -->
+
+<img src="apps/web/public/logo-dark.svg" width="500" height="auto" />
 
 ## 🚀 Características
 
