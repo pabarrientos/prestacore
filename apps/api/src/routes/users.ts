@@ -509,6 +509,7 @@ router.patch('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res:
       where: { id },
       data: {
         email: body.email,
+        firstName: body.firstName,
         lastName: body.lastName,
         phone: body.phone,
         isActive: body.isActive,
