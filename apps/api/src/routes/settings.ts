@@ -77,6 +77,55 @@ router.get('/default-amortization-system', async (_req, res: Response): Promise<
   }
 });
 
+// Default collection action types
+const DEFAULT_COLLECTION_ACTION_TYPES = [
+  { code: 'CALL', label: 'Llamada telefónica' },
+  { code: 'VISIT', label: 'Visita presencial' },
+  { code: 'AGREEMENT', label: 'Acuerdo de pago' },
+  { code: 'REFINANCING', label: 'Refinanciación' },
+  { code: 'LEGAL', label: 'Acción legal' },
+  { code: 'PROMISE', label: 'Promesa de pago' },
+];
+
+export interface CollectionActionTypeConfig {
+  code: string;
+  label: string;
+}
+
+// GET /api/settings/collection-action-types - Get collection action types (public)
+router.get('/collection-action-types', async (_req, res: Response): Promise<void> => {
+  try {
+    const setting = await prisma.setting.findUnique({
+      where: { key: 'COLLECTION_ACTION_TYPES' },
+    });
+
+    let types: CollectionActionTypeConfig[];
+
+    if (setting && setting.value) {
+      try {
+        types = JSON.parse(setting.value);
+      } catch {
+        // Invalid JSON, use defaults
+        types = DEFAULT_COLLECTION_ACTION_TYPES;
+      }
+    } else {
+      // Setting doesn't exist, use defaults
+      types = DEFAULT_COLLECTION_ACTION_TYPES;
+    }
+
+    res.json({
+      success: true,
+      data: { types },
+    });
+  } catch (error) {
+    console.error('Get collection action types error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+    });
+  }
+});
+
 // GET /api/settings/rates - Get interest rates (public)
 router.get('/rates', async (_req, res: Response): Promise<void> => {
   try {

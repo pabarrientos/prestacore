@@ -221,10 +221,10 @@ model CollectionAction {
   id              String              @id @default(cuid())
   loanId          String
   clientId        String
-  type            CollectionActionType
+  type            String              // Código del tipo (ej: CALL, VISIT, WHATSAPP, etc.)
   description     String
   result          String?
-  nextAction      String?             // Próxima acción a tomar
+  nextAction      String?             // Próxima acción a tomar (código del tipo)
   followUpDate    DateTime?           // Fecha de seguimiento
   createdAt       DateTime            @default(now())
   createdBy       String?

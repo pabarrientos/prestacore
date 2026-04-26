@@ -45,6 +45,7 @@ export default function AdminLayout({
     { href: '/admin/loans', label: 'Préstamos' },
     { href: '/admin/clients', label: 'Clientes' },
     { href: '/admin/payments', label: 'Pagos' },
+    { href: '/admin/collection-actions', label: 'Cobranzas' },
     { href: '/admin/settings', label: 'Configuración' },
   ];
 
@@ -59,8 +60,8 @@ export default function AdminLayout({
   ];
 
   const navLinks = user.role === 'VENDEDOR'
-    ? baseNavLinks.filter(link => 
-        link.label === 'Dashboard' || link.label === 'Préstamos' || link.label === 'Clientes' || link.label === 'Pagos'
+    ? baseNavLinks.filter(link =>
+        link.label === 'Dashboard' || link.label === 'Préstamos' || link.label === 'Clientes' || link.label === 'Pagos' || link.label === 'Cobranzas'
       )
     : baseNavLinks;
 

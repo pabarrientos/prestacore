@@ -134,6 +134,59 @@ export function invalidateRatesCache(): void {
   ratesCacheTime = 0;
 }
 
+// ============================================
+// Collection Action Types Settings
+// ============================================
+
+export interface CollectionActionTypeConfig {
+  code: string;
+  label: string;
+}
+
+const DEFAULT_COLLECTION_ACTION_TYPES: CollectionActionTypeConfig[] = [
+  { code: 'CALL', label: 'Llamada telefónica' },
+  { code: 'VISIT', label: 'Visita presencial' },
+  { code: 'AGREEMENT', label: 'Acuerdo de pago' },
+  { code: 'REFINANCING', label: 'Refinanciación' },
+  { code: 'LEGAL', label: 'Acción legal' },
+  { code: 'PROMISE', label: 'Promesa de pago' },
+];
+
+/**
+ * Obtiene los tipos de acciones de cobranza configurados.
+ * Si no hay setting o está vacía, retorna los defaults.
+ */
+export async function getCollectionActionTypes(): Promise<CollectionActionTypeConfig[]> {
+  try {
+    const setting = await prisma.setting.findUnique({
+      where: { key: 'COLLECTION_ACTION_TYPES' },
+    });
+
+    if (setting && setting.value) {
+      try {
+        const parsed = JSON.parse(setting.value);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed as CollectionActionTypeConfig[];
+        }
+      } catch {
+        // Invalid JSON, use defaults
+      }
+    }
+    return DEFAULT_COLLECTION_ACTION_TYPES;
+  } catch (error) {
+    console.error('Error getting collection action types:', error);
+    return DEFAULT_COLLECTION_ACTION_TYPES;
+  }
+}
+
+/**
+ * Valida si un tipo es válido según la configuración.
+ */
+export async function isValidCollectionActionType(type: string): Promise<boolean> {
+  const types = await getCollectionActionTypes();
+  return types.some(t => t.code === type);
+}
+
 /**
  * Obtiene la unidad de redondeo configurada
  */
@@ -156,4 +209,6 @@ export default {
   getDefaultAmortizationSystem,
   setDefaultAmortizationSystem,
   seedDefaultAmortizationSystem,
+  getCollectionActionTypes,
+  isValidCollectionActionType,
 };

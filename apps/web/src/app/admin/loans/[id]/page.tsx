@@ -7,6 +7,7 @@ import { calculateDaysOverdueFromStringSync } from '@/lib/datetime';
 import PaymentForm from '@/components/PaymentForm';
 import RefinancingModal from '@/components/RefinancingModal';
 import CancelacionAnticipadaModal from '@/components/CancelacionAnticipadaModal';
+import CollectionActionsPanel from '@/components/CollectionActionsPanel';
 
 interface LoanDetail {
   id: string;
@@ -787,6 +788,9 @@ export default function LoanDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Collection Actions Panel */}
+      <CollectionActionsPanel loanId={loan.id} />
 
       {/* Payment Form Modal */}
       {showPaymentForm && loan && (

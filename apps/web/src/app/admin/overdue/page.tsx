@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import PaymentForm from '@/components/PaymentForm';
+import CollectionActionsModal from '@/components/CollectionActionsModal';
 
 interface OverdueInstallment {
   id: string;
@@ -60,6 +61,10 @@ export default function OverduePage() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedLoanId, setSelectedLoanId] = useState('');
   const [selectedInstallmentId, setSelectedInstallmentId] = useState('');
+
+  // Collection actions modal state
+  const [showCollectionModal, setShowCollectionModal] = useState(false);
+  const [selectedCollectionLoanId, setSelectedCollectionLoanId] = useState('');
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
@@ -292,16 +297,27 @@ export default function OverduePage() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <button
-                        onClick={() => {
-                          setSelectedLoanId(inst.loan.id);
-                          setSelectedInstallmentId(inst.id);
-                          setShowPaymentModal(true);
-                        }}
-                        className="text-primary-600 dark:text-[#39ff14] hover:text-primary-800 dark:hover:text-[#32e612] text-sm font-medium"
-                      >
-                        Pagar →
-                      </button>
+                      <div className="flex flex-col gap-1">
+                        <button
+                          onClick={() => {
+                            setSelectedLoanId(inst.loan.id);
+                            setSelectedInstallmentId(inst.id);
+                            setShowPaymentModal(true);
+                          }}
+                          className="text-primary-600 dark:text-[#39ff14] hover:text-primary-800 dark:hover:text-[#32e612] text-sm font-medium text-left"
+                        >
+                          Pagar →
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedCollectionLoanId(inst.loan.id);
+                            setShowCollectionModal(true);
+                          }}
+                          className="text-orange-600 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-300 text-sm font-medium text-left"
+                        >
+                          Cobranza →
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -335,6 +351,36 @@ export default function OverduePage() {
                     loadOverdueData();
                   }}
                   onCancel={() => setShowPaymentModal(false)}
+                />
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Collection Actions Modal */}
+      {showCollectionModal && selectedCollectionLoanId && (
+        <>
+          <div className="fixed inset-0 z-50 bg-black bg-opacity-50 dark:bg-opacity-70" onClick={() => setShowCollectionModal(false)} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-[#1e1e1e] rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto my-8">
+              <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+                <h2 className="text-lg font-semibold dark:text-white/[.87]">Registrar Acción de Cobranza</h2>
+                <button
+                  onClick={() => setShowCollectionModal(false)}
+                  className="text-gray-400 dark:text-white/38 hover:text-gray-600 dark:hover:text-white/87"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="p-4">
+                <CollectionActionsModal
+                  loanId={selectedCollectionLoanId}
+                  onSuccess={() => {
+                    setShowCollectionModal(false);
+                    // Optionally refresh data
+                  }}
+                  onCancel={() => setShowCollectionModal(false)}
                 />
               </div>
             </div>

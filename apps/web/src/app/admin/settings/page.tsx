@@ -378,6 +378,198 @@ export default function SettingsPage() {
           </p>
         </div>
       </div>
+
+      {/* Tipos de Acciones de Cobranza */}
+      <div className="bg-white rounded-lg shadow p-6 mb-6 dark:bg-[#1e1e1e]">
+        <h2 className="text-lg font-semibold mb-4 dark:text-white/[.87]">Tipos de Acciones de Cobranza</h2>
+        <p className="text-sm text-gray-500 mb-4 dark:text-white/60">
+          Configura los tipos de acciones disponibles para el seguimiento de cobranza. Cada tipo tiene un código (úsado internamente) y una etiqueta (mostrada en la interfaz).
+        </p>
+
+        <CollectionActionTypesEditor />
+      </div>
+    </div>
+  );
+}
+
+interface CollectionActionType {
+  code: string;
+  label: string;
+}
+
+function CollectionActionTypesEditor() {
+  const { token } = useAuth();
+  const [types, setTypes] = useState<CollectionActionType[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState({ type: '', text: '' });
+
+  // New type state
+  const [newCode, setNewCode] = useState('');
+  const [newLabel, setNewLabel] = useState('');
+
+  useEffect(() => {
+    if (token) {
+      fetch(`${API_URL}/api/settings/collection-action-types`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.data.types) {
+            setTypes(data.data.types);
+          }
+        })
+        .catch(console.error)
+        .finally(() => setLoading(false));
+    }
+  }, [token]);
+
+  const handleSave = async () => {
+    if (!token || types.length === 0) return;
+
+    setSaving(true);
+    setMessage({ type: '', text: '' });
+
+    try {
+      const res = await fetch(`${API_URL}/api/settings`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          key: 'COLLECTION_ACTION_TYPES',
+          value: JSON.stringify(types),
+          description: 'Tipos de acciones de cobranza disponibles',
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setMessage({ type: 'success', text: 'Tipos guardados correctamente' });
+      } else {
+        setMessage({ type: 'error', text: data.error || 'Error al guardar' });
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'Error de conexión' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAddType = () => {
+    if (!newCode.trim() || !newLabel.trim()) {
+      setMessage({ type: 'error', text: 'Código y etiqueta son requeridos' });
+      return;
+    }
+
+    if (types.some(t => t.code === newCode.trim().toUpperCase())) {
+      setMessage({ type: 'error', text: 'Ya existe un tipo con este código' });
+      return;
+    }
+
+    setTypes([...types, { code: newCode.trim().toUpperCase(), label: newLabel.trim() }]);
+    setNewCode('');
+    setNewLabel('');
+    setMessage({ type: '', text: '' });
+  };
+
+  const handleRemoveType = (code: string) => {
+    setTypes(types.filter(t => t.code !== code));
+  };
+
+  const handleUpdateLabel = (code: string, label: string) => {
+    setTypes(types.map(t => t.code === code ? { ...t, label } : t));
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-32">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 dark:border-[#39ff14]"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {message.text && (
+        <div className={`mb-4 p-3 rounded-lg ${message.type === 'success' ? 'bg-green-50 text-green-600 dark:bg-green-950/50 dark:text-green-400' : 'bg-red-50 text-red-600 dark:bg-red-950/50 dark:text-red-400'}`}>
+          {message.text}
+        </div>
+      )}
+
+      {/* Current types list */}
+      <div className="space-y-2 mb-4">
+        {types.length === 0 ? (
+          <p className="text-gray-500 dark:text-white/60">No hay tipos configurados.</p>
+        ) : (
+          types.map(type => (
+            <div key={type.code} className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-[#2a2a2a] rounded-lg">
+              <span className="px-2 py-1 text-xs font-mono bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-400 rounded">
+                {type.code}
+              </span>
+              <input
+                type="text"
+                value={type.label}
+                onChange={(e) => handleUpdateLabel(type.code, e.target.value)}
+                className="flex-1 px-3 py-1 text-sm border rounded dark:bg-[#1e1e1e] dark:border-[#333333] dark:text-white/[.87]"
+              />
+              <button
+                onClick={() => handleRemoveType(type.code)}
+                className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 px-2"
+              >
+                ✕
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Add new type */}
+      <div className="flex items-end gap-2 p-4 bg-gray-50 dark:bg-[#2a2a2a] rounded-lg">
+        <div className="flex-1">
+          <label className="block text-xs font-medium text-gray-500 mb-1 dark:text-white/60">
+            Código
+          </label>
+          <input
+            type="text"
+            value={newCode}
+            onChange={(e) => setNewCode(e.target.value.toUpperCase())}
+            placeholder="ej. WHATSAPP"
+            className="w-full px-3 py-2 text-sm border rounded dark:bg-[#1e1e1e] dark:border-[#333333] dark:text-white/[.87]"
+          />
+        </div>
+        <div className="flex-1">
+          <label className="block text-xs font-medium text-gray-500 mb-1 dark:text-white/60">
+            Etiqueta
+          </label>
+          <input
+            type="text"
+            value={newLabel}
+            onChange={(e) => setNewLabel(e.target.value)}
+            placeholder="ej. WhatsApp"
+            className="w-full px-3 py-2 text-sm border rounded dark:bg-[#1e1e1e] dark:border-[#333333] dark:text-white/[.87]"
+          />
+        </div>
+        <button
+          onClick={handleAddType}
+          className="px-4 py-2 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700 dark:bg-[#39ff14] dark:text-black dark:hover:bg-[#32e012]"
+        >
+          Agregar
+        </button>
+      </div>
+
+      {/* Save button */}
+      <div className="mt-4 flex justify-end">
+        <button
+          onClick={handleSave}
+          disabled={saving || types.length === 0}
+          className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 dark:bg-[#39ff14] dark:text-black dark:hover:bg-[#32e012]"
+        >
+          {saving ? 'Guardando...' : 'Guardar Tipos'}
+        </button>
+      </div>
     </div>
   );
 }
