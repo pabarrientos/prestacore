@@ -30,18 +30,21 @@ export function ResponsiveNavbar({ user, navLinks, pathname }: ResponsiveNavbarP
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               {/* Logo */}
-              <svg width="140" height="40" viewBox="0 0 140 40" xmlns="http://www.w3.org/2000/svg">              
-                <circle cx="20" cy="20" r="16" stroke="var(--logo-primary)" strokeWidth="3" fill="none"/>
-                
-                <path d="M12 24 L18 18 L22 22 L28 14" 
-                      stroke="var(--logo-primary)" strokeWidth="3" 
-                      fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+              <a href="/" className="logo flex items-center">
+                <svg width="140" height="40" viewBox="0 0 140 40" xmlns="http://www.w3.org/2000/svg" className="logo-anim">
+                  <circle cx="20" cy="20" r="16" stroke="var(--logo-primary)" strokeWidth="3" fill="none" className="logo-circle"/>
 
-                <text x="42" y="26" fontSize="18" fontFamily="Inter, sans-serif" fontWeight="600">
-                  <tspan fill="var(--logo-text)">Presta</tspan>
-                  <tspan fill="var(--logo-primary)">Core</tspan>
-                </text>
-              </svg>
+                  <path d="M12 24 L18 18 L22 22 L28 14"
+                        stroke="var(--logo-primary)" strokeWidth="3"
+                        fill="none" strokeLinecap="round" strokeLinejoin="round"
+                        className="logo-path"/>
+
+                  <text x="42" y="26" fontSize="18" fontFamily="Inter, sans-serif" fontWeight="600" className="logo-text">
+                    <tspan fill="var(--logo-text)">Presta</tspan>
+                    <tspan fill="var(--logo-primary)">Core</tspan>
+                  </text>
+                </svg>
+              </a>
 
               {/* Separador */}
               <span className="mx-3 text-gray-400 dark:text-white/40 hidden sm:inline">•</span>
