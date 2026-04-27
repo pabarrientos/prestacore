@@ -222,7 +222,7 @@ export default function EditLoanPage() {
         annualRate: data.data.annualRate,
         schedule: data.data.schedule.map((item: any) => ({
           number: item.number,
-          date: new Date(item.dueDate).toLocaleDateString('es-ES'),
+          date: new Date(item.dueDate.replace('Z', '')).toLocaleDateString(),
           payment: item.amount,
           principal: item.principal,
           interest: item.interest,

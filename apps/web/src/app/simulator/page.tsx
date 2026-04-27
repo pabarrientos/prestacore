@@ -215,7 +215,7 @@ export default function SimulatorPage() {
         amortizationSystem: backendData.amortizationSystem,
         schedule: backendData.schedule.map((item: any) => ({
           number: item.number,
-          date: new Date(item.dueDate).toLocaleDateString('es-ES'),
+          date: new Date(item.dueDate.replace('Z', '')).toLocaleDateString(),
           payment: item.amount,
           principal: item.principal,
           interest: item.interest,
