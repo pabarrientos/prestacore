@@ -419,6 +419,7 @@ function NewLoanForm() {
               className="w-full px-4 py-2 min-h-[44px] border rounded-lg dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white/[.87] focus:ring-primary-500 dark:focus:ring-[#39ff14] focus:border-primary-500 dark:focus:border-[#39ff14]"
               min={rates.MIN_LOAN_AMOUNT}
               max={rates.MAX_LOAN_AMOUNT}
+              step="any"
               required
             />
           </div>

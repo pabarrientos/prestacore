@@ -18,7 +18,7 @@ const amortizationSystemSchema = z.enum(['FRENCH', 'GERMAN', 'FLAT_RATE']).optio
 
 const simulationSchema = z.object({
   amount: z.number().positive().min(100), // No max limit - can be configured in settings
-  interestRate: z.number().positive().min(0.1).max(2000), // Allow up to 2000% annual rate for high inflation scenarios
+  interestRate: z.number().positive().min(0.1), // Allow up to 2000% annual rate for high inflation scenarios
   termMonths: z.number().int().positive().min(1).max(60),
   frequency: z.enum(['WEEKLY', 'BIWEEKLY', 'MONTHLY', 'DAILY']).default('MONTHLY'),
   amortizationSystem: amortizationSystemSchema,
@@ -28,7 +28,7 @@ const simulationSchema = z.object({
 const createLoanSchema = z.object({
   clientId: z.string().cuid(),
   amount: z.number().positive().min(100),
-  interestRate: z.number().positive().min(0.1).max(500),
+  interestRate: z.number().positive().min(0.1),
   termMonths: z.number().int().positive().min(1).max(120),
   frequency: z.enum(['WEEKLY', 'BIWEEKLY', 'MONTHLY', 'DAILY']).default('MONTHLY'),
   purpose: z.string().optional(),
@@ -126,7 +126,7 @@ router.post('/request', authMiddleware, requireClientOnly, async (req: AuthReque
   try {
     const requestSchema = z.object({
       amount: z.number().positive().min(100),
-      interestRate: z.number().positive().min(0.1).max(500),
+      interestRate: z.number().positive().min(0.1),
       termMonths: z.number().int().positive().min(1).max(120),
       frequency: z.enum(['WEEKLY', 'BIWEEKLY', 'MONTHLY', 'DAILY']).default('MONTHLY'),
       purpose: z.string().optional(),
