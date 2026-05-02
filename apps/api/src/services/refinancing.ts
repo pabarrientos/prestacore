@@ -168,11 +168,10 @@ export class RefinancingService {
     return Math.round(totalInterest * 100) / 100;
   }
 
-  /**
-    * Validate that a loan can be refinanced
-    * Allowed: DEFAULTED or ACTIVE loans with overdue installments
-    * Rule: No installment can be partially paid (balance must equal full amount)
-    */
+/**
+     * Validate that a loan can be refinanced
+     * Allowed: ACTIVE or DEFAULTED loans with no PARTIAL installments
+     */
   static async validateRefinancingEligibility(loanId: string): Promise<{
     eligible: boolean;
     error?: string;
@@ -192,39 +191,29 @@ export class RefinancingService {
       return { eligible: false, error: 'Préstamo no encontrado' };
     }
 
-    // Check for partially paid installments - cannot refinance if any is partially paid
-    const partiallyPaidInstallments = loan.installments.filter(
-      inst => inst.status === InstallmentStatus.PARTIAL || 
-              (inst.status === InstallmentStatus.PENDING && Number(inst.balance) !== Number(inst.amount))
+    // Cannot refinance PAID or REFINANCIADO loans
+    if (loan.status === LoanStatus.PAID) {
+      return { eligible: false, error: 'El préstamo ya está cancelado. No se puede refinanciar.' };
+    }
+    
+    if (loan.status === LoanStatus.REFINANCIADO) {
+      return { eligible: false, error: 'El préstamo ya ha sido refinanciado.' };
+    }
+
+    // Cannot refinance if any installment is PARTIAL
+    const partialInstallments = loan.installments.filter(
+      inst => inst.status === InstallmentStatus.PARTIAL
     );
 
-    if (partiallyPaidInstallments.length > 0) {
+    if (partialInstallments.length > 0) {
       return {
         eligible: false,
-        error: `No se puede refinanciar: el préstamo tiene ${partiallyPaidInstallments.length} cuota(s) parcialmente pagada(s). Complete los pagos antes de refinanciar.`,
+        error: `No se puede refinanciar: el préstamo tiene ${partialInstallments.length} cuota(s) parcialmente pagada(s). Complete los pagos antes de refinanciar.`,
       };
     }
 
-    // Allow DEFAULTED or ACTIVE with overdue installments (date-only comparison)
-    const todayOnly = await getToday();
-    const hasOverdueInstallments = loan.installments.some(inst => {
-      const dueDate = new Date(inst.dueDate);
-      const dueDateOnly = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
-      return dueDateOnly < todayOnly && inst.status !== InstallmentStatus.PAID;
-    });
-    
-    if (loan.status === LoanStatus.DEFAULTED) {
-      return { eligible: true };
-    }
-    
-    if (loan.status === LoanStatus.ACTIVE && hasOverdueInstallments) {
-      return { eligible: true };
-    }
-
-    return {
-      eligible: false,
-      error: `Para refinanciar el préstamo debe estar en DEFAULTED o tener cuotas vencidas. Estado actual: ${loan.status}`,
-    };
+    // Allow refinancing for ACTIVE or DEFAULTED (no overdue requirement)
+    return { eligible: true };
   }
 
   /**

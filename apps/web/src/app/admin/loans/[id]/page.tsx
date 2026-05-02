@@ -361,20 +361,9 @@ export default function LoanDetailPage() {
               Registrar Pago
             </button>
           )}
-          {loan.status === 'DEFAULTED' && user?.role === 'ADMIN' && (
-            <button
-              onClick={() => setShowRefinancing(true)}
-              className="px-3 py-2 min-h-[44px] text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700"
-            >
-              Refinanciar
-            </button>
-          )}
-          {/* Also show refinancing for ACTIVE loans with overdue installments */}
-          {loan.status === 'ACTIVE' && user?.role === 'ADMIN' && loan.installments?.some(i => {
-            const now = new Date();
-            const due = new Date(i.dueDate);
-            return due < now && i.status !== 'PAID';
-          }) && (
+          {/* Refinanciar button - any ACTIVE or DEFAULTED loan, except if has PARTIAL installments */}
+          {(loan.status === 'ACTIVE' || loan.status === 'DEFAULTED') && user?.role === 'ADMIN' && 
+           !loan.installments?.some(i => i.status === 'PARTIAL') && (
             <button
               onClick={() => setShowRefinancing(true)}
               className="px-3 py-2 min-h-[44px] text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700"
