@@ -93,9 +93,9 @@ export default function EditLoanPage() {
             setLoan(data.data);
             const l = data.data;
             let periodsPerYear = 12;
-            if (l.frequency === 'WEEKLY') periodsPerYear = 52;
+            if (l.frequency === 'WEEKLY') periodsPerYear = 48;
             else if (l.frequency === 'BIWEEKLY') periodsPerYear = 24;
-            else if (l.frequency === 'DAILY') periodsPerYear = 365;
+            else if (l.frequency === 'DAILY') periodsPerYear = 360;
             
             const periodicRate = l.interestRate / periodsPerYear;
             
@@ -185,9 +185,9 @@ export default function EditLoanPage() {
     try {
       let periodsPerYear: number;
       switch (frequency) {
-        case 'WEEKLY': periodsPerYear = 52; break;
+        case 'WEEKLY': periodsPerYear = 48; break;
         case 'BIWEEKLY': periodsPerYear = 24; break;
-        case 'DAILY': periodsPerYear = 365; break;
+        case 'DAILY': periodsPerYear = 360; break;
         default: periodsPerYear = 12;
       }
 
@@ -254,9 +254,9 @@ export default function EditLoanPage() {
       const periodicRate = parseFloat(formData.customRate);
       
       let periodsPerYear = 12;
-      if (formData.frequency === 'WEEKLY') periodsPerYear = 52;
+      if (formData.frequency === 'WEEKLY') periodsPerYear = 48;
       else if (formData.frequency === 'BIWEEKLY') periodsPerYear = 24;
-      else if (formData.frequency === 'DAILY') periodsPerYear = 365;
+      else if (formData.frequency === 'DAILY') periodsPerYear = 360;
       
       const annualRate = periodicRate * periodsPerYear;
 
