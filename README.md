@@ -246,10 +246,10 @@ El sistema soporta 4 períodos de pago configurables:
 
 | Período | Cuotas/año | Configuración de Tasa |
 |---------|------------|----------------------|
-| Semanal | 52 | `WEEKLY_BASE_RATE` (ej: 7.5%) |
+| Semanal | 48 | `WEEKLY_BASE_RATE` (ej: 7.5%) |
 | Quincenal | 24 | `BIWEEKLY_BASE_RATE` (ej: 15%) |
 | Mensual | 12 | `MONTHLY_BASE_RATE` (ej: 30%) |
-| Diario | 365 | `DAILY_BASE_RATE` (ej: 0.5%) |
+| Diario | 360 | `DAILY_BASE_RATE` (ej: 0.5%) |
 
 ### Configuración de Tasas
 
