@@ -210,9 +210,9 @@ function NewLoanForm() {
     try {
       let periodsPerYear: number;
       switch (frequency) {
-        case 'WEEKLY': periodsPerYear = 52; break;
+        case 'WEEKLY': periodsPerYear = 48; break;
         case 'BIWEEKLY': periodsPerYear = 24; break;
-        case 'DAILY': periodsPerYear = 365; break;
+        case 'DAILY': periodsPerYear = 360; break;
         default: periodsPerYear = 12;
       }
 
@@ -280,9 +280,9 @@ function NewLoanForm() {
 
     try {
       let periodsPerYear = 12;
-      if (formData.frequency === 'WEEKLY') periodsPerYear = 52;
+      if (formData.frequency === 'WEEKLY') periodsPerYear = 48;
       else if (formData.frequency === 'BIWEEKLY') periodsPerYear = 24;
-      else if (formData.frequency === 'DAILY') periodsPerYear = 365;
+      else if (formData.frequency === 'DAILY') periodsPerYear = 360;
       
       const customRate = parseFloat(formData.customRate);
       const annualRate = customRate * periodsPerYear;
