@@ -161,7 +161,7 @@ export default function SimulatorPage() {
     switch (frequency) {
       case 'WEEKLY':
         baseRate = rates.WEEKLY_BASE_RATE;
-        periodsPerYear = 52;
+        periodsPerYear = 48;
         break;
       case 'BIWEEKLY':
         baseRate = rates.BIWEEKLY_BASE_RATE;
@@ -169,7 +169,7 @@ export default function SimulatorPage() {
         break;
       case 'DAILY':
         baseRate = rates.DAILY_BASE_RATE;
-        periodsPerYear = 365;
+        periodsPerYear = 360;
         break;
       case 'MONTHLY':
       default:
