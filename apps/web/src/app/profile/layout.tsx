@@ -47,6 +47,8 @@ export default function ProfileLayout({
         { href: '/admin/loans', label: 'Préstamos' },
         { href: '/admin/clients', label: 'Clientes' },
         { href: '/admin/payments', label: 'Pagos' },
+        { href: '/admin/installments', label: 'Cuotas' },
+        { href: '/admin/collection-actions', label: 'Cobranzas' },
         { href: '/admin/settings', label: 'Configuración' },
         { href: '/admin/users', label: 'Usuarios' },
         { href: '/profile', label: 'Mi Perfil' },
@@ -57,6 +59,8 @@ export default function ProfileLayout({
         { href: '/admin/loans', label: 'Préstamos' },
         { href: '/admin/clients', label: 'Clientes' },
         { href: '/admin/payments', label: 'Pagos' },
+        { href: '/admin/installments', label: 'Cuotas' },
+        { href: '/admin/collection-actions', label: 'Cobranzas' },
         { href: '/profile', label: 'Mi Perfil' },
       ]
     : [
