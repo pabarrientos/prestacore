@@ -44,10 +44,10 @@ interface RefinancingModalProps {
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 const frequencyOptions = [
-  { value: 'WEEKLY', label: 'Semanal', periodsPerYear: 52 },
+  { value: 'WEEKLY', label: 'Semanal', periodsPerYear: 48 },
   { value: 'BIWEEKLY', label: 'Quincenal', periodsPerYear: 24 },
   { value: 'MONTHLY', label: 'Mensual', periodsPerYear: 12 },
-  { value: 'DAILY', label: 'Diario', periodsPerYear: 365 },
+  { value: 'DAILY', label: 'Diario', periodsPerYear: 360 },
 ];
 
 const systemOptions = [
@@ -108,7 +108,7 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
     switch (nuevaFrecuencia) {
       case 'WEEKLY':
         baseRate = rates.WEEKLY_BASE_RATE;
-        periodsPerYear = 52;
+        periodsPerYear = 48;
         break;
       case 'BIWEEKLY':
         baseRate = rates.BIWEEKLY_BASE_RATE;
@@ -116,7 +116,7 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
         break;
       case 'DAILY':
         baseRate = rates.DAILY_BASE_RATE;
-        periodsPerYear = 365;
+        periodsPerYear = 360;
         break;
       case 'MONTHLY':
       default:
