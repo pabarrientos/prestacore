@@ -135,11 +135,11 @@ function getRowClass(status: string, dueDate: string): string {
 function getPeriodicRate(annualRate: number, frequency: string): number {
   switch (frequency) {
     case 'WEEKLY':
-      return Math.round((annualRate / 52) * 10000) / 10000;
+      return Math.round((annualRate / 48) * 10000) / 10000;
     case 'BIWEEKLY':
       return Math.round((annualRate / 24) * 10000) / 10000;
     case 'DAILY':
-      return Math.round((annualRate / 365) * 10000) / 10000;
+      return Math.round((annualRate / 360) * 10000) / 10000;
     default:
       return Math.round((annualRate / 12) * 10000) / 10000;
   }
