@@ -30,7 +30,7 @@ export function PDFButton({ simulationData, disabled = false }: PDFButtonProps) 
         const response = await fetch(`${API_URL}/api/settings`);
         const data = await response.json();
         if (data.success && data.data && data.data.ROUNDING_UNIT) {
-          roundingUnit = parseInt(data.data.ROUNDING_UNIT.value, 10) || 1000;
+          roundingUnit = parseFloat(data.data.ROUNDING_UNIT.value) || 1000;
         }
       } catch {
         // Use default rounding unit on error

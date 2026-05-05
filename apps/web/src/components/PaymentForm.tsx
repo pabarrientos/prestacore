@@ -107,7 +107,7 @@ export default function PaymentForm({ loanId, payment, preselectedInstallmentId,
       .then((res) => res.json())
       .then((data) => {
         if (data.success && data.data.ROUNDING_UNIT) {
-          setRoundingUnit(parseInt(data.data.ROUNDING_UNIT.value, 10) || 1000);
+          setRoundingUnit(parseFloat(data.data.ROUNDING_UNIT.value) || 1000);
         }
       })
       .catch((err) => console.error('Error loading rounding unit:', err));
