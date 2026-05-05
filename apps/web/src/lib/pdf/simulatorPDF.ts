@@ -81,8 +81,13 @@ function getAmortizationSystemLabel(system: string): string {
 /**
  * Build the summary data from simulation data and rounded installment
  */
-function buildSummaryData(data: SimulationPDFData, roundedInstallment: number): PDFSummaryData {
-  const totalPayment = roundedInstallment * data.result.schedule.length;
+function buildSummaryData(data: SimulationPDFData, roundingUnit: number): PDFSummaryData {
+  // For German system, each installment is different, so sum all rounded payments
+  // For French/Flat, all payments are the same, so we can multiply
+  const roundedInstallment = roundUpInstallment(data.result.installmentAmount, roundingUnit);
+  const totalPayment = data.result.schedule.reduce((sum, item) => {
+    return sum + roundUpInstallment(item.payment, roundingUnit);
+  }, 0);
   const totalInterest = totalPayment - data.formData.amount;
 
   return {
@@ -297,11 +302,8 @@ function addFooter(doc: jsPDF): void {
  * Generate a PDF document for the loan simulation - Professional Design
  */
 export function generateSimulatorPDF(data: SimulationPDFData, roundingUnit: number): void {
-  // Calculate rounded installment
-  const roundedInstallment = roundUpInstallment(data.result.installmentAmount, roundingUnit);
-
   // Build summary data with recalculated totals
-  const summary = buildSummaryData(data, roundedInstallment);
+  const summary = buildSummaryData(data, roundingUnit);
 
   // Create PDF document
   const doc = new jsPDF();
