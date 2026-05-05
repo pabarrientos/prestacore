@@ -1,5 +1,5 @@
 import Router, { Response } from 'express';
-import { PrismaClient, InstallmentStatus, LoanStatus, Role } from '@prisma/client';
+import { PrismaClient, Role } from '@prisma/client';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { MoraService } from '../services/mora';
 import { getRate } from '../services/settings';
