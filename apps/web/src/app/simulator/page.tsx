@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
+import { PDFButton } from '@/components/simulator/PDFButton';
 
 const LOAN_STORAGE_KEY = 'pending_loan_request';
 
@@ -215,7 +216,7 @@ export default function SimulatorPage() {
         amortizationSystem: backendData.amortizationSystem,
         schedule: backendData.schedule.map((item: any) => ({
           number: item.number,
-          date: new Date(item.dueDate.replace('Z', '')).toLocaleDateString(),
+          date: new Date(item.dueDate), // Pass raw ISO date to PDF (timezone-safe)
           payment: item.amount,
           principal: item.principal,
           interest: item.interest,
@@ -410,6 +411,30 @@ export default function SimulatorPage() {
                   <p className="text-sm text-gray-600 dark:text-white/60">Total a Pagar</p>
                   <p className="text-2xl font-bold dark:text-white/[.87]">${result.totalPayment.toLocaleString()}</p>
                 </div>
+
+                <div className="flex justify-end">
+                  <PDFButton
+                    simulationData={{
+                      formData: {
+                        amount: parseFloat(formData.amount),
+                        term: parseInt(formData.term),
+                        frequency: formData.frequency as 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY' | 'DAILY',
+                      },
+                      result: {
+                        installmentAmount: result.installmentAmount,
+                        totalInterest: result.totalInterest,
+                        totalPayment: result.totalPayment,
+                        amortizationSystem: result.amortizationSystem,
+                        schedule: result.schedule.map(item => ({
+                          number: item.number,
+                          date: item.date,
+                          payment: item.payment,
+                        })),
+                      },
+                    }}
+                    disabled={!result}
+                  />
+                </div>
               </div>
             ) : (
               <p className="text-gray-500 text-center py-8 dark:text-white/60">
@@ -445,7 +470,7 @@ export default function SimulatorPage() {
                   {result.schedule.map((item) => (
                     <tr key={item.number} className="border-t dark:border-gray-700">
                       <td className="px-4 py-2 dark:text-white/[.87]">{item.number}</td>
-                      <td className="px-4 py-2 dark:text-white/[.87]">{item.date}</td>
+                      <td className="px-4 py-2 dark:text-white/[.87]">{new Date(item.date).toLocaleDateString()}</td>
                       <td className="px-4 py-2 text-right dark:text-white/[.87]">${item.payment.toLocaleString()}</td>
                       <td className="px-4 py-2 text-right text-green-600 dark:text-green-400">${item.principal.toLocaleString()}</td>
                       <td className="px-4 py-2 text-right text-red-600 dark:text-red-400">${item.interest.toLocaleString()}</td>
