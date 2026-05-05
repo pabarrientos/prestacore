@@ -98,6 +98,28 @@ function getStatusLabel(status: string): string {
   }
 }
 
+// Helper para color de fila según estado y overdue dinámico
+function isOverdue(dueDate: string, status: string): boolean {
+  if (status === 'PAID') return false;
+  // Use date-only comparison for days overdue calculation
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  // Extract YYYY-MM-DD from dueDate
+  const dueDatePart = dueDate.includes('T') ? dueDate.split('T')[0] : dueDate.split(' ')[0];
+  // Parse dates safely - use YYYY-MM-DD format for reliable parsing
+  const todayMs = new Date(todayStr + 'T00:00:00').getTime();
+  const dueMs = new Date(dueDatePart + 'T00:00:00').getTime();
+  const diffDays = Math.floor((todayMs - dueMs) / (86400 * 1000));
+  return !isNaN(diffDays) && diffDays > 0;
+}
+
+function getInstallmentRowClass(dynamicStatus: string, dueDate: string): string {
+  if (dynamicStatus === 'PAID') return 'bg-green-50 dark:bg-green-900/20';
+  if (dynamicStatus === 'CANCELADA_POR_REFINANCIACION') return 'bg-purple-50 dark:bg-purple-900/20';
+  if (isOverdue(dueDate, dynamicStatus)) return 'bg-red-50 dark:bg-red-900/20';
+  return '';
+}
+
 export default function InstallmentsPage() {
   const { token, user } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -121,6 +143,9 @@ export default function InstallmentsPage() {
   // Collection actions modal state
   const [showCollectionModal, setShowCollectionModal] = useState(false);
   const [selectedCollectionLoanId, setSelectedCollectionLoanId] = useState('');
+
+  // Refresh trigger to re-fetch installments after mutations
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Load initial date (today) and fetch data
   useEffect(() => {
@@ -181,7 +206,7 @@ export default function InstallmentsPage() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [token, fechaInicio, fechaFin, selectedVendor, selectedEstado, selectedCliente]);
+  }, [token, fechaInicio, fechaFin, selectedVendor, selectedEstado, selectedCliente, refreshTrigger]);
 
   const handleFechaChange = (field: 'inicio' | 'fin', value: string) => {
     if (field === 'inicio') {
@@ -366,8 +391,21 @@ export default function InstallmentsPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200 dark:bg-[#1e1e1e] dark:divide-gray-700">
-                {installments.map((inst) => (
-                  <tr key={inst.id} className="hover:bg-gray-50 dark:hover:bg-[#2a2a2a]">
+                {installments.map((inst) => {
+                  // Calculate days overdue inline with safe date parsing
+                  const today = new Date();
+                  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                  const dueDatePart = inst.dueDate.includes('T') ? inst.dueDate.split('T')[0] : inst.dueDate.split(' ')[0];
+                  const todayMs = new Date(todayStr + 'T00:00:00').getTime();
+                  const dueMs = new Date(dueDatePart + 'T00:00:00').getTime();
+                  const diffDays = Math.floor((todayMs - dueMs) / (86400 * 1000));
+                  const daysOverdue = !isNaN(diffDays) ? Math.max(0, diffDays) : 0;
+                  
+                  // Only PENDING can become OVERDUE dynamically based on due date
+                  const dynamicStatus = (inst.status === 'PENDING' && daysOverdue > 0) ? 'OVERDUE' : inst.status;
+                  
+                  return (
+                  <tr key={inst.id} className={`hover:bg-gray-50 dark:hover:bg-[#2a2a2a] ${getInstallmentRowClass(dynamicStatus, inst.dueDate)}`}>
                     <td className="px-4 py-3">
                       <div>
                         <p className="font-medium dark:text-white/[.87]">{inst.client.name}</p>
@@ -392,32 +430,46 @@ export default function InstallmentsPage() {
                     <td className="px-4 py-3 dark:text-white/[.87]">
                       ${Number(inst.amount).toLocaleString()}
                     </td>
-                    <td className="px-4 py-3 font-medium dark:text-white/[.87]">
-                      ${Number(inst.balance).toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3 text-orange-600 dark:text-orange-400">
-                      ${inst.moraAmount.toLocaleString()}
-                    </td>
                     <td className="px-4 py-3">
-                      {inst.daysOverdue > 30 ? (
-                        <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-400">
-                          {inst.daysOverdue}
-                        </span>
-                      ) : inst.daysOverdue > 0 ? (
-                        <span className="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-400">
-                          {inst.daysOverdue}
-                        </span>
-                      ) : (
-                        <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
-                          {inst.daysOverdue}
-                        </span>
-                      )}
+                      <div className="flex flex-col">
+                        <span className="font-medium dark:text-white/[.87]">${Number(inst.balance).toLocaleString()}</span>
+                        {inst.paidAmount > 0 && (
+                          <span className="text-xs text-green-600 dark:text-green-400">
+                            Pagado: ${Number(inst.paidAmount).toLocaleString()}
+                          </span>
+                        )}
+                      </div>
                     </td>
+                    {dynamicStatus === 'PARTIAL' || dynamicStatus === 'OVERDUE' ? (
+                      <>
+                        <td className="px-4 py-3 text-orange-600 dark:text-orange-400">
+                          ${inst.moraAmount.toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-1 text-xs rounded-full ${
+                            daysOverdue > 30
+                              ? 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-400'
+                              : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-400'
+                          }`}>
+                            {daysOverdue}
+                          </span>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-4 py-3 text-orange-600 dark:text-orange-400">
+                          ${inst.moraAmount.toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3 dark:text-white/[.38]">
+                          -
+                        </td>
+                      </>
+                    )}
                     <td className="px-4 py-3">
                       <span
-                        className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(inst.daysOverdue > 0 ? 'OVERDUE' : inst.status)}`}
+                        className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(dynamicStatus)}`}
                       >
-                        {getStatusLabel(inst.daysOverdue > 0 ? 'OVERDUE' : inst.status)}
+                        {getStatusLabel(dynamicStatus)}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -444,7 +496,8 @@ export default function InstallmentsPage() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -475,9 +528,8 @@ export default function InstallmentsPage() {
                   preselectedInstallmentId={selectedInstallmentId}
                   onSuccess={() => {
                     setShowPaymentModal(false);
-                    // Refresh data
-                    setFechaInicio(fechaInicio);
-                    setFechaFin(fechaFin);
+                    // Refresh entire page with current filters to show updated statuses
+                    setRefreshTrigger(prev => prev + 1);
                   }}
                   onCancel={() => setShowPaymentModal(false)}
                 />
@@ -512,6 +564,8 @@ export default function InstallmentsPage() {
                   loanId={selectedCollectionLoanId}
                   onSuccess={() => {
                     setShowCollectionModal(false);
+                    // Refresh entire page with current filters to show updated statuses
+                    setRefreshTrigger(prev => prev + 1);
                   }}
                   onCancel={() => setShowCollectionModal(false)}
                 />
