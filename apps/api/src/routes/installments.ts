@@ -196,8 +196,8 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise
           paidAmount: Number(inst.paidAmount),
           moraAmount: Math.round(moraAmount * 100) / 100,
           daysOverdue,
-          // Override status to OVERDUE when daysOverdue > 0 (regardless of stored DB status)
-          status: daysOverdue > 0 ? 'OVERDUE' : inst.status,
+          // Only override PENDING to OVERDUE dynamically (keep PARTIAL, PAID, etc. as-is)
+          status: (daysOverdue > 0 && inst.status === 'PENDING') ? 'OVERDUE' : inst.status,
           loan: {
             id: inst.loanId,
             amount: Number(inst.loanAmount),
