@@ -319,7 +319,7 @@ export function generateSimulatorPDF(data: SimulationPDFData, roundingUnit: numb
   const tableData = data.result.schedule.map((item) => [
     String(item.number),
     formatDateToDDMMYYYY(item.date),
-    `$${roundedInstallment.toLocaleString()}`,
+    `$${item.payment.toLocaleString()}`,
   ]);
 
   autoTable(doc, {
