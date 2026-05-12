@@ -17,10 +17,12 @@ services:
     volumes:
       - ./storage/postgres:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U prestamos"]
+      test: ["CMD-SHELL", "pg_isready -U prestamos -d prestamos"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 30s
+    restart: always
 
   # API Server
   api:
@@ -41,8 +43,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    restart: unless-stopped
-
+    restart: always
   # Web Frontend
   web:
     build:
@@ -59,4 +60,4 @@ services:
       - "3000:3000"
     depends_on:
       - api
-    restart: unless-stopped
+    restart: always
