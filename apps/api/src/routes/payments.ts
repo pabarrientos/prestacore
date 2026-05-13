@@ -762,11 +762,11 @@ router.delete('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res
       return;
     }
 
-    // Can't delete if loan is not ACTIVE
-    if (payment.loan.status !== LoanStatus.ACTIVE) {
+    // Can't delete if loan is CANCELLED
+    if (payment.loan.status === LoanStatus.CANCELLED) {
       res.status(400).json({
         success: false,
-        error: 'No se puede eliminar pagos de préstamos que no están activos',
+        error: 'No se puede eliminar pagos de préstamos cancelados',
       });
       return;
     }

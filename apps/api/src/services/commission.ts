@@ -198,11 +198,6 @@ export class CommissionService {
       return null;
     }
     
-    // Skip for inactive or paid loans
-    if (loan.status === LoanStatus.PAID || loan.status === LoanStatus.CANCELLED) {
-      return null;
-    }
-    
     const mode = loan.commissionMode ?? CommissionMode.PROPORTIONAL;
     const percentage = loan.commissionPercentage;
     const strategy = getStrategy(mode);
