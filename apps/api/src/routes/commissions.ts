@@ -466,7 +466,7 @@ router.post('/liquidate', authMiddleware, requireAdmin, async (req: AuthRequest,
           type,
           notes,
           createdBy: req.user!.userId,
-          ...(date ? { createdAt: new Date(date + 'T00:00:00') } : {}),
+          ...(date ? { createdAt: new Date(date + 'T00:00:00.000Z') } : {}),
         },
       });
 
@@ -519,7 +519,7 @@ router.get('/liquidations/:vendorId', authMiddleware, rbacMiddleware([Role.ADMIN
         type: l.type,
         notes: l.notes,
         createdBy: l.creator.firstName + ' ' + l.creator.lastName,
-        createdAt: l.createdAt.toISOString(),
+        createdAt: l.createdAt.toISOString().split('T')[0], // date-only, no timezone shift
       })),
     });
   } catch (error) {
