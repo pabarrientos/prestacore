@@ -366,16 +366,31 @@ router.post('/liquidate', authMiddleware, requireAdmin, async (req: AuthRequest,
           });
           remaining -= refund;
         }
+      } else if (type === 'ADVANCE') {
+        // Distribute advance proportionally based on generated commission, or evenly
+        const totalGen = loans.reduce((s, l) => s + Number(l.commissionGenerated ?? 0), 0);
+        let remaining = amount;
+        for (const loan of loans) {
+          if (remaining <= 0) break;
+          const share = totalGen > 0
+            ? Math.round((Number(loan.commissionGenerated ?? 0) / totalGen) * amount * 100) / 100
+            : Math.round((amount / Math.max(1, loans.length)) * 100) / 100;
+          const dist = Math.min(remaining, share);
+          if (dist <= 0) continue;
+          await tx.loan.update({
+            where: { id: loan.id },
+            data: { commissionLiquidated: { increment: dist } },
+          });
+          remaining -= dist;
+        }
       } else {
+        // PAYMENT: distribute proportionally based on pending
         let remaining = amount;
         for (const loan of loans) {
           if (remaining <= 0) break;
           const loanPending = Number(loan.commissionGenerated ?? 0) - Number(loan.commissionLiquidated ?? 0);
-          if (type === 'PAYMENT' && loanPending <= 0) continue;
-          const dist = type === 'ADVANCE'
-            ? Math.min(remaining, Math.max(0.01, loanPending || remaining))
-            : Math.min(remaining, Math.max(0, loanPending));
-          if (dist <= 0) continue;
+          if (loanPending <= 0) continue;
+          const dist = Math.min(remaining, loanPending);
           await tx.loan.update({
             where: { id: loan.id },
             data: { commissionLiquidated: { increment: dist } },
