@@ -203,16 +203,36 @@ export class CommissionService {
     const strategy = getStrategy(mode);
     
     // Get only paid or partially paid installments for commission calculation
-    // Exclude PENDING (not paid) and CANCELADA_POR_REFINANCIACION (refinanced, not real collection)
+    // Calculate projected commission first (based on ALL installments)
+    const totalInterest = loan.installments.reduce(
+      (sum, inst) => sum + Number(inst.interest), 0
+    );
+    const projectedCommission = Math.round(totalInterest * (percentage / 100) * 100) / 100;
+
+    // ADVANCED mode: full commission from start (unless PAID or REFINANCIADO)
+    if (mode === CommissionMode.ADVANCED && loan.status !== LoanStatus.PAID && loan.status !== LoanStatus.REFINANCIADO) {
+      await prisma.loan.update({
+        where: { id: loanId },
+        data: { 
+          commissionGenerated: projectedCommission,
+          commissionProjected: projectedCommission,
+        },
+      });
+      return projectedCommission;
+    }
+
+    // Exclude PENDING and CANCELADA_POR_REFINANCIACION for actual collection-based calculation
     const activeInstallments = loan.installments.filter(
       (inst) => inst.status !== InstallmentStatus.PENDING && inst.status !== InstallmentStatus.CANCELADA_POR_REFINANCIACION
     );
     
     if (activeInstallments.length === 0) {
-      // No payments made yet, commission is 0
       await prisma.loan.update({
         where: { id: loanId },
-        data: { commissionGenerated: 0 },
+        data: { 
+          commissionGenerated: 0,
+          commissionProjected: projectedCommission,
+        },
       });
       return 0;
     }
@@ -221,7 +241,7 @@ export class CommissionService {
     let totalCommission = 0;
     let capitalRecoveredSoFar = 0;
     const totalPrincipal = Number(loan.amount);
-    
+
     for (const installment of activeInstallments) {
       const result = strategy.calculateInstallmentCommission(
         {
@@ -243,18 +263,6 @@ export class CommissionService {
     
     // Round to 2 decimal places
     totalCommission = Math.round(totalCommission * 100) / 100;
-    
-    // Calculate projected commission (based on ALL installments, not just paid ones)
-    const totalInterest = loan.installments.reduce(
-      (sum, inst) => sum + Number(inst.interest), 0
-    );
-    const projectedCommission = Math.round(totalInterest * (percentage / 100) * 100) / 100;
-    
-    // ADVANCED mode: full commission is generated from start, equal to projected
-    // EXCEPT when PAID (cancelled) or REFINANCIADO — use actual collected interest
-    if (mode === CommissionMode.ADVANCED && loan.status !== LoanStatus.PAID && loan.status !== LoanStatus.REFINANCIADO) {
-      totalCommission = projectedCommission;
-    }
     
     // Update loan with calculated commission
     await prisma.loan.update({
