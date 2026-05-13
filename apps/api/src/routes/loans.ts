@@ -974,6 +974,7 @@ router.patch('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res:
         include: {
           client: { include: { user: { select: { firstName: true, lastName: true, email: true, phone: true } } } },
           assignedVendor: { select: { id: true, firstName: true, lastName: true } },
+          installments: { orderBy: { installmentNumber: 'asc' } },
         },
       });
       
