@@ -978,7 +978,32 @@ router.patch('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res:
         },
       });
       
-      res.json({ success: true, data: updated });
+      // Format Decimal fields as numbers for frontend
+      res.json({ 
+        success: true, 
+        data: updated ? {
+          ...updated,
+          amount: Number(updated.amount),
+          interestRate: Number(updated.interestRate),
+          totalInterest: Number(updated.totalInterest),
+          totalPayment: Number(updated.totalPayment),
+          installmentAmount: Number(updated.installmentAmount),
+          commissionPercentage: updated.commissionPercentage ? Number(updated.commissionPercentage) : null,
+          commissionGenerated: Number(updated.commissionGenerated ?? 0),
+          commissionProjected: Number(updated.commissionProjected ?? 0),
+          commissionLiquidated: Number(updated.commissionLiquidated ?? 0),
+          installments: updated.installments.map(inst => ({
+            ...inst,
+            amount: Number(inst.amount),
+            balance: Number(inst.balance),
+            paidAmount: Number(inst.paidAmount),
+            principal: Number(inst.principal),
+            interest: Number(inst.interest),
+            capitalBalance: Number(inst.capitalBalance),
+            moraAmount: Number(inst.moraAmount ?? 0),
+          })),
+        } : null,
+      });
       return;
     }
 
