@@ -50,9 +50,12 @@ export default function AdminLayout({
     { href: '/admin/settings', label: 'Configuración' },
   ];
 
-  // Users link - only for ADMIN
-  const usersLink = user.role === 'ADMIN'
-    ? [{ href: '/admin/users', label: 'Usuarios' }]
+  // Users and commissions links - only for ADMIN
+  const adminOnlyLinks = user.role === 'ADMIN'
+    ? [
+        { href: '/admin/users', label: 'Usuarios' },
+        { href: '/admin/commissions', label: 'Comisiones' },
+      ]
     : [];
 
   // Mi Perfil - for all authenticated users
@@ -66,12 +69,20 @@ export default function AdminLayout({
       )
     : baseNavLinks;
 
+  // Vendor-specific links
+  const vendorLinks = user.role === 'VENDEDOR'
+    ? [{ href: '/mis-comisiones', label: 'Mis Comisiones' }]
+    : [];
+
   // Add profile link to all users (always at the end)
   const allNavLinks = [...navLinks, ...profileLink];
 
-  // Add users link only for ADMIN (before profile)
+  // Add admin-only links (users, commissions) for ADMIN (before profile)
+  // Add vendor-specific links (mis-comisiones) for VENDEDOR (before profile)
   const finalNavLinks = user.role === 'ADMIN' 
-    ? [...allNavLinks.slice(0, -1), ...usersLink, ...allNavLinks.slice(-1)]
+    ? [...allNavLinks.slice(0, -1), ...adminOnlyLinks, ...allNavLinks.slice(-1)]
+    : user.role === 'VENDEDOR'
+    ? [...allNavLinks.slice(0, -1), ...vendorLinks, ...allNavLinks.slice(-1)]
     : allNavLinks;
 
   return (
