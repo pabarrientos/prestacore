@@ -108,63 +108,77 @@ describe('CommissionStrategy', () => {
   });
 
   describe('AfterCapitalRecoveryStrategy', () => {
-    it('should return 0 commission until capital is recovered', () => {
+    it('should return 0 commission until total collected reaches loan principal', () => {
       const strategy = new AfterCapitalRecoveryStrategy();
       
-      // Capital recovered = 5000, total = 10000 (50% recovered)
+      // Total collected so far = 5000, loan principal = 10000 (50%)
       const result = strategy.calculateInstallmentCommission(
-        { interest: 100, paidAmount: 1000, amount: 1000, number: 5 , principal: 900 },
+        { interest: 100, paidAmount: 1000, amount: 1000, number: 5, principal: 900 },
         12,
         10,
         5000,
         10000
       );
       
+      // totalCollected = 5000 + 1000 = 6000 < 10000 → commission = 0
       expect(result.commission).toBe(0);
-      // Principal paid = 1000 - 100 = 900
-      expect(result.newCapitalRecovered).toBe(5900);
+      expect(result.newCapitalRecovered).toBe(6000);
     });
 
-    it('should calculate proportional commission after capital fully recovered', () => {
+    it('should calculate commission on excess when crossing the capital threshold', () => {
       const strategy = new AfterCapitalRecoveryStrategy();
       
-      // Capital recovered = 10000, total = 10000 (100% recovered)
+      // Total collected so far = 9500, installment adds 1000 → crosses 10000 threshold
       const result = strategy.calculateInstallmentCommission(
-        { interest: 100, paidAmount: 1000, amount: 1000, number: 12 , principal: 900 },
+        { interest: 100, paidAmount: 1000, amount: 1000, number: 10, principal: 900 },
         12,
         10,
-        10000,
+        9500,
         10000
       );
       
-      expect(result.commission).toBe(10); // 100 × 0.10
+      // totalCollected = 9500 + 1000 = 10500, gananciaReal = 10500 - 10000 = 500
+      // gananciaDeEstaCuota = 500 - 0 = 500, commission = 500 × 0.10 = 50
+      expect(result.commission).toBe(50);
+      expect(result.newCapitalRecovered).toBe(10500);
     });
 
-    it('should track cumulative capital recovery', () => {
+    it('should calculate commission on full amount after capital already recovered', () => {
       const strategy = new AfterCapitalRecoveryStrategy();
       
-      // First installment: principal paid = 1000 - 100 = 900
-      const r1 = strategy.calculateInstallmentCommission(
-        { interest: 100, paidAmount: 1000, amount: 1000, number: 1 , principal: 900 },
+      // Already recovered: total collected = 10500 > 10000 principal
+      const result = strategy.calculateInstallmentCommission(
+        { interest: 100, paidAmount: 1000, amount: 1000, number: 12, principal: 900 },
         12,
         10,
-        0,
+        10500,
         10000
+      );
+      
+      // totalCollected = 10500 + 1000 = 11500, gananciaReal = 11500 - 10000 = 1500
+      // gananciaPrevia = 10500 - 10000 = 500, gananciaDeEstaCuota = 1500 - 500 = 1000
+      // commission = 1000 × 0.10 = 100
+      expect(result.commission).toBe(100);
+      expect(result.newCapitalRecovered).toBe(11500);
+    });
+
+    it('should track cumulative total collected', () => {
+      const strategy = new AfterCapitalRecoveryStrategy();
+      
+      const r1 = strategy.calculateInstallmentCommission(
+        { interest: 100, paidAmount: 1000, amount: 1000, number: 1, principal: 900 },
+        12, 10, 0, 10000
       );
       expect(r1.commission).toBe(0);
-      expect(r1.newCapitalRecovered).toBe(900);
+      expect(r1.newCapitalRecovered).toBe(1000);
       
-      // Second installment: principal paid = 1000 - 100 = 900
       const r2 = strategy.calculateInstallmentCommission(
-        { interest: 100, paidAmount: 1001, amount: 1000, number: 2 , principal: 900 },
-        12,
-        10,
-        r1.newCapitalRecovered,
-        10000
+        { interest: 100, paidAmount: 1000, amount: 1000, number: 2, principal: 900 },
+        12, 10, r1.newCapitalRecovered, 10000
       );
-      // Still not fully recovered (900 + 900 = 1800 < 10000)
+      // totalCollected = 1000 + 1000 = 2000 < 10000 → still 0
       expect(r2.commission).toBe(0);
-      expect(r2.newCapitalRecovered).toBe(1800);
+      expect(r2.newCapitalRecovered).toBe(2000);
     });
   });
 
