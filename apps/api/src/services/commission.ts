@@ -247,6 +247,11 @@ export class CommissionService {
     );
     const projectedCommission = Math.round(totalInterest * (percentage / 100) * 100) / 100;
     
+    // ADVANCED mode: full commission is generated from start, equal to projected
+    if (mode === CommissionMode.ADVANCED) {
+      totalCommission = projectedCommission;
+    }
+    
     // Update loan with calculated commission
     await prisma.loan.update({
       where: { id: loanId },
