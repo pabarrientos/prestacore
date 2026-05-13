@@ -772,12 +772,28 @@ router.delete('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res
       return;
     }
 
-    // User can be fully deleted - no client with loans and wasn't a vendor with loans
-    await prisma.$transaction(async (tx) => {
-      // Delete commission-related records first (FK constraints)
-      await tx.sellerLiquidation.deleteMany({ where: { OR: [{ sellerId: id }, { createdBy: id }] } });
-      await tx.sellerCommissionAudit.deleteMany({ where: { OR: [{ vendorId: id }, { changedBy: id }] } });
+    // Check if user has commission records (liquidation or audit history)
+    const [liquidationCount, auditCount] = await Promise.all([
+      prisma.sellerLiquidation.count({ where: { OR: [{ sellerId: id }, { createdBy: id }] } }),
+      prisma.sellerCommissionAudit.count({ where: { OR: [{ vendorId: id }, { changedBy: id }] } }),
+    ]);
 
+    if (liquidationCount > 0 || auditCount > 0) {
+      // User has commission history - soft delete to preserve audit trail
+      await prisma.user.update({
+        where: { id },
+        data: { isActive: false },
+      });
+
+      res.json({
+        success: true,
+        data: { message: 'Usuario desactivado (tiene historial de comisiones)' },
+      });
+      return;
+    }
+
+    // User can be fully deleted - no client with loans, no vendor history, no commission records
+    await prisma.$transaction(async (tx) => {
       // Delete associated client if exists (no loans)
       if (associatedClient) {
         await tx.client.delete({ where: { id: associatedClient.id } });
