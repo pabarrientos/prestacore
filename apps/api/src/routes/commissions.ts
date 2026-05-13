@@ -581,6 +581,76 @@ router.delete('/liquidations/:id', authMiddleware, requireAdmin, async (req: Aut
   }
 });
 
+// POST /api/commissions/rebalance/:vendorId - Rebalance liquidated amounts across loans (ADMIN)
+router.post('/rebalance/:vendorId', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { vendorId } = req.params;
+
+    const loans = await prisma.loan.findMany({
+      where: {
+        assignedVendorId: vendorId,
+        commissionPercentage: { not: null },
+      },
+      select: {
+        id: true,
+        commissionGenerated: true,
+        commissionLiquidated: true,
+      },
+    });
+
+    const loanSnapshots: LoanSnapshot[] = loans.map(l => ({
+      id: l.id,
+      commissionGenerated: Number(l.commissionGenerated ?? 0),
+      commissionLiquidated: Number(l.commissionLiquidated ?? 0),
+    }));
+
+    let moved = 0;
+    await prisma.$transaction(async (tx) => {
+      // Move excess from loans with liquidated > generated to loans with pending > 0
+      for (const excessLoan of loanSnapshots) {
+        const excess = Math.max(0, excessLoan.commissionLiquidated - excessLoan.commissionGenerated);
+        if (excess <= 0) continue;
+
+        let toMove = excess;
+        for (const roomLoan of loanSnapshots) {
+          if (toMove <= 0) break;
+          if (roomLoan.id === excessLoan.id) continue;
+          const room = Math.max(0, roomLoan.commissionGenerated - roomLoan.commissionLiquidated);
+          if (room <= 0) continue;
+          const move = Math.min(toMove, room);
+
+          await tx.loan.update({
+            where: { id: excessLoan.id },
+            data: { commissionLiquidated: { decrement: move } },
+          });
+          await tx.loan.update({
+            where: { id: roomLoan.id },
+            data: { commissionLiquidated: { increment: move } },
+          });
+
+          excessLoan.commissionLiquidated -= move;
+          roomLoan.commissionLiquidated += move;
+          toMove -= move;
+          moved += move;
+        }
+      }
+    });
+
+    res.json({
+      success: true,
+      data: {
+        message: moved > 0
+          ? `Rebalanceo completado. Se redistribuyeron $${moved.toFixed(2)} entre préstamos.`
+          : 'No había excesos que rebalancear.',
+        moved,
+      },
+    });
+  } catch (error) {
+    console.error('Error rebalancing:', error);
+    res.status(500).json({ success: false, error: 'Error al rebalancear' });
+  }
+});
+
 // GET /api/commissions/audit/:vendorId - Get audit history for a vendor (ADMIN)
 router.get('/audit/:vendorId', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {

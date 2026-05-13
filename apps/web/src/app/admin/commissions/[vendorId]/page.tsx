@@ -221,7 +221,6 @@ export default function VendorCommissionPage() {
       });
       const data = await res.json();
       if (data.success) {
-        // Refresh data and liquidation list
         const [vendorRes, liqRes] = await Promise.all([
           fetch(`${API_URL}/api/commissions/vendor/${vendorId}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
           fetch(`${API_URL}/api/commissions/liquidations/${vendorId}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
@@ -230,6 +229,30 @@ export default function VendorCommissionPage() {
         if (liqRes.success) setLiquidations(liqRes.data);
       } else {
         alert(data.error || 'Error al eliminar');
+      }
+    } catch {
+      alert('Error de conexión');
+    }
+  };
+
+  const handleRebalance = async () => {
+    if (!token || !confirm('¿Rebalancear la distribución de comisiones entre préstamos? Se moverán los excesos a préstamos con espacio disponible.')) return;
+    try {
+      const res = await fetch(`${API_URL}/api/commissions/rebalance/${vendorId}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.data.message);
+        const [vendorRes, liqRes] = await Promise.all([
+          fetch(`${API_URL}/api/commissions/vendor/${vendorId}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+          fetch(`${API_URL}/api/commissions/liquidations/${vendorId}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+        ]);
+        if (vendorRes.success) setData(vendorRes.data);
+        if (liqRes.success) setLiquidations(liqRes.data);
+      } else {
+        alert(data.error || 'Error al rebalancear');
       }
     } catch {
       alert('Error de conexión');
@@ -283,11 +306,20 @@ export default function VendorCommissionPage() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold dark:text-white/[.87]">
-          Comisiones de {vendor.firstName} {vendor.lastName}
-        </h1>
-        <p className="text-gray-500 dark:text-white/60">{vendor.email}</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold dark:text-white/[.87]">
+            Comisiones de {vendor.firstName} {vendor.lastName}
+          </h1>
+          <p className="text-gray-500 dark:text-white/60">{vendor.email}</p>
+        </div>
+        <button
+          onClick={handleRebalance}
+          className="px-4 py-2 text-sm bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 dark:bg-yellow-600 dark:hover:bg-yellow-700"
+          title="Redistribuye los excesos de liquidación entre préstamos"
+        >
+          Rebalancear
+        </button>
       </div>
 
       {/* Summary Cards */}
