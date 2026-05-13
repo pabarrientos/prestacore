@@ -75,6 +75,12 @@ enum PaymentMethod {
   MOVIMIENTO_REFINANCIACION // Movimiento generado por refinanciación
 }
 
+enum CommissionMode {
+  PROPORTIONAL              // Commission on interest from each installment collected
+  AFTER_CAPITAL_RECOVERY    // Commission only after capital fully recovered
+  ADVANCED                  // Weighted commission (early installments weighted more)
+}
+
 // ============================================
 // MODELS
 // ============================================
@@ -91,9 +97,18 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  // Commission configuration (only meaningful for VENDEDOR role)
+  commissionPercentage Decimal?  @db.Decimal(7, 4) // 0-100, 4 decimal places
+  commissionMode      CommissionMode?
+
   // Relations
   client        Client?
   assignedLoans Loan[]    @relation("AssignedLoans")
+  // Seller relations for commission system
+  sellerLiquidations      SellerLiquidation[] @relation("SellerLiquidations")
+  sellerCommissionAudits  SellerCommissionAudit[] @relation("SellerCommissionAuditVendor")
+  createdLiquidations    SellerLiquidation[] @relation("SellerLiquidationsCreatedBy")
+  createdAudits          SellerCommissionAudit[] @relation("SellerCommissionAuditCreatedBy")
 
   @@index([email])
   @@index([role])
@@ -150,6 +165,13 @@ model Loan {
   prestamo_refinanciado   Loan?    @relation("Refinanciacion", fields: [prestamo_origen_id], references: [id])
   prestamo_origen         Loan?    @relation("Refinanciacion")
   prestamo_nuevo_id       String?   // ID del nuevo préstamo (si este es el préstamo original refinanciado)
+
+  // Commission fields (snapshotted from seller defaults at loan creation)
+  commissionPercentage    Decimal?  @db.Decimal(7, 4)  // Seller's percentage at time of loan
+  commissionMode          CommissionMode?              // Seller's mode at time of loan
+  commissionProjected     Decimal?  @db.Decimal(12, 2) // Projected total commission at creation
+  commissionGenerated     Decimal?  @db.Decimal(12, 2) @default(0) // Actual commission earned
+  commissionLiquidated    Decimal?  @db.Decimal(12, 2) @default(0) // Commission already liquidated
 
   // Relations
   client           Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
@@ -263,5 +285,40 @@ model AuditLog {
 
   @@index([userId])
   @@index([entity, entityId])
+  @@index([createdAt])
+}
+
+// Seller Commission Liquidation
+model SellerLiquidation {
+  id          String   @id @default(cuid())
+  sellerId    String   // Vendor whose commissions are being liquidated
+  amount      Decimal  @db.Decimal(12, 2)
+  notes       String?
+  createdBy   String   // Admin who created this liquidation
+  createdAt   DateTime @default(now())
+
+  // Relations
+  seller      User     @relation("SellerLiquidations", fields: [sellerId], references: [id])
+  creator     User     @relation("SellerLiquidationsCreatedBy", fields: [createdBy], references: [id])
+
+  @@index([sellerId])
+  @@index([createdAt])
+}
+
+// Seller Commission Configuration Audit (immutable - no update/delete cascades)
+model SellerCommissionAudit {
+  id          String   @id @default(cuid())
+  vendorId    String   // Vendor whose config was changed
+  field       String   // Which field was changed: 'commissionPercentage' or 'commissionMode'
+  previousValue String // Previous value as string
+  newValue     String  // New value as string
+  changedBy   String   // Admin who made the change
+  createdAt   DateTime @default(now())
+
+  // Relations
+  vendor      User     @relation("SellerCommissionAuditVendor", fields: [vendorId], references: [id])
+  changer     User     @relation("SellerCommissionAuditCreatedBy", fields: [changedBy], references: [id])
+
+  @@index([vendorId])
   @@index([createdAt])
 }
