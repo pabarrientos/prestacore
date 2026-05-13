@@ -224,8 +224,12 @@ export class CommissionService {
     // Get only paid or partially paid installments for commission calculation
     // Exclude PENDING (not paid yet). Include PAID, PARTIAL, OVERDUE, and CANCELADA_POR_REFINANCIACION
     // (refinanced installments had real payments before refinancing — they count)
+    // Get installments with real payments for commission calculation
+    // For PAID/REFINANCIADO: only count installments that actually had payments (paidAmount > 0)
+    // For active loans: exclude PENDING (not paid yet), include all others
+    const isFinalStatus = loan.status === 'PAID' || loan.status === 'REFINANCIADO';
     const activeInstallments = loan.installments.filter(
-      (inst) => inst.status !== 'PENDING'
+      (inst) => inst.status !== 'PENDING' && (!isFinalStatus || Number(inst.paidAmount) > 0)
     );
     
     if (activeInstallments.length === 0) {
