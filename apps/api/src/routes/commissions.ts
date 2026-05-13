@@ -398,6 +398,40 @@ router.post('/liquidate', authMiddleware, requireAdmin, async (req: AuthRequest,
   }
 });
 
+// GET /api/commissions/liquidations/:vendorId - Get liquidation history (ADMIN or self VENDEDOR)
+router.get('/liquidations/:vendorId', authMiddleware, rbacMiddleware([Role.ADMIN, Role.VENDEDOR]), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { vendorId } = req.params;
+
+    if (req.user!.role === Role.VENDEDOR && req.user!.userId !== vendorId) {
+      res.status(403).json({ success: false, error: 'No tiene permisos para ver este vendedor' });
+      return;
+    }
+
+    const liquidations = await prisma.sellerLiquidation.findMany({
+      where: { sellerId: vendorId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        creator: { select: { firstName: true, lastName: true } },
+      },
+    });
+
+    res.json({
+      success: true,
+      data: liquidations.map(l => ({
+        id: l.id,
+        amount: Number(l.amount),
+        notes: l.notes,
+        createdBy: l.creator.firstName + ' ' + l.creator.lastName,
+        createdAt: l.createdAt.toISOString(),
+      })),
+    });
+  } catch (error) {
+    console.error('Error fetching liquidations:', error);
+    res.status(500).json({ success: false, error: 'Error al obtener las liquidaciones' });
+  }
+});
+
 // GET /api/commissions/audit/:vendorId - Get audit history for a vendor (ADMIN)
 router.get('/audit/:vendorId', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {

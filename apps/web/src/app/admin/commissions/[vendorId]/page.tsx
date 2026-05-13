@@ -34,12 +34,21 @@ interface AuditEntry {
   createdAt: string;
 }
 
+interface LiquidationEntry {
+  id: string;
+  amount: number;
+  notes: string | null;
+  createdBy: string;
+  createdAt: string;
+}
+
 export default function VendorCommissionPage() {
   const params = useParams();
   const vendorId = params.vendorId as string;
   const { user, token } = useAuth();
   const [data, setData] = useState<VendorDetail | null>(null);
   const [audits, setAudits] = useState<AuditEntry[]>([]);
+  const [liquidations, setLiquidations] = useState<LiquidationEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
@@ -83,6 +92,18 @@ export default function VendorCommissionPage() {
       .then(result => {
         if (result.success) {
           setAudits(result.data);
+        }
+      })
+      .catch(err => console.error(err));
+
+    // Fetch liquidation history
+    fetch(`${API_URL}/api/commissions/liquidations/${vendorId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(res => res.json())
+      .then(result => {
+        if (result.success) {
+          setLiquidations(result.data);
         }
       })
       .catch(err => console.error(err))
@@ -171,6 +192,13 @@ export default function VendorCommissionPage() {
         if (refreshData.success) {
           setData(refreshData.data);
         }
+        // Refresh liquidation list
+        fetch(`${API_URL}/api/commissions/liquidations/${vendorId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+          .then(res => res.json())
+          .then(r => { if (r.success) setLiquidations(r.data); })
+          .catch(console.error);
       } else {
         setLiquidationMessage({ type: 'error', text: result.error || 'Error al liquidar' });
       }
@@ -352,6 +380,38 @@ export default function VendorCommissionPage() {
             </button>
           </form>
         </div>
+      </div>
+
+      {/* Liquidation History */}
+      <div className="mt-6 bg-white rounded-lg shadow p-6 dark:bg-[#1e1e1e]">
+        <h2 className="text-lg font-semibold mb-4 dark:text-white/[.87]">Historial de Liquidaciones</h2>
+        
+        {liquidations.length === 0 ? (
+          <p className="text-gray-500 dark:text-white/60">No hay liquidaciones registradas</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full">
+              <thead>
+                <tr className="border-b dark:border-[#333]">
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 dark:text-white/60">Fecha</th>
+                  <th className="px-4 py-2 text-right text-sm font-medium text-gray-500 dark:text-white/60">Monto</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 dark:text-white/60">Notas</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 dark:text-white/60">Registrado por</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-[#333]">
+                {liquidations.map(l => (
+                  <tr key={l.id}>
+                    <td className="px-4 py-2 text-sm dark:text-white/80">{new Date(l.createdAt).toLocaleDateString('es-AR')}</td>
+                    <td className="px-4 py-2 text-sm text-right font-medium text-green-600 dark:text-green-400">{formatCurrency(l.amount)}</td>
+                    <td className="px-4 py-2 text-sm text-gray-500 dark:text-white/60">{l.notes || '—'}</td>
+                    <td className="px-4 py-2 text-sm dark:text-white/80">{l.createdBy}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Audit Log */}
