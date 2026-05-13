@@ -249,9 +249,9 @@ describe('CommissionService', () => {
         1000 // monthly payment amount (from amortization)
       );
       
-      // For a loan with 36% annual rate, 12k total interest over 12 months
-      // Projected = totalInterest × 5% = 12000 × 0.05 = 600
-      expect(projected).toBeGreaterThan(0);
+      // totalPayment = 1000 × 12 = 12000, totalInterest = 12000 - 10000 = 2000
+      // Projected = totalInterest × 5% = 2000 × 0.05 = 100
+      expect(projected).toBe(100);
     });
   });
 

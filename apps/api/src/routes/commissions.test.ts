@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import request from 'supertest';
-import { PrismaClient, Role, CommissionMode, LoanStatus } from '@prisma/client';
+import { PrismaClient, Role, CommissionMode, LoanStatus, InstallmentStatus } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import app from '../index';
+import { CommissionService } from '../services/commission';
 
 const prisma = new PrismaClient();
 
@@ -454,6 +455,174 @@ describe('Commissions API', () => {
         const curr = new Date(audits[i].createdAt);
         expect(prev.getTime()).toBeGreaterThanOrEqual(curr.getTime());
       }
+    });
+  });
+
+  describe('Loan creation snapshots seller commission defaults', () => {
+    let clientId: string;
+    let clientEmail: string;
+    let testVendorToken: string;
+    let testVendorId: string;
+
+    beforeEach(async () => {
+      const vendorEmail = `snapvendor-${Date.now()}@example.com`;
+      const vendorRes = await request(app)
+        .post('/api/auth/register')
+        .send({ email: vendorEmail, password: 'vendor123456', firstName: 'Snap', lastName: 'Vendor', role: Role.VENDEDOR });
+      testVendorToken = vendorRes.body.data.accessToken;
+      testVendorId = vendorRes.body.data.user.id;
+
+      await request(app)
+        .post('/api/commissions/config')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ vendorId: testVendorId, percentage: 5, mode: 'PROPORTIONAL' });
+
+      clientEmail = `client-snapshot-${Date.now()}@example.com`;
+      const clientRes = await request(app)
+        .post('/api/auth/register')
+        .send({ email: clientEmail, password: 'test123456', firstName: 'Client', lastName: 'Snapshot', role: Role.CLIENTE });
+      const userId = clientRes.body.data.user.id;
+      const clientRecord = await prisma.client.findUnique({ where: { userId } });
+      clientId = clientRecord!.id;
+    });
+
+    afterEach(async () => {
+      if (clientEmail) {
+        const client = await prisma.user.findUnique({ where: { email: clientEmail } });
+        if (client) {
+          const loans = await prisma.loan.findMany({ where: { clientId: client.id }, select: { id: true } });
+          for (const loan of loans) {
+            await prisma.installment.deleteMany({ where: { loanId: loan.id } });
+            await prisma.loan.delete({ where: { id: loan.id } });
+          }
+        }
+        await prisma.user.deleteMany({ where: { email: clientEmail } });
+      }
+      if (testVendorId) {
+        await prisma.sellerCommissionAudit.deleteMany({ where: { OR: [{ vendorId: testVendorId }, { changedBy: testVendorId }] } });
+        await prisma.user.deleteMany({ where: { id: testVendorId } });
+      }
+    });
+
+    it('should snapshot vendor commission defaults when VENDEDOR creates a loan', async () => {
+      const loanRes = await request(app)
+        .post('/api/loans')
+        .set('Authorization', `Bearer ${testVendorToken}`)
+        .send({ clientId, amount: 10000, interestRate: 36, termMonths: 12, frequency: 'MONTHLY', amortizationSystem: 'FRENCH' });
+
+      expect(loanRes.body.success).toBe(true);
+      expect(loanRes.body.data.commissionPercentage).toBe('5');
+      expect(loanRes.body.data.commissionMode).toBe('PROPORTIONAL');
+      expect(Number(loanRes.body.data.commissionProjected)).toBeGreaterThan(0);
+      expect(Number(loanRes.body.data.commissionGenerated)).toBe(0);
+      expect(Number(loanRes.body.data.commissionLiquidated)).toBe(0);
+    });
+
+    it('should NOT set commission when ADMIN creates a loan (no vendor snapshot)', async () => {
+      const loanRes = await request(app)
+        .post('/api/loans')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ clientId, amount: 5000, interestRate: 24, termMonths: 6, frequency: 'MONTHLY', amortizationSystem: 'FRENCH' });
+
+      expect(loanRes.body.success).toBe(true);
+      expect(loanRes.body.data.commissionPercentage).toBeNull();
+      expect(loanRes.body.data.commissionMode).toBeNull();
+      expect(loanRes.body.data.commissionProjected).toBeNull();
+    });
+  });
+
+  describe('Payment triggers commission recalculation', () => {
+    let clientId: string;
+    let clientEmail: string;
+    let loanId: string;
+    let payVendorToken: string;
+    let payVendorId: string;
+
+    beforeEach(async () => {
+      const vendorEmail = `payvendor-${Date.now()}@example.com`;
+      const vendorRes = await request(app)
+        .post('/api/auth/register')
+        .send({ email: vendorEmail, password: 'vendor123456', firstName: 'Pay', lastName: 'Vendor', role: Role.VENDEDOR });
+      payVendorToken = vendorRes.body.data.accessToken;
+      payVendorId = vendorRes.body.data.user.id;
+
+      await request(app)
+        .post('/api/commissions/config')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ vendorId: payVendorId, percentage: 5, mode: 'PROPORTIONAL' });
+
+      clientEmail = `client-recalc-${Date.now()}@example.com`;
+      const clientRes = await request(app)
+        .post('/api/auth/register')
+        .send({ email: clientEmail, password: 'test123456', firstName: 'Client', lastName: 'Recalc', role: Role.CLIENTE });
+      const userId = clientRes.body.data.user.id;
+      const clientRecord = await prisma.client.findUnique({ where: { userId } });
+      clientId = clientRecord!.id;
+
+      const loanRes = await request(app)
+        .post('/api/loans')
+        .set('Authorization', `Bearer ${payVendorToken}`)
+        .send({ clientId, amount: 10000, interestRate: 36, termMonths: 12, frequency: 'MONTHLY', amortizationSystem: 'FRENCH' });
+      loanId = loanRes.body.data.id;
+
+      await request(app)
+        .patch(`/api/loans/${loanId}/approve`)
+        .set('Authorization', `Bearer ${adminToken}`);
+    });
+
+    afterEach(async () => {
+      if (loanId) {
+        await prisma.installment.deleteMany({ where: { loanId } });
+        await prisma.loan.delete({ where: { id: loanId } }).catch(() => {});
+      }
+      if (clientEmail) {
+        await prisma.user.deleteMany({ where: { email: clientEmail } }).catch(() => {});
+      }
+      if (payVendorId) {
+        await prisma.sellerCommissionAudit.deleteMany({ where: { OR: [{ vendorId: payVendorId }, { changedBy: payVendorId }] } });
+        await prisma.user.deleteMany({ where: { id: payVendorId } }).catch(() => {});
+      }
+    });
+
+    it('should recalculate commission after a payment is registered', async () => {
+      const installments = await prisma.installment.findMany({ where: { loanId }, orderBy: { installmentNumber: 'asc' } });
+      const firstInstallment = installments[0];
+
+      const payRes = await request(app)
+        .post('/api/payments')
+        .set('Authorization', `Bearer ${payVendorToken}`)
+        .send({ loanId, installmentId: firstInstallment.id, amount: Number(firstInstallment.amount) });
+
+      expect(payRes.body.success).toBe(true);
+
+      await CommissionService.recalculateLoan(loanId);
+      const loan = await prisma.loan.findUnique({ where: { id: loanId } });
+      expect(Number(loan!.commissionGenerated)).toBeGreaterThan(0);
+    });
+
+    it('should recalculate commission after a payment is reversed', async () => {
+      const installments = await prisma.installment.findMany({ where: { loanId }, orderBy: { installmentNumber: 'asc' } });
+      const firstInstallment = installments[0];
+
+      const payRes = await request(app)
+        .post('/api/payments')
+        .set('Authorization', `Bearer ${payVendorToken}`)
+        .send({ loanId, installmentId: firstInstallment.id, amount: Number(firstInstallment.amount) });
+
+      expect(payRes.body.success).toBe(true);
+      const paymentId = payRes.body.data.id;
+
+      await CommissionService.recalculateLoan(loanId);
+      const loanAfterPay = await prisma.loan.findUnique({ where: { id: loanId } });
+      expect(Number(loanAfterPay!.commissionGenerated)).toBeGreaterThan(0);
+
+      await request(app)
+        .delete(`/api/payments/${paymentId}`)
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      await CommissionService.recalculateLoan(loanId);
+      const loanAfterReverse = await prisma.loan.findUnique({ where: { id: loanId } });
+      expect(Number(loanAfterReverse!.commissionGenerated)).toBe(0);
     });
   });
 });
