@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { PrismaClient, Role, LoanStatus, PaymentFrequency } from '@prisma/client';
+import { PrismaClient, Role, LoanStatus, PaymentFrequency, CommissionMode } from '@prisma/client';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { requireAdmin, requireVendor, requireClientOnly } from '../middleware/rbac';
 import { AmortizationService } from '../services/amortization';
@@ -9,6 +9,7 @@ import { CancelacionAnticipadaService } from '../services/cancelacion-anticipada
 import { getNow } from '../services/datetime';
 import { getDefaultAmortizationSystem } from '../services/settings';
 import { AmortizationSystemType } from '../services/amortization';
+import { CommissionService } from '../services/commission';
 
 const router: ReturnType<typeof Router> = Router();
 const prisma = new PrismaClient();
@@ -565,13 +566,45 @@ router.post('/', authMiddleware, requireVendor, async (req: AuthRequest, res: Re
       totalPayment = amortization.totalPayment;
     }
 
+    // Determine vendor ID and fetch commission config for snapshot
+    let vendorId: string | undefined = undefined;
+    let commissionPercentage: number | undefined = undefined;
+    let commissionMode: CommissionMode | undefined = undefined;
+    let commissionProjected = 0;
+
+    if (req.user!.role === Role.VENDEDOR) {
+      vendorId = req.user!.userId;
+    }
+
+    if (vendorId) {
+      const vendor = await prisma.user.findUnique({
+        where: { id: vendorId },
+        select: { commissionPercentage: true, commissionMode: true },
+      });
+      
+      if (vendor && vendor.commissionPercentage !== null) {
+        commissionPercentage = Number(vendor.commissionPercentage);
+        commissionMode = vendor.commissionMode as CommissionMode;
+        
+        // Calculate projected commission using the calculated installmentAmount
+        commissionProjected = CommissionService.projectCommission(
+          Number(body.amount),
+          Number(body.interestRate) / 100,
+          body.termMonths,
+          commissionPercentage,
+          commissionMode ?? CommissionMode.PROPORTIONAL,
+          installmentAmount
+        );
+      }
+    }
+
     // Create loan with installments in transaction
     const loan = await prisma.$transaction(async (tx) => {
       // Create loan
       const newLoan = await tx.loan.create({
         data: {
           clientId: body.clientId,
-          assignedVendorId: req.user!.role === Role.VENDEDOR ? req.user!.userId : undefined,
+          assignedVendorId: vendorId,
           amount: body.amount,
           interestRate: body.interestRate,
           termMonths: body.termMonths,
@@ -584,6 +617,12 @@ router.post('/', authMiddleware, requireVendor, async (req: AuthRequest, res: Re
           totalPayment,
           installmentAmount,
           amortizationSystem,
+          // Commission snapshot fields
+          commissionPercentage: commissionPercentage ?? null,
+          commissionMode: commissionMode ?? null,
+          commissionProjected: commissionProjected || null,
+          commissionGenerated: 0,
+          commissionLiquidated: 0,
         },
       });
 
@@ -878,6 +917,12 @@ router.patch('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res:
     // Parse start date or use existing
     const parsedStartDate = startDate ? new Date(startDate) : (loan.startedAt || await getNow());
 
+    // Check if amortization-related fields changed (triggers commission recalculation)
+    const amortizationFieldsChanged = 
+      amortizationSystem !== undefined ||
+      frequency !== undefined ||
+      termMonths !== undefined;
+
     // Use schedule from frontend if provided, otherwise calculate
     let installmentsData = schedule;
     let installmentAmount = Number(loan.installmentAmount);
@@ -977,6 +1022,13 @@ router.patch('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res:
         })),
       } : null,
     });
+
+    // Recalculate commission if amortization-related fields changed (non-blocking)
+    if (amortizationFieldsChanged) {
+      CommissionService.recalculateLoan(id).catch(err => {
+        console.error('Commission recalculation error:', err);
+      });
+    }
   } catch (error) {
     console.error('Update loan error:', error);
     res.status(500).json({

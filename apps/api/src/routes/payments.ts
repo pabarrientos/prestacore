@@ -4,6 +4,7 @@ import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { requireVendor, requireAdmin } from '../middleware/rbac';
 import { PaymentService } from '../services/payment';
 import { getToday } from '../services/datetime';
+import { CommissionService } from '../services/commission';
 import { PrismaClient, InstallmentStatus, LoanStatus } from '@prisma/client';
 
 const router: ReturnType<typeof Router> = Router();
@@ -65,6 +66,11 @@ router.post('/', authMiddleware, requireVendor, async (req: AuthRequest, res: Re
         processedAt: result.payment!.processedAt?.toISOString(),
         createdAt: result.payment!.createdAt.toISOString(),
       },
+    });
+
+    // Recalculate commission after successful payment (non-blocking)
+    CommissionService.recalculateLoan(loanId).catch(err => {
+      console.error('Commission recalculation error:', err);
     });
   } catch (error) {
     console.error('Payment error:', error);
@@ -507,6 +513,11 @@ router.put('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: R
       }
     }
 
+    // Recalculate commission after payment update (non-blocking)
+    CommissionService.recalculateLoan(payment.loanId).catch(err => {
+      console.error('Commission recalculation error:', err);
+    });
+
     res.json({
       success: true,
       data: {
@@ -762,6 +773,7 @@ router.delete('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res
 
     const paymentAmount = Number(payment.amount);
     const installmentId = payment.installmentId;
+    const loanId = payment.loanId;
 
     if (installmentId) {
       // Revert specific installment payment
@@ -832,6 +844,11 @@ router.delete('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res
         });
       }
     }
+
+    // Recalculate commission after payment deletion (non-blocking)
+    CommissionService.recalculateLoan(loanId).catch(err => {
+      console.error('Commission recalculation error:', err);
+    });
 
     res.json({
       success: true,
