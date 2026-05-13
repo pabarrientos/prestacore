@@ -33,7 +33,7 @@ export default function MisComisionesPage() {
   useEffect(() => {
     if (!token || user?.role !== 'VENDEDOR') return;
 
-    fetch(`${API_URL}/api/commissions/vendor/${user.userId}`, {
+    fetch(`${API_URL}/api/commissions/vendor/${user.id}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(res => res.json())
