@@ -203,8 +203,9 @@ export class CommissionService {
     const strategy = getStrategy(mode);
     
     // Get only paid or partially paid installments for commission calculation
+    // Exclude PENDING (not paid) and CANCELADA_POR_REFINANCIACION (refinanced, not real collection)
     const activeInstallments = loan.installments.filter(
-      (inst) => inst.status !== InstallmentStatus.PENDING
+      (inst) => inst.status !== InstallmentStatus.PENDING && inst.status !== InstallmentStatus.CANCELADA_POR_REFINANCIACION
     );
     
     if (activeInstallments.length === 0) {
@@ -250,8 +251,8 @@ export class CommissionService {
     const projectedCommission = Math.round(totalInterest * (percentage / 100) * 100) / 100;
     
     // ADVANCED mode: full commission is generated from start, equal to projected
-    // EXCEPT when loan is PAID (cancelled/repaid): recalculate based on actual collected interest
-    if (mode === CommissionMode.ADVANCED && loan.status !== LoanStatus.PAID) {
+    // EXCEPT when PAID (cancelled) or REFINANCIADO — use actual collected interest
+    if (mode === CommissionMode.ADVANCED && loan.status !== LoanStatus.PAID && loan.status !== LoanStatus.REFINANCIADO) {
       totalCommission = projectedCommission;
     }
     

@@ -336,26 +336,49 @@ export class RefinancingService {
           amortizationSystem: effectiveSystem,
         });
 
+        // Snapshot commission config from vendor for the new loan
+        let commissionPercentage: number | null = null;
+        let commissionMode: string | null = null;
+        let commissionProjected: number | null = null;
+        
+        if (oldLoan.assignedVendorId) {
+          const vendor = await tx.user.findUnique({
+            where: { id: oldLoan.assignedVendorId },
+            select: { commissionPercentage: true, commissionMode: true },
+          });
+          if (vendor?.commissionPercentage !== null && vendor?.commissionPercentage !== undefined) {
+            commissionPercentage = Number(vendor.commissionPercentage);
+            commissionMode = vendor.commissionMode;
+            // Calculate projected commission
+            const totalInterest = amortization.totalInterest;
+            commissionProjected = Math.round(totalInterest * (commissionPercentage / 100) * 100) / 100;
+          }
+        }
+
         // Create the new loan
         const newLoan = await tx.loan.create({
           data: {
             clientId: oldLoan.clientId,
             assignedVendorId: oldLoan.assignedVendorId,
             amount: adjustedNuevoCapital,
-            interestRate: newInterestRate, // Store as percentage (e.g., 36)
+            interestRate: newInterestRate,
             termMonths: newTermMonths,
             frequency: newFrequency,
             status: LoanStatus.ACTIVE,
             purpose: `Refinanciación del préstamo ${loanId.substring(0, 8)}...`,
             notes: notes || `Refinanciación de préstamo original ID: ${loanId}`,
             approvedAt: new Date(),
-            startedAt: loanStartDate,  // Use the start date from the form
-            // Refinancing link
+            startedAt: loanStartDate,
             prestamo_origen_id: loanId,
-            // Calculated fields
             totalInterest: amortization.totalInterest,
             totalPayment: amortization.totalPayment,
             installmentAmount: amortization.installmentAmount,
+            // Commission snapshot
+            commissionPercentage,
+            commissionMode: commissionMode as any,
+            commissionProjected,
+            commissionGenerated: 0,
+            commissionLiquidated: 0,
           },
         });
 

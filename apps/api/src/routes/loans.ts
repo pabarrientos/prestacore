@@ -1360,6 +1360,16 @@ router.post('/:id/execute-refinancing', authMiddleware, requireAdmin, async (req
       },
     });
 
+    // Recalculate commission for both old (now REFINANCIADO) and new loan
+    if (result.newLoan?.assignedVendorId) {
+      await CommissionService.recalculateLoan(loanId).catch(err => {
+        console.error('Commission recalculation error on old refinanced loan:', err);
+      });
+      await CommissionService.recalculateLoan(result.newLoan.id).catch(err => {
+        console.error('Commission recalculation error on new refinanced loan:', err);
+      });
+    }
+
     res.json({
       success: true,
       data: {
