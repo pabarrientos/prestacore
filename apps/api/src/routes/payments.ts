@@ -601,7 +601,7 @@ router.post('/mora', authMiddleware, requireVendor, async (req: AuthRequest, res
       return;
     }
 
-    if (loan.status !== LoanStatus.ACTIVE) {
+    if (loan.status !== LoanStatus.ACTIVE && loan.status !== LoanStatus.PAID) {
       res.status(400).json({
         success: false,
         error: `Cannot register payment on loan with status ${loan.status}`,
