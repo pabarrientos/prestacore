@@ -210,7 +210,7 @@ export class CommissionService {
     const projectedCommission = Math.round(totalInterest * (percentage / 100) * 100) / 100;
 
     // ADVANCED mode: full commission from start (unless PAID or REFINANCIADO — use actual collection)
-    if (mode === CommissionMode.ADVANCED && loan.status !== 'PAID' && loan.status !== 'REFINANCIADO') {
+    if (mode === 'ADVANCED' && loan.status !== 'PAID' && loan.status !== 'REFINANCIADO') {
       await prisma.loan.update({
         where: { id: loanId },
         data: { 
