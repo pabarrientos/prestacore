@@ -24,9 +24,18 @@ interface VendorSummary {
   };
 }
 
+interface LiquidationEntry {
+  id: string;
+  amount: number;
+  notes: string | null;
+  createdBy: string;
+  createdAt: string;
+}
+
 export default function MisComisionesPage() {
   const { user, token } = useAuth();
   const [data, setData] = useState<VendorSummary | null>(null);
+  const [liquidations, setLiquidations] = useState<LiquidationEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -47,7 +56,19 @@ export default function MisComisionesPage() {
       .catch(err => {
         console.error(err);
         setError('Error de conexión');
+      });
+
+    // Fetch liquidation history
+    fetch(`${API_URL}/api/commissions/liquidations/${user.id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(res => res.json())
+      .then(result => {
+        if (result.success) {
+          setLiquidations(result.data);
+        }
       })
+      .catch(err => console.error(err))
       .finally(() => setLoading(false));
   }, [token, user]);
 
@@ -140,6 +161,36 @@ export default function MisComisionesPage() {
           <div className="mt-4 p-4 bg-yellow-50 text-yellow-800 rounded-lg dark:bg-yellow-950/50 dark:text-yellow-400">
             <p className="font-medium">Tu comisión aún no ha sido configurada por un administrador.</p>
             <p className="text-sm mt-1">Contacta a un administrador para configurar tu porcentaje y modalidad de comisión.</p>
+          </div>
+        )}
+      </div>
+
+      {/* Liquidation History */}
+      <div className="bg-white rounded-lg shadow p-6 dark:bg-[#1e1e1e] mb-6">
+        <h2 className="text-lg font-semibold mb-4 dark:text-white/[.87]">Historial de Liquidaciones</h2>
+        
+        {liquidations.length === 0 ? (
+          <p className="text-gray-500 dark:text-white/60">No hay liquidaciones registradas</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full">
+              <thead>
+                <tr className="border-b dark:border-[#333]">
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 dark:text-white/60">Fecha</th>
+                  <th className="px-4 py-2 text-right text-sm font-medium text-gray-500 dark:text-white/60">Monto</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 dark:text-white/60">Notas</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-[#333]">
+                {liquidations.map(l => (
+                  <tr key={l.id}>
+                    <td className="px-4 py-2 text-sm dark:text-white/80">{new Date(l.createdAt).toLocaleDateString('es-AR')}</td>
+                    <td className="px-4 py-2 text-sm text-right font-medium text-green-600 dark:text-green-400">{formatCurrency(l.amount)}</td>
+                    <td className="px-4 py-2 text-sm text-gray-500 dark:text-white/60">{l.notes || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
