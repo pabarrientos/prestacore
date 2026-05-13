@@ -866,9 +866,16 @@ router.patch('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res:
         where: { id: { in: Array.from(loanIdsToUpdate) } },
         data: {
           assignedVendorId: newVendorId,
-          ...(vendorCommissionData.commissionPercentage !== undefined ? {
+          ...(newVendorId && vendorCommissionData.commissionPercentage !== undefined ? {
             commissionPercentage: vendorCommissionData.commissionPercentage,
             commissionMode: vendorCommissionData.commissionMode ?? CommissionMode.PROPORTIONAL,
+          } : !newVendorId ? {
+            // Vendor removed — reset commission fields
+            commissionPercentage: null,
+            commissionMode: null,
+            commissionProjected: null,
+            commissionGenerated: 0,
+            commissionLiquidated: 0,
           } : {}),
         },
       });
