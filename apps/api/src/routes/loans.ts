@@ -796,7 +796,7 @@ router.delete('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res
 router.patch('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { amount, interestRate, termMonths, frequency, purpose, notes, startDate, schedule, status, assignedVendorId, amortizationSystem } = req.body;
+    const { amount, interestRate, termMonths, frequency, purpose, notes, startDate, schedule, status, assignedVendorId, amortizationSystem, commissionPercentage, commissionMode } = req.body;
 
     const loan = await prisma.loan.findUnique({ where: { id } });
 
@@ -846,11 +846,39 @@ router.patch('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res:
       // Incluir el préstamo actual
       loanIdsToUpdate.add(id);
       
+      // Obtener defaults del nuevo vendor si existe
+      let vendorCommissionData: { commissionPercentage?: number | null; commissionMode?: CommissionMode | null } = {};
+      if (newVendorId) {
+        const newVendor = await prisma.user.findUnique({
+          where: { id: newVendorId },
+          select: { commissionPercentage: true, commissionMode: true },
+        });
+        if (newVendor?.commissionPercentage !== null && newVendor?.commissionPercentage !== undefined) {
+          vendorCommissionData = {
+            commissionPercentage: Number(newVendor.commissionPercentage),
+            commissionMode: newVendor.commissionMode as CommissionMode,
+          };
+        }
+      }
+      
       // Actualizar todos los préstamos en la cadena
       await prisma.loan.updateMany({
         where: { id: { in: Array.from(loanIdsToUpdate) } },
-        data: { assignedVendorId: newVendorId },
+        data: {
+          assignedVendorId: newVendorId,
+          ...(vendorCommissionData.commissionPercentage !== undefined ? {
+            commissionPercentage: vendorCommissionData.commissionPercentage,
+            commissionMode: vendorCommissionData.commissionMode ?? CommissionMode.PROPORTIONAL,
+          } : {}),
+        },
       });
+      
+      // Recalcular comisiones para todos los préstamos afectados
+      for (const lid of loanIdsToUpdate) {
+        CommissionService.recalculateLoan(lid).catch(err => {
+          console.error('Commission recalculation error on vendor reassign:', err);
+        });
+      }
       
       // Obtener el préstamo actualizado para retornar
       const updated = await prisma.loan.findUnique({
@@ -902,6 +930,47 @@ router.patch('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res:
         success: false,
         error: `Cannot change status from ${loan.status} to ${status}`,
       });
+      return;
+    }
+
+    // Handle commission config changes (any loan status)
+    if (commissionPercentage !== undefined || commissionMode !== undefined) {
+      const updateData: Record<string, unknown> = {};
+      
+      if (commissionPercentage !== undefined) {
+        const pct = Number(commissionPercentage);
+        if (isNaN(pct) || pct < 0 || pct > 100) {
+          res.status(400).json({ success: false, error: 'Commission percentage must be between 0 and 100' });
+          return;
+        }
+        updateData.commissionPercentage = pct;
+      }
+      
+      if (commissionMode !== undefined) {
+        if (!['PROPORTIONAL', 'AFTER_CAPITAL_RECOVERY', 'ADVANCED'].includes(commissionMode)) {
+          res.status(400).json({ success: false, error: 'Invalid commission mode' });
+          return;
+        }
+        updateData.commissionMode = commissionMode;
+      }
+      
+      await prisma.loan.update({
+        where: { id },
+        data: updateData,
+      });
+      
+      // Recalculate commission with new config
+      await CommissionService.recalculateLoan(id);
+      
+      const updated = await prisma.loan.findUnique({
+        where: { id },
+        include: {
+          client: { include: { user: { select: { firstName: true, lastName: true, email: true, phone: true } } } },
+          assignedVendor: { select: { id: true, firstName: true, lastName: true } },
+        },
+      });
+      
+      res.json({ success: true, data: updated });
       return;
     }
 

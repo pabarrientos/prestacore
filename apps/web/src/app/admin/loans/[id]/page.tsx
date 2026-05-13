@@ -55,6 +55,11 @@ interface LoanDetail {
   } | null;
   prestamo_nuevo_id?: string | null;
   prestamo_origen_id?: string | null;
+  commissionPercentage: number | null;
+  commissionMode: string | null;
+  commissionProjected: number | null;
+  commissionGenerated: number | null;
+  commissionLiquidated: number | null;
 }
 
 interface Installment {
@@ -160,6 +165,10 @@ export default function LoanDetailPage() {
   const [showVendorSelect, setShowVendorSelect] = useState(false);
   const [vendors, setVendors] = useState<{ id: string; firstName: string; lastName: string }[]>([]);
   const [reassigning, setReassigning] = useState(false);
+  const [showCommissionEdit, setShowCommissionEdit] = useState(false);
+  const [editCommissionPct, setEditCommissionPct] = useState('');
+  const [editCommissionMode, setEditCommissionMode] = useState('PROPORTIONAL');
+  const [savingCommission, setSavingCommission] = useState(false);
 
   // Fetch mora rate on mount
   useEffect(() => {
@@ -304,6 +313,34 @@ export default function LoanDetailPage() {
       setError('Error al reasignar el vendedor');
     } finally {
       setReassigning(false);
+    }
+  };
+
+  const handleSaveCommission = async () => {
+    if (!token || !loan) return;
+    const pct = parseFloat(editCommissionPct);
+    if (isNaN(pct) || pct < 0 || pct > 100) {
+      setError('El porcentaje debe estar entre 0 y 100');
+      return;
+    }
+    setSavingCommission(true);
+    try {
+      const res = await fetch(`${API_URL}/api/loans/${params.id}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ commissionPercentage: pct, commissionMode: editCommissionMode }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setLoan(data.data);
+        setShowCommissionEdit(false);
+      } else {
+        setError(data.error || 'Error al guardar comisión');
+      }
+    } catch {
+      setError('Error al guardar comisión');
+    } finally {
+      setSavingCommission(false);
     }
   };
 
@@ -549,6 +586,88 @@ export default function LoanDetailPage() {
               </div>
             )}
           </div>
+          {/* Commission section */}
+          <div>
+            <p className="text-sm text-gray-500 dark:text-white/38">Comisión</p>
+            {showCommissionEdit ? (
+              <div className="flex flex-col gap-2 mt-1">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    value={editCommissionPct}
+                    onChange={(e) => setEditCommissionPct(e.target.value)}
+                    className="w-20 px-2 py-1 text-sm border rounded dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87]"
+                    placeholder="%"
+                  />
+                  <span className="text-sm dark:text-white/60">%</span>
+                  <select
+                    value={editCommissionMode}
+                    onChange={(e) => setEditCommissionMode(e.target.value)}
+                    className="px-2 py-1 text-sm border rounded dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87]"
+                  >
+                    <option value="PROPORTIONAL">Proporcional</option>
+                    <option value="AFTER_CAPITAL_RECOVERY">Después de recuperar capital</option>
+                    <option value="ADVANCED">Avanzado</option>
+                  </select>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSaveCommission}
+                    disabled={savingCommission}
+                    className="px-3 py-1 text-sm bg-primary-600 text-white rounded hover:bg-primary-700 disabled:opacity-50 dark:bg-[#39ff14] dark:text-black dark:hover:bg-[#32e012]"
+                  >
+                    {savingCommission ? 'Guardando...' : 'Guardar'}
+                  </button>
+                  <button
+                    onClick={() => setShowCommissionEdit(false)}
+                    className="px-3 py-1 text-sm text-gray-500 hover:text-gray-700 dark:text-white/60"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <p className="dark:text-white/[.87]">
+                  {loan.commissionPercentage !== null && loan.commissionPercentage !== undefined
+                    ? `${loan.commissionPercentage}% — ${loan.commissionMode === 'PROPORTIONAL' ? 'Proporcional' : loan.commissionMode === 'AFTER_CAPITAL_RECOVERY' ? 'Recuperación de capital' : 'Avanzado'}`
+                    : 'No configurada'}
+                </p>
+                {user?.role === 'ADMIN' && (
+                  <button
+                    onClick={() => {
+                      setEditCommissionPct(loan.commissionPercentage?.toString() || '');
+                      setEditCommissionMode(loan.commissionMode || 'PROPORTIONAL');
+                      setShowCommissionEdit(true);
+                    }}
+                    className="text-xs text-blue-600 hover:underline dark:text-blue-400"
+                  >
+                    Cambiar
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+          {/* Commission summary */}
+          {(loan.commissionPercentage !== null && loan.commissionPercentage !== undefined) && (
+            <div className="col-span-full grid grid-cols-3 gap-4 bg-gray-50 dark:bg-[#1e1e1e] rounded-lg p-4 -mx-1">
+              <div>
+                <p className="text-xs text-gray-500 dark:text-white/38">Comisión Proyectada</p>
+                <p className="font-medium dark:text-white/[.87]">${(loan.commissionProjected ?? 0).toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-white/38">Comisión Generada</p>
+                <p className="font-medium text-green-600 dark:text-green-400">${(loan.commissionGenerated ?? 0).toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-white/38">Comisión Liquidada</p>
+                <p className="font-medium text-blue-600 dark:text-blue-400">${(loan.commissionLiquidated ?? 0).toLocaleString()}</p>
+              </div>
+            </div>
+          )}
           {loan.purpose && (
             <div>
               <p className="text-sm text-gray-500 dark:text-white/38">Propósito</p>
