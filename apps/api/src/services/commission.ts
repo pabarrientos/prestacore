@@ -10,6 +10,7 @@ export interface CommissionStrategy {
       paidAmount: number;
       amount: number;
       number: number;
+      principal: number;
     },
     totalInstallments: number,
     percentage: number,
@@ -25,15 +26,16 @@ export interface CommissionStrategy {
 // interest_collected = interest × min(paidAmount/amount, 1)
 export class ProportionalStrategy implements CommissionStrategy {
   calculateInstallmentCommission(
-    installment: { interest: number; paidAmount: number; amount: number; number: number },
+    installment: { interest: number; paidAmount: number; amount: number; number: number; principal: number },
     _totalInstallments: number,
     percentage: number,
     capitalRecoveredSoFar: number,
     _totalPrincipal: number
   ): { commission: number; newCapitalRecovered: number } {
-    const interestCollected = installment.interest * Math.min(installment.paidAmount / installment.amount, 1);
+    const paymentRatio = Math.min(installment.paidAmount / installment.amount, 1);
+    const interestCollected = installment.interest * paymentRatio;
     const commission = Math.round(interestCollected * (percentage / 100) * 100) / 100;
-    const principalPaid = Math.min(installment.paidAmount, installment.amount) - interestCollected;
+    const principalPaid = installment.principal * paymentRatio;
     
     return {
       commission,
@@ -46,20 +48,20 @@ export class ProportionalStrategy implements CommissionStrategy {
 // Returns 0 until capitalRecoveredSoFar >= totalPrincipal
 export class AfterCapitalRecoveryStrategy implements CommissionStrategy {
   calculateInstallmentCommission(
-    installment: { interest: number; paidAmount: number; amount: number; number: number },
+    installment: { interest: number; paidAmount: number; amount: number; number: number; principal: number },
     _totalInstallments: number,
     percentage: number,
     capitalRecoveredSoFar: number,
     totalPrincipal: number
   ): { commission: number; newCapitalRecovered: number } {
-    const principalPaid = Math.min(installment.paidAmount, installment.amount) - 
-      (installment.interest * Math.min(installment.paidAmount / installment.amount, 1));
+    const paymentRatio = Math.min(installment.paidAmount / installment.amount, 1);
+    const principalPaid = installment.principal * paymentRatio;
     const newCapitalRecovered = capitalRecoveredSoFar + principalPaid;
     
     let commission = 0;
-    if (capitalRecoveredSoFar >= totalPrincipal) {
-      // Capital already recovered, calculate proportional commission
-      const interestCollected = installment.interest * Math.min(installment.paidAmount / installment.amount, 1);
+    // Commission starts once capital is fully recovered (including this installment's principal)
+    if (newCapitalRecovered >= totalPrincipal) {
+      const interestCollected = installment.interest * paymentRatio;
       commission = Math.round(interestCollected * (percentage / 100) * 100) / 100;
     }
     
@@ -227,6 +229,7 @@ export class CommissionService {
           paidAmount: Number(installment.paidAmount),
           amount: Number(installment.amount),
           number: installment.number,
+          principal: Number(installment.principal),
         },
         loan.installments.length,
         percentage,

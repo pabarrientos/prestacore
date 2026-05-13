@@ -48,7 +48,7 @@ describe('CommissionStrategy', () => {
       
       // Installment with full payment, interest = 100
       const result = strategy.calculateInstallmentCommission(
-        { interest: 100, paidAmount: 1000, amount: 1000, number: 1 },
+        { interest: 100, paidAmount: 1000, amount: 1000, number: 1 , principal: 900 },
         12,
         5, // 5%
         0,
@@ -65,7 +65,7 @@ describe('CommissionStrategy', () => {
       
       // Paid 600 out of 1000, interest = 100
       const result = strategy.calculateInstallmentCommission(
-        { interest: 100, paidAmount: 600, amount: 1000, number: 1 },
+        { interest: 100, paidAmount: 600, amount: 1000, number: 1, principal: 900 },
         12,
         10, // 10%
         0,
@@ -81,7 +81,7 @@ describe('CommissionStrategy', () => {
       const strategy = new ProportionalStrategy();
       
       const result = strategy.calculateInstallmentCommission(
-        { interest: 0, paidAmount: 1000, amount: 1000, number: 1 },
+        { interest: 0, paidAmount: 1000, amount: 1000, number: 1 , principal: 1000 },
         12,
         5,
         0,
@@ -95,7 +95,7 @@ describe('CommissionStrategy', () => {
       const strategy = new ProportionalStrategy();
       
       const result = strategy.calculateInstallmentCommission(
-        { interest: 100, paidAmount: 1000, amount: 1000, number: 1 },
+        { interest: 100, paidAmount: 1000, amount: 1000, number: 1 , principal: 900 },
         12,
         5,
         5000,
@@ -113,7 +113,7 @@ describe('CommissionStrategy', () => {
       
       // Capital recovered = 5000, total = 10000 (50% recovered)
       const result = strategy.calculateInstallmentCommission(
-        { interest: 100, paidAmount: 1000, amount: 1000, number: 5 },
+        { interest: 100, paidAmount: 1000, amount: 1000, number: 5 , principal: 900 },
         12,
         10,
         5000,
@@ -130,7 +130,7 @@ describe('CommissionStrategy', () => {
       
       // Capital recovered = 10000, total = 10000 (100% recovered)
       const result = strategy.calculateInstallmentCommission(
-        { interest: 100, paidAmount: 1000, amount: 1000, number: 12 },
+        { interest: 100, paidAmount: 1000, amount: 1000, number: 12 , principal: 900 },
         12,
         10,
         10000,
@@ -145,7 +145,7 @@ describe('CommissionStrategy', () => {
       
       // First installment: principal paid = 1000 - 100 = 900
       const r1 = strategy.calculateInstallmentCommission(
-        { interest: 100, paidAmount: 1000, amount: 1000, number: 1 },
+        { interest: 100, paidAmount: 1000, amount: 1000, number: 1 , principal: 900 },
         12,
         10,
         0,
@@ -156,7 +156,7 @@ describe('CommissionStrategy', () => {
       
       // Second installment: principal paid = 1000 - 100 = 900
       const r2 = strategy.calculateInstallmentCommission(
-        { interest: 100, paidAmount: 1001, amount: 1000, number: 2 },
+        { interest: 100, paidAmount: 1001, amount: 1000, number: 2 , principal: 900 },
         12,
         10,
         r1.newCapitalRecovered,
@@ -175,7 +175,7 @@ describe('CommissionStrategy', () => {
       // ADVANCED mode: commission = interest * percentage for every installment
       // First installment
       const r1 = strategy.calculateInstallmentCommission(
-        { interest: 100, paidAmount: 1000, amount: 1000, number: 1 },
+        { interest: 100, paidAmount: 1000, amount: 1000, number: 1 , principal: 900 },
         10,
         10,
         0,
@@ -216,7 +216,7 @@ describe('CommissionStrategy', () => {
       const strategy = new AdvancedStrategy();
       
       const result = strategy.calculateInstallmentCommission(
-        { interest: 100, paidAmount: 1000, amount: 1000, number: 1 },
+        { interest: 100, paidAmount: 1000, amount: 1000, number: 1 , principal: 900 },
         1,
         10,
         0,
