@@ -117,7 +117,7 @@ export default function CommissionsPage() {
     const labels: Record<string, string> = {
       PROPORTIONAL: 'Proporcional',
       AFTER_CAPITAL_RECOVERY: 'Después Capital',
-      ADVANCED: 'Avanzado',
+      ADVANCED: 'Adelantado',
     };
     if (!mode) return null;
     return (

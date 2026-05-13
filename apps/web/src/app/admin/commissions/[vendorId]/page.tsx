@@ -291,7 +291,7 @@ export default function VendorCommissionPage() {
               >
                 <option value="PROPORTIONAL">Proporcional</option>
                 <option value="AFTER_CAPITAL_RECOVERY">Después de Recuperar Capital</option>
-                <option value="ADVANCED">Avanzado</option>
+                <option value="ADVANCED">Adelantado</option>
               </select>
             </div>
 

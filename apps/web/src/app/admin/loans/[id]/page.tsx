@@ -610,7 +610,7 @@ export default function LoanDetailPage() {
                   >
                     <option value="PROPORTIONAL">Proporcional</option>
                     <option value="AFTER_CAPITAL_RECOVERY">Después de recuperar capital</option>
-                    <option value="ADVANCED">Avanzado</option>
+                    <option value="ADVANCED">Adelantado</option>
                   </select>
                 </div>
                 <div className="flex gap-2">
@@ -633,7 +633,7 @@ export default function LoanDetailPage() {
               <div className="flex items-center gap-2">
                 <p className="dark:text-white/[.87]">
                   {loan.commissionPercentage !== null && loan.commissionPercentage !== undefined
-                    ? `${loan.commissionPercentage}% — ${loan.commissionMode === 'PROPORTIONAL' ? 'Proporcional' : loan.commissionMode === 'AFTER_CAPITAL_RECOVERY' ? 'Recuperación de capital' : 'Avanzado'}`
+                    ? `${loan.commissionPercentage}% — ${loan.commissionMode === 'PROPORTIONAL' ? 'Proporcional' : loan.commissionMode === 'AFTER_CAPITAL_RECOVERY' ? 'Recuperación de capital' : 'Adelantado'}`
                     : 'No configurada'}
                 </p>
                 {user?.role === 'ADMIN' && (

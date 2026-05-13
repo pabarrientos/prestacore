@@ -78,7 +78,7 @@ export default function MisComisionesPage() {
     const labels: Record<string, string> = {
       PROPORTIONAL: 'Proporcional',
       AFTER_CAPITAL_RECOVERY: 'Después de Recuperar Capital',
-      ADVANCED: 'Avanzado',
+      ADVANCED: 'Adelantado',
     };
     return mode ? labels[mode] || mode : 'No configurada';
   };
@@ -155,7 +155,7 @@ export default function MisComisionesPage() {
             <strong>Después de Recuperar Capital:</strong> empiezas a ganar comisión una vez que el capital prestado ha sido recuperado.
           </p>
           <p>
-            <strong>Avanzado:</strong> las primeras cuotas tienen mayor peso, distribuyendo más comisión al inicio del préstamo.
+            <strong>Adelantado:</strong> la comisión total proyectada se considera generada desde el inicio del préstamo.
           </p>
         </div>
       </div>
