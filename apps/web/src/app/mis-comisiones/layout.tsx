@@ -33,7 +33,12 @@ export default function MisComisionesLayout({
   const vendorLinks = [
     { href: '/admin', label: 'Dashboard' },
     { href: '/admin/loans', label: 'Préstamos' },
+    { href: '/admin/clients', label: 'Clientes' },
+    { href: '/admin/payments', label: 'Pagos' },
+    { href: '/admin/installments', label: 'Cuotas' },
+    { href: '/admin/collection-actions', label: 'Cobranzas' },
     { href: '/mis-comisiones', label: 'Mis Comisiones' },
+    { href: '/profile', label: 'Mi Perfil' },
   ];
 
   return (

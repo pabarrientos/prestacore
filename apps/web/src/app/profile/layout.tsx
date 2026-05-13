@@ -61,6 +61,7 @@ export default function ProfileLayout({
         { href: '/admin/payments', label: 'Pagos' },
         { href: '/admin/installments', label: 'Cuotas' },
         { href: '/admin/collection-actions', label: 'Cobranzas' },
+        { href: '/mis-comisiones', label: 'Mis Comisiones' },
         { href: '/profile', label: 'Mi Perfil' },
       ]
     : [
