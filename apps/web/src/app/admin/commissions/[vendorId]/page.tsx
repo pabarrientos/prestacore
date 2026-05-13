@@ -37,6 +37,7 @@ interface AuditEntry {
 interface LiquidationEntry {
   id: string;
   amount: number;
+  type: string;
   notes: string | null;
   createdBy: string;
   createdAt: string;
@@ -61,6 +62,7 @@ export default function VendorCommissionPage() {
   // Liquidation state
   const [liquidationAmount, setLiquidationAmount] = useState('');
   const [liquidationNotes, setLiquidationNotes] = useState('');
+  const [liquidationType, setLiquidationType] = useState('PAYMENT');
   const [liquidating, setLiquidating] = useState(false);
   const [liquidationMessage, setLiquidationMessage] = useState({ type: '', text: '' });
 
@@ -175,7 +177,7 @@ export default function VendorCommissionPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ vendorId, amount, notes: liquidationNotes }),
+        body: JSON.stringify({ vendorId, amount, type: liquidationType, notes: liquidationNotes }),
       });
 
       const result = await res.json();
@@ -346,14 +348,28 @@ export default function VendorCommissionPage() {
           <form onSubmit={handleLiquidate}>
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
-                Monto a Liquidar (máximo {formatCurrency(Math.max(0, summary.pending))})
+                Tipo
+              </label>
+              <select
+                value={liquidationType}
+                onChange={(e) => setLiquidationType(e.target.value)}
+                className="w-full px-4 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14]"
+              >
+                <option value="PAYMENT">Pago de comisiones</option>
+                <option value="ADVANCE">Adelanto</option>
+                <option value="REFUND">Devolución del vendedor</option>
+              </select>
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
+                Monto {liquidationType === 'REFUND' ? 'a Devolver' : 'a Liquidar'} {liquidationType === 'PAYMENT' ? `(máximo ${formatCurrency(Math.max(0, summary.pending))})` : ''}
               </label>
               <input
                 type="number"
                 step="0.01"
                 min="0"
-                max={Math.max(0, summary.pending)}
-                disabled={liquidating || summary.pending <= 0}
+                max={liquidationType === 'PAYMENT' ? Math.max(0, summary.pending) : undefined}
+                disabled={liquidating || (liquidationType === 'PAYMENT' && summary.pending <= 0)}
                 value={liquidationAmount}
                 onChange={(e) => setLiquidationAmount(e.target.value)}
                 className="w-full px-4 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14]"
@@ -395,6 +411,7 @@ export default function VendorCommissionPage() {
               <thead>
                 <tr className="border-b dark:border-[#333]">
                   <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 dark:text-white/60">Fecha</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 dark:text-white/60">Tipo</th>
                   <th className="px-4 py-2 text-right text-sm font-medium text-gray-500 dark:text-white/60">Monto</th>
                   <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 dark:text-white/60">Notas</th>
                   <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 dark:text-white/60">Registrado por</th>
@@ -404,7 +421,18 @@ export default function VendorCommissionPage() {
                 {liquidations.map(l => (
                   <tr key={l.id}>
                     <td className="px-4 py-2 text-sm dark:text-white/80">{new Date(l.createdAt).toLocaleDateString('es-AR')}</td>
-                    <td className="px-4 py-2 text-sm text-right font-medium text-green-600 dark:text-green-400">{formatCurrency(l.amount)}</td>
+                    <td className="px-4 py-2 text-sm">
+                      <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
+                        l.type === 'REFUND' ? 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-400' :
+                        l.type === 'ADVANCE' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/50 dark:text-yellow-400' :
+                        'bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-400'
+                      }`}>
+                        {l.type === 'REFUND' ? 'Devolución' : l.type === 'ADVANCE' ? 'Adelanto' : 'Pago'}
+                      </span>
+                    </td>
+                    <td className={`px-4 py-2 text-sm text-right font-medium ${l.type === 'REFUND' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                      {formatCurrency(l.amount)}
+                    </td>
                     <td className="px-4 py-2 text-sm text-gray-500 dark:text-white/60">{l.notes || '—'}</td>
                     <td className="px-4 py-2 text-sm dark:text-white/80">{l.createdBy}</td>
                   </tr>

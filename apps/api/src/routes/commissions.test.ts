@@ -375,28 +375,29 @@ describe('Commissions API', () => {
   });
 
   describe('POST /api/commissions/liquidate', () => {
-    it('should reject liquidation exceeding pending commissions', async () => {
+    it('should reject PAYMENT liquidation when no pending commissions', async () => {
       const res = await request(app)
         .post('/api/commissions/liquidate')
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
           vendorId,
           amount: 999999,
-          notes: 'Too much',
+          type: 'PAYMENT',
         })
         .expect(422);
 
       expect(res.body.success).toBe(false);
-      expect(res.body.error).toContain('Insufficient');
+      expect(res.body.error).toContain('pendientes');
     });
 
-    it('should reject zero liquidation', async () => {
+    it('should reject zero amount liquidation for PAYMENT', async () => {
       const res = await request(app)
         .post('/api/commissions/liquidate')
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
           vendorId,
           amount: 0,
+          type: 'PAYMENT',
         })
         .expect(400);
 

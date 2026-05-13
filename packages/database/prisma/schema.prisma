@@ -81,6 +81,12 @@ enum CommissionMode {
   ADVANCED                  // Weighted commission (early installments weighted more)
 }
 
+enum LiquidationType {
+  PAYMENT   // Normal liquidation (pago de comisiones)
+  ADVANCE   // Adelanto (excede el pendiente disponible)
+  REFUND    // Devolución del vendedor (reduce lo liquidado)
+}
+
 // ============================================
 // MODELS
 // ============================================
@@ -293,6 +299,7 @@ model SellerLiquidation {
   id          String   @id @default(cuid())
   sellerId    String   // Vendor whose commissions are being liquidated
   amount      Decimal  @db.Decimal(12, 2)
+  type        LiquidationType @default(PAYMENT)
   notes       String?
   createdBy   String   // Admin who created this liquidation
   createdAt   DateTime @default(now())

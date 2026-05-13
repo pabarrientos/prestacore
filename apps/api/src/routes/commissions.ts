@@ -22,7 +22,8 @@ const updateCommissionConfigSchema = z.object({
 
 const liquidateSchema = z.object({
   vendorId: z.string().cuid(),
-  amount: z.number().positive(),
+  amount: z.number().min(0),
+  type: z.enum(['PAYMENT', 'ADVANCE', 'REFUND']).default('PAYMENT'),
   notes: z.string().optional(),
 });
 
@@ -292,7 +293,8 @@ router.get('/vendor/:vendorId', authMiddleware, rbacMiddleware([Role.ADMIN, Role
   }
 });
 
-// POST /api/commissions/liquidate - Record a liquidation payment (ADMIN)
+// POST /api/commissions/liquidate - Record a liquidation (ADMIN)
+// Types: PAYMENT (normal), ADVANCE (adelanto, can exceed pending), REFUND (devolución del vendedor)
 router.post('/liquidate', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const parsed = liquidateSchema.safeParse(req.body);
@@ -304,9 +306,13 @@ router.post('/liquidate', authMiddleware, requireAdmin, async (req: AuthRequest,
       return;
     }
 
-    const { vendorId, amount, notes } = parsed.data;
+    const { vendorId, amount, type, notes } = parsed.data;
 
-    // Calculate available pending commissions
+    if (amount <= 0 && type !== 'REFUND') {
+      res.status(400).json({ success: false, error: 'El monto debe ser mayor a 0' });
+      return;
+    }
+
     const loans = await prisma.loan.findMany({
       where: {
         assignedVendorId: vendorId,
@@ -321,7 +327,6 @@ router.post('/liquidate', authMiddleware, requireAdmin, async (req: AuthRequest,
 
     let totalGenerated = 0;
     let totalLiquidated = 0;
-
     for (const loan of loans) {
       totalGenerated += Number(loan.commissionGenerated ?? 0);
       totalLiquidated += Number(loan.commissionLiquidated ?? 0);
@@ -329,65 +334,61 @@ router.post('/liquidate', authMiddleware, requireAdmin, async (req: AuthRequest,
 
     const pending = totalGenerated - totalLiquidated;
 
-    if (amount > pending) {
+    if (type === 'PAYMENT' && pending <= 0) {
       res.status(422).json({
         success: false,
-        error: 'Insufficient pending commissions',
+        error: 'No hay comisiones pendientes. Use "Adelanto" para exceder el disponible.',
       });
       return;
     }
 
-    if (pending <= 0) {
-      res.status(422).json({
-        success: false,
-        error: 'No hay comisiones pendientes para liquidar',
-      });
-      return;
-    }
-
-    // Create liquidation and update loan liquidation amounts
     await prisma.$transaction(async (tx) => {
-      // Create the liquidation record
       await tx.sellerLiquidation.create({
         data: {
           sellerId: vendorId,
           amount,
+          type,
           notes,
           createdBy: req.user!.userId,
         },
       });
 
-      // Distribute liquidation across loans proportionally
-      let remainingAmount = amount;
-      for (const loan of loans) {
-        if (remainingAmount <= 0) break;
-
-        const loanPending = Number(loan.commissionGenerated ?? 0) - Number(loan.commissionLiquidated ?? 0);
-        if (loanPending <= 0) continue;
-
-        const loanLiquidationAmount = Math.min(remainingAmount, loanPending);
-
-        await tx.loan.update({
-          where: { id: loan.id },
-          data: {
-            commissionLiquidated: {
-              increment: loanLiquidationAmount,
-            },
-          },
-        });
-
-        remainingAmount -= loanLiquidationAmount;
+      if (type === 'REFUND') {
+        let remaining = amount;
+        for (const loan of loans) {
+          if (remaining <= 0) break;
+          const loanLiq = Number(loan.commissionLiquidated ?? 0);
+          if (loanLiq <= 0) continue;
+          const refund = Math.min(remaining, loanLiq);
+          await tx.loan.update({
+            where: { id: loan.id },
+            data: { commissionLiquidated: { decrement: refund } },
+          });
+          remaining -= refund;
+        }
+      } else {
+        let remaining = amount;
+        for (const loan of loans) {
+          if (remaining <= 0) break;
+          const loanPending = Number(loan.commissionGenerated ?? 0) - Number(loan.commissionLiquidated ?? 0);
+          if (type === 'PAYMENT' && loanPending <= 0) continue;
+          const dist = type === 'ADVANCE'
+            ? Math.min(remaining, Math.max(0.01, loanPending || remaining))
+            : Math.min(remaining, Math.max(0, loanPending));
+          if (dist <= 0) continue;
+          await tx.loan.update({
+            where: { id: loan.id },
+            data: { commissionLiquidated: { increment: dist } },
+          });
+          remaining -= dist;
+        }
       }
     });
 
-    res.json({
+    const label = type === 'REFUND' ? 'Devolución' : type === 'ADVANCE' ? 'Adelanto' : 'Liquidación';
+    res.status(201).json({
       success: true,
-      data: {
-        vendorId,
-        amount,
-        notes,
-        newPending: Math.round((pending - amount) * 100) / 100,
-      },
+      data: { message: `${label} de $${amount.toFixed(2)} registrada` },
     });
   } catch (error) {
     console.error('Error processing liquidation:', error);
@@ -397,7 +398,6 @@ router.post('/liquidate', authMiddleware, requireAdmin, async (req: AuthRequest,
     });
   }
 });
-
 // GET /api/commissions/liquidations/:vendorId - Get liquidation history (ADMIN or self VENDEDOR)
 router.get('/liquidations/:vendorId', authMiddleware, rbacMiddleware([Role.ADMIN, Role.VENDEDOR]), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -421,6 +421,7 @@ router.get('/liquidations/:vendorId', authMiddleware, rbacMiddleware([Role.ADMIN
       data: liquidations.map(l => ({
         id: l.id,
         amount: Number(l.amount),
+        type: l.type,
         notes: l.notes,
         createdBy: l.creator.firstName + ' ' + l.creator.lastName,
         createdAt: l.createdAt.toISOString(),
