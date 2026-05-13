@@ -178,6 +178,7 @@ export default function MisComisionesPage() {
               <thead>
                 <tr className="border-b dark:border-[#333]">
                   <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 dark:text-white/60">Fecha</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 dark:text-white/60">Tipo</th>
                   <th className="px-4 py-2 text-right text-sm font-medium text-gray-500 dark:text-white/60">Monto</th>
                   <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 dark:text-white/60">Notas</th>
                 </tr>
@@ -186,7 +187,18 @@ export default function MisComisionesPage() {
                 {liquidations.map(l => (
                   <tr key={l.id}>
                     <td className="px-4 py-2 text-sm dark:text-white/80">{new Date(l.createdAt + 'T00:00:00').toLocaleDateString('es-AR')}</td>
-                    <td className="px-4 py-2 text-sm text-right font-medium text-green-600 dark:text-green-400">{formatCurrency(l.amount)}</td>
+                    <td className="px-4 py-2 text-sm">
+                      <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
+                        l.type === 'REFUND' ? 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-400' :
+                        l.type === 'ADVANCE' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/50 dark:text-yellow-400' :
+                        'bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-400'
+                      }`}>
+                        {l.type === 'REFUND' ? 'Devolución' : l.type === 'ADVANCE' ? 'Adelanto' : 'Pago'}
+                      </span>
+                    </td>
+                    <td className={`px-4 py-2 text-sm text-right font-medium ${l.type === 'REFUND' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                      {formatCurrency(l.amount)}
+                    </td>
                     <td className="px-4 py-2 text-sm text-gray-500 dark:text-white/60">{l.notes || '—'}</td>
                   </tr>
                 ))}
