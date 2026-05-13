@@ -185,7 +185,7 @@ export default function MisComisionesPage() {
               <tbody className="divide-y divide-gray-200 dark:divide-[#333]">
                 {liquidations.map(l => (
                   <tr key={l.id}>
-                    <td className="px-4 py-2 text-sm dark:text-white/80">{l.createdAt?.split('T')[0] || new Date(l.createdAt).toLocaleDateString('es-AR')}</td>
+                    <td className="px-4 py-2 text-sm dark:text-white/80">{new Date(l.createdAt).toLocaleDateString('es-AR')}</td>
                     <td className="px-4 py-2 text-sm text-right font-medium text-green-600 dark:text-green-400">{formatCurrency(l.amount)}</td>
                     <td className="px-4 py-2 text-sm text-gray-500 dark:text-white/60">{l.notes || '—'}</td>
                   </tr>

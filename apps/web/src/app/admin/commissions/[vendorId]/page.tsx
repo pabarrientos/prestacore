@@ -492,7 +492,7 @@ export default function VendorCommissionPage() {
               <tbody className="divide-y divide-gray-200 dark:divide-[#333]">
                 {liquidations.map(l => (
                   <tr key={l.id}>
-                    <td className="px-4 py-2 text-sm dark:text-white/80">{l.createdAt?.split('T')[0] || new Date(l.createdAt).toLocaleDateString('es-AR')}</td>
+                    <td className="px-4 py-2 text-sm dark:text-white/80">{new Date(l.createdAt).toLocaleDateString('es-AR')}</td>
                     <td className="px-4 py-2 text-sm">
                       <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
                         l.type === 'REFUND' ? 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-400' :
