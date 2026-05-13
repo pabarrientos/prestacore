@@ -75,24 +75,18 @@ export class AfterCapitalRecoveryStrategy implements CommissionStrategy {
 export class AdvancedStrategy implements CommissionStrategy {
   calculateInstallmentCommission(
     installment: { interest: number; paidAmount: number; amount: number; number: number },
-    totalInstallments: number,
+    _totalInstallments: number,
     percentage: number,
     capitalRecoveredSoFar: number,
     _totalPrincipal: number
   ): { commission: number; newCapitalRecovered: number } {
-    // Calculate weight (by convention, n=1 gives weight=1)
-    let weight = 1;
-    if (totalInstallments > 1) {
-      weight = 1 - (installment.number - 1) / (totalInstallments - 1);
-    }
-    
-    const interestCollected = installment.interest * Math.min(installment.paidAmount / installment.amount, 1);
-    const commission = Math.round(interestCollected * weight * (percentage / 100) * 100) / 100;
-    const principalPaid = Math.min(installment.paidAmount, installment.amount) - interestCollected;
+    // ADVANCED mode: full commission is considered generated from loan start.
+    // Commission is calculated on total projected interest, independent of collection progress.
+    const commission = Math.round(installment.interest * (percentage / 100) * 100) / 100;
     
     return {
       commission,
-      newCapitalRecovered: capitalRecoveredSoFar + principalPaid,
+      newCapitalRecovered: capitalRecoveredSoFar,
     };
   }
 }
@@ -247,10 +241,19 @@ export class CommissionService {
     // Round to 2 decimal places
     totalCommission = Math.round(totalCommission * 100) / 100;
     
+    // Calculate projected commission (based on ALL installments, not just paid ones)
+    const totalInterest = loan.installments.reduce(
+      (sum, inst) => sum + Number(inst.interest), 0
+    );
+    const projectedCommission = Math.round(totalInterest * (percentage / 100) * 100) / 100;
+    
     // Update loan with calculated commission
     await prisma.loan.update({
       where: { id: loanId },
-      data: { commissionGenerated: totalCommission },
+      data: { 
+        commissionGenerated: totalCommission,
+        commissionProjected: projectedCommission,
+      },
     });
     
     return totalCommission;

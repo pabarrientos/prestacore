@@ -169,10 +169,11 @@ describe('CommissionStrategy', () => {
   });
 
   describe('AdvancedStrategy', () => {
-    it('should apply higher weight to early installments', () => {
+    it('should generate full commission on all installments equally (no weighting)', () => {
       const strategy = new AdvancedStrategy();
       
-      // Installment 1 of 10: weight = 1 - (1-1)/(10-1) = 1
+      // ADVANCED mode: commission = interest * percentage for every installment
+      // First installment
       const r1 = strategy.calculateInstallmentCommission(
         { interest: 100, paidAmount: 1000, amount: 1000, number: 1 },
         10,
@@ -181,7 +182,7 @@ describe('CommissionStrategy', () => {
         10000
       );
       
-      // Installment 10 of 10: weight = 1 - (10-1)/(10-1) = 0
+      // Last installment — same commission (no decay)
       const r10 = strategy.calculateInstallmentCommission(
         { interest: 100, paidAmount: 1000, amount: 1000, number: 10 },
         10,
@@ -190,27 +191,28 @@ describe('CommissionStrategy', () => {
         10000
       );
       
-      expect(r1.commission).toBe(10); // 100 × 1.0 × 0.10
-      expect(r10.commission).toBe(0); // 100 × 0 × 0.10
+      // 100 × 0.10 = 10 for all installments
+      expect(r1.commission).toBe(10);
+      expect(r10.commission).toBe(10);
     });
 
-    it('should calculate correct weights for middle installments', () => {
+    it('should generate commission regardless of paidAmount (anticipada)', () => {
       const strategy = new AdvancedStrategy();
       
-      // Installment 5 of 10: weight = 1 - (5-1)/(10-1) = 1 - 4/9 ≈ 0.556
-      const r5 = strategy.calculateInstallmentCommission(
-        { interest: 100, paidAmount: 1000, amount: 1000, number: 5 },
+      // Even with zero paid, commission is still generated
+      const result = strategy.calculateInstallmentCommission(
+        { interest: 100, paidAmount: 0, amount: 1000, number: 1 },
         10,
         10,
         0,
         10000
       );
       
-      // 100 × 0.555... × 0.10 ≈ 5.56
-      expect(r5.commission).toBeCloseTo(5.56, 1);
+      // 100 × 0.10 = 10 — commission generated even without collection
+      expect(result.commission).toBe(10);
     });
 
-    it('should handle single installment (n=1) with weight 1', () => {
+    it('should handle single installment', () => {
       const strategy = new AdvancedStrategy();
       
       const result = strategy.calculateInstallmentCommission(
@@ -221,7 +223,6 @@ describe('CommissionStrategy', () => {
         10000
       );
       
-      // weight = 1 - (1-1)/(1-1) = 1 - 0/0 = 1 (by convention for n=1)
       expect(result.commission).toBe(10);
     });
   });
@@ -374,6 +375,7 @@ describe('CommissionService', () => {
         where: { id: 'loan-1' },
         data: {
           commissionGenerated: 0,
+          commissionProjected: 0,
         },
       });
     });
