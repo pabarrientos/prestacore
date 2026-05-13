@@ -254,6 +254,8 @@ export default function VendorCommissionPage() {
 
   const { vendor, summary } = data;
 
+  const isPaymentBlocked = liquidationType === 'PAYMENT' && summary.pending <= 0;
+
   return (
     <div>
       <div className="mb-6">
@@ -369,7 +371,7 @@ export default function VendorCommissionPage() {
                 step="0.01"
                 min="0"
                 max={liquidationType === 'PAYMENT' ? Math.max(0, summary.pending) : undefined}
-                disabled={liquidating || (liquidationType === 'PAYMENT' && summary.pending <= 0)}
+                disabled={liquidating || isPaymentBlocked}
                 value={liquidationAmount}
                 onChange={(e) => setLiquidationAmount(e.target.value)}
                 className="w-full px-4 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14]"
@@ -383,6 +385,7 @@ export default function VendorCommissionPage() {
               <textarea
                 value={liquidationNotes}
                 onChange={(e) => setLiquidationNotes(e.target.value)}
+                disabled={liquidating || isPaymentBlocked}
                 rows={2}
                 className="w-full px-4 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14]"
               />
@@ -390,10 +393,10 @@ export default function VendorCommissionPage() {
 
             <button
               type="submit"
-              disabled={liquidating || summary.pending <= 0}
+              disabled={liquidating || isPaymentBlocked}
               className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 dark:bg-green-600 dark:hover:bg-green-700"
             >
-              {liquidating ? 'Liquidando...' : 'Registrar Liquidación'}
+              {liquidating ? 'Liquidando...' : liquidationType === 'REFUND' ? 'Registrar Devolución' : liquidationType === 'ADVANCE' ? 'Registrar Adelanto' : 'Registrar Liquidación'}
             </button>
           </form>
         </div>
