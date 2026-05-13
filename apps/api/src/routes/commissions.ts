@@ -5,7 +5,7 @@ import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { requireAdmin, rbacMiddleware } from '../middleware/rbac';
 import { CommissionService } from '../services/commission';
 
-const router: ReturnType = Router();
+const router = Router();
 const prisma = new PrismaClient();
 
 // Validation schemas
@@ -152,7 +152,7 @@ router.put('/config/:vendorId', authMiddleware, requireAdmin, async (req: AuthRe
       changedBy: string;
     }> = [];
 
-    if (percentage !== undefined && percentage !== vendor.commissionPercentage) {
+    if (percentage !== undefined && percentage !== Number(vendor.commissionPercentage ?? 0)) {
       auditEntries.push({
         vendorId,
         field: 'commissionPercentage',
@@ -348,7 +348,7 @@ router.post('/liquidate', authMiddleware, requireAdmin, async (req: AuthRequest,
     // Create liquidation and update loan liquidation amounts
     await prisma.$transaction(async (tx) => {
       // Create the liquidation record
-      const liquidation = await tx.sellerLiquidation.create({
+      await tx.sellerLiquidation.create({
         data: {
           sellerId: vendorId,
           amount,

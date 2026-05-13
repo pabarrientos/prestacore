@@ -134,7 +134,7 @@ export class CommissionService {
    */
   static projectCommission(
     principal: number,
-    annualInterestRate: number,
+    _annualInterestRate: number,
     termMonths: number,
     commissionPercentage: number,
     mode: CommissionMode,
