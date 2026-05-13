@@ -250,7 +250,8 @@ export class CommissionService {
     const projectedCommission = Math.round(totalInterest * (percentage / 100) * 100) / 100;
     
     // ADVANCED mode: full commission is generated from start, equal to projected
-    if (mode === CommissionMode.ADVANCED) {
+    // EXCEPT when loan is PAID (cancelled/repaid): recalculate based on actual collected interest
+    if (mode === CommissionMode.ADVANCED && loan.status !== LoanStatus.PAID) {
       totalCommission = projectedCommission;
     }
     

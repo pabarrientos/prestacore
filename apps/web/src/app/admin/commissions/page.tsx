@@ -200,7 +200,7 @@ export default function CommissionsPage() {
                     <td className="px-4 py-3 text-right font-medium text-green-600 dark:text-green-400">
                       {formatCurrency(summary.totalLiquidated)}
                     </td>
-                    <td className="px-4 py-3 text-right font-medium text-yellow-600 dark:text-yellow-400">
+                    <td className={`px-4 py-3 text-right font-medium ${summary.pending < 0 ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400'}`}>
                       {formatCurrency(summary.pending)}
                     </td>
                     <td className="px-4 py-3 text-right text-gray-500 dark:text-white/60">

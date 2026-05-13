@@ -1436,6 +1436,13 @@ router.post('/:id/execute-cancelacion-anticipada', authMiddleware, requireVendor
       return;
     }
 
+    // Recalculate commission after early cancellation (loan is now PAID)
+    if (result.loan?.assignedVendorId) {
+      await CommissionService.recalculateLoan(loanId).catch(err => {
+        console.error('Commission recalculation error after cancellation:', err);
+      });
+    }
+
     res.json({
       success: true,
       data: {
