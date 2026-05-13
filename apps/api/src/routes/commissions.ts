@@ -24,8 +24,118 @@ const liquidateSchema = z.object({
   vendorId: z.string().cuid(),
   amount: z.number().min(0),
   type: z.enum(['PAYMENT', 'ADVANCE', 'REFUND']).default('PAYMENT'),
+  date: z.string().optional(), // Date-only string YYYY-MM-DD
   notes: z.string().optional(),
 });
+
+// --- Helper: redistribution functions for liquidation ---
+type LoanSnapshot = { id: string; commissionGenerated: number; commissionLiquidated: number };
+type TxClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+
+/** Distribute an increment to loans prioritizing those with room (generated > liquidated) */
+async function distributePayment(tx: TxClient, loans: LoanSnapshot[], amount: number) {
+  let remaining = amount;
+  // First pass: distribute to loans with pending > 0
+  for (const loan of loans) {
+    if (remaining <= 0) break;
+    const pending = Math.max(0, loan.commissionGenerated - loan.commissionLiquidated);
+    if (pending <= 0) continue;
+    const dist = Math.min(remaining, pending);
+    await tx.loan.update({
+      where: { id: loan.id },
+      data: { commissionLiquidated: { increment: dist } },
+    });
+    loan.commissionLiquidated += dist;
+    remaining -= dist;
+  }
+  // Second pass: if ADVANCE and remaining > 0, distribute evenly/proportionally
+  if (remaining > 0) {
+    const totalGen = loans.reduce((s, l) => s + l.commissionGenerated, 0);
+    for (const loan of loans) {
+      if (remaining <= 0) break;
+      const share = totalGen > 0
+        ? Math.round((loan.commissionGenerated / totalGen) * remaining * 100) / 100
+        : Math.round((remaining / Math.max(1, loans.length)) * 100) / 100;
+      if (share <= 0) continue;
+      const dist = Math.min(remaining, share);
+      await tx.loan.update({
+        where: { id: loan.id },
+        data: { commissionLiquidated: { increment: dist } },
+      });
+      loan.commissionLiquidated += dist;
+      remaining -= dist;
+    }
+  }
+}
+
+/** Distribute ADVANCE: proportionally, can exceed generated */
+async function distributeAdvance(tx: TxClient, loans: LoanSnapshot[], amount: number) {
+  const totalGen = loans.reduce((s, l) => s + l.commissionGenerated, 0);
+  let remaining = amount;
+  // First pass: proportional distribution (can exceed generated for ADVANCE)
+  for (const loan of loans) {
+    if (remaining <= 0) break;
+    const share = totalGen > 0
+      ? Math.round((loan.commissionGenerated / totalGen) * amount * 100) / 100
+      : Math.round((amount / Math.max(1, loans.length)) * 100) / 100;
+    const dist = Math.min(remaining, share);
+    if (dist <= 0) continue;
+    await tx.loan.update({
+      where: { id: loan.id },
+      data: { commissionLiquidated: { increment: dist } },
+    });
+    loan.commissionLiquidated += dist;
+    remaining -= dist;
+  }
+  // Post-distribution rebalance: move excess from loans with liquidated > generated
+  // to loans with pending > 0
+  for (const excessLoan of loans) {
+    const excess = Math.max(0, excessLoan.commissionLiquidated - excessLoan.commissionGenerated);
+    if (excess <= 0) continue;
+    
+    let toMove = excess;
+    for (const roomLoan of loans) {
+      if (toMove <= 0) break;
+      if (roomLoan.id === excessLoan.id) continue;
+      const room = Math.max(0, roomLoan.commissionGenerated - roomLoan.commissionLiquidated);
+      if (room <= 0) continue;
+      const move = Math.min(toMove, room);
+      
+      // Decrement excess loan
+      await tx.loan.update({
+        where: { id: excessLoan.id },
+        data: { commissionLiquidated: { decrement: move } },
+      });
+      excessLoan.commissionLiquidated -= move;
+      
+      // Increment room loan
+      await tx.loan.update({
+        where: { id: roomLoan.id },
+        data: { commissionLiquidated: { increment: move } },
+      });
+      roomLoan.commissionLiquidated += move;
+      
+      toMove -= move;
+    }
+  }
+}
+
+/** Distribute a decrement (REFUND or reverse) from loans that have liquidated */
+async function distributeDecrement(tx: TxClient, loans: LoanSnapshot[], amount: number) {
+  let remaining = amount;
+  for (const loan of loans) {
+    if (remaining <= 0) break;
+    const loanLiq = loan.commissionLiquidated;
+    if (loanLiq <= 0) continue;
+    const decr = Math.min(remaining, loanLiq);
+    await tx.loan.update({
+      where: { id: loan.id },
+      data: { commissionLiquidated: { decrement: decr } },
+    });
+    loan.commissionLiquidated -= decr;
+    remaining -= decr;
+  }
+}
 
 // POST /api/commissions/config - Set initial commission config for a vendor (ADMIN)
 router.post('/config', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
@@ -306,7 +416,7 @@ router.post('/liquidate', authMiddleware, requireAdmin, async (req: AuthRequest,
       return;
     }
 
-    const { vendorId, amount, type, notes } = parsed.data;
+    const { vendorId, amount, type, date, notes } = parsed.data;
 
     if (amount <= 0 && type !== 'REFUND') {
       res.status(400).json({ success: false, error: 'El monto debe ser mayor a 0' });
@@ -342,6 +452,12 @@ router.post('/liquidate', authMiddleware, requireAdmin, async (req: AuthRequest,
       return;
     }
 
+    const loanSnapshots: LoanSnapshot[] = loans.map(l => ({
+      id: l.id,
+      commissionGenerated: Number(l.commissionGenerated ?? 0),
+      commissionLiquidated: Number(l.commissionLiquidated ?? 0),
+    }));
+
     await prisma.$transaction(async (tx) => {
       await tx.sellerLiquidation.create({
         data: {
@@ -350,53 +466,17 @@ router.post('/liquidate', authMiddleware, requireAdmin, async (req: AuthRequest,
           type,
           notes,
           createdBy: req.user!.userId,
+          ...(date ? { createdAt: new Date(date + 'T00:00:00') } : {}),
         },
       });
 
+      // Redistribute across loans
       if (type === 'REFUND') {
-        let remaining = amount;
-        for (const loan of loans) {
-          if (remaining <= 0) break;
-          const loanLiq = Number(loan.commissionLiquidated ?? 0);
-          if (loanLiq <= 0) continue;
-          const refund = Math.min(remaining, loanLiq);
-          await tx.loan.update({
-            where: { id: loan.id },
-            data: { commissionLiquidated: { decrement: refund } },
-          });
-          remaining -= refund;
-        }
+        await distributeDecrement(tx, loanSnapshots, amount);
       } else if (type === 'ADVANCE') {
-        // Distribute advance proportionally based on generated commission, or evenly
-        const totalGen = loans.reduce((s, l) => s + Number(l.commissionGenerated ?? 0), 0);
-        let remaining = amount;
-        for (const loan of loans) {
-          if (remaining <= 0) break;
-          const share = totalGen > 0
-            ? Math.round((Number(loan.commissionGenerated ?? 0) / totalGen) * amount * 100) / 100
-            : Math.round((amount / Math.max(1, loans.length)) * 100) / 100;
-          const dist = Math.min(remaining, share);
-          if (dist <= 0) continue;
-          await tx.loan.update({
-            where: { id: loan.id },
-            data: { commissionLiquidated: { increment: dist } },
-          });
-          remaining -= dist;
-        }
+        await distributeAdvance(tx, loanSnapshots, amount);
       } else {
-        // PAYMENT: distribute proportionally based on pending
-        let remaining = amount;
-        for (const loan of loans) {
-          if (remaining <= 0) break;
-          const loanPending = Number(loan.commissionGenerated ?? 0) - Number(loan.commissionLiquidated ?? 0);
-          if (loanPending <= 0) continue;
-          const dist = Math.min(remaining, loanPending);
-          await tx.loan.update({
-            where: { id: loan.id },
-            data: { commissionLiquidated: { increment: dist } },
-          });
-          remaining -= dist;
-        }
+        await distributePayment(tx, loanSnapshots, amount);
       }
     });
 
@@ -445,6 +525,59 @@ router.get('/liquidations/:vendorId', authMiddleware, rbacMiddleware([Role.ADMIN
   } catch (error) {
     console.error('Error fetching liquidations:', error);
     res.status(500).json({ success: false, error: 'Error al obtener las liquidaciones' });
+  }
+});
+
+// DELETE /api/commissions/liquidations/:id - Delete a liquidation and redistribuya (ADMIN)
+router.delete('/liquidations/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const liquidation = await prisma.sellerLiquidation.findUnique({ where: { id } });
+    if (!liquidation) {
+      res.status(404).json({ success: false, error: 'Liquidación no encontrada' });
+      return;
+    }
+
+    const vendorId = liquidation.sellerId;
+    const amount = Number(liquidation.amount);
+    const type = liquidation.type;
+
+    // Get all vendor loans
+    const loans = await prisma.loan.findMany({
+      where: {
+        assignedVendorId: vendorId,
+        commissionPercentage: { not: null },
+      },
+      select: {
+        id: true,
+        commissionGenerated: true,
+        commissionLiquidated: true,
+      },
+    });
+
+    const loanSnapshots: LoanSnapshot[] = loans.map(l => ({
+      id: l.id,
+      commissionGenerated: Number(l.commissionGenerated ?? 0),
+      commissionLiquidated: Number(l.commissionLiquidated ?? 0),
+    }));
+
+    await prisma.$transaction(async (tx) => {
+      if (type === 'REFUND') {
+        // Reverse refund: restore liquidated (increment, prioritizing loans with room)
+        await distributePayment(tx, loanSnapshots, amount);
+      } else {
+        // Reverse PAYMENT/ADVANCE: decrease liquidated from loans that have it
+        await distributeDecrement(tx, loanSnapshots, amount);
+      }
+
+      await tx.sellerLiquidation.delete({ where: { id } });
+    });
+
+    res.json({ success: true, data: { message: 'Liquidación eliminada y redistribuida' } });
+  } catch (error) {
+    console.error('Error deleting liquidation:', error);
+    res.status(500).json({ success: false, error: 'Error al eliminar la liquidación' });
   }
 });
 

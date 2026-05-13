@@ -63,6 +63,7 @@ export default function VendorCommissionPage() {
   const [liquidationAmount, setLiquidationAmount] = useState('');
   const [liquidationNotes, setLiquidationNotes] = useState('');
   const [liquidationType, setLiquidationType] = useState('PAYMENT');
+  const [liquidationDate, setLiquidationDate] = useState(new Date().toISOString().split('T')[0]);
   const [liquidating, setLiquidating] = useState(false);
   const [liquidationMessage, setLiquidationMessage] = useState({ type: '', text: '' });
 
@@ -177,7 +178,7 @@ export default function VendorCommissionPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ vendorId, amount, type: liquidationType, notes: liquidationNotes }),
+        body: JSON.stringify({ vendorId, amount, type: liquidationType, date: liquidationDate, notes: liquidationNotes }),
       });
 
       const result = await res.json();
@@ -208,6 +209,30 @@ export default function VendorCommissionPage() {
       setLiquidationMessage({ type: 'error', text: 'Error de conexión' });
     } finally {
       setLiquidating(false);
+    }
+  };
+
+  const handleDeleteLiquidation = async (liquidationId: string) => {
+    if (!token || !confirm('¿Eliminar esta liquidación? Se redistribuirán los montos entre los préstamos.')) return;
+    try {
+      const res = await fetch(`${API_URL}/api/commissions/liquidations/${liquidationId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.success) {
+        // Refresh data and liquidation list
+        const [vendorRes, liqRes] = await Promise.all([
+          fetch(`${API_URL}/api/commissions/vendor/${vendorId}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+          fetch(`${API_URL}/api/commissions/liquidations/${vendorId}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+        ]);
+        if (vendorRes.success) setData(vendorRes.data);
+        if (liqRes.success) setLiquidations(liqRes.data);
+      } else {
+        alert(data.error || 'Error al eliminar');
+      }
+    } catch {
+      alert('Error de conexión');
     }
   };
 
@@ -364,6 +389,17 @@ export default function VendorCommissionPage() {
             </div>
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
+                Fecha
+              </label>
+              <input
+                type="date"
+                value={liquidationDate}
+                onChange={(e) => setLiquidationDate(e.target.value)}
+                className="w-full px-4 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14]"
+              />
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
                 Monto {liquidationType === 'REFUND' ? 'a Devolver' : 'a Liquidar'} {liquidationType === 'PAYMENT' ? `(máximo ${formatCurrency(Math.max(0, summary.pending))})` : ''}
               </label>
               <input
@@ -418,12 +454,13 @@ export default function VendorCommissionPage() {
                   <th className="px-4 py-2 text-right text-sm font-medium text-gray-500 dark:text-white/60">Monto</th>
                   <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 dark:text-white/60">Notas</th>
                   <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 dark:text-white/60">Registrado por</th>
+                  <th className="px-4 py-2 text-center text-sm font-medium text-gray-500 dark:text-white/60">Acción</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-[#333]">
                 {liquidations.map(l => (
                   <tr key={l.id}>
-                    <td className="px-4 py-2 text-sm dark:text-white/80">{new Date(l.createdAt).toLocaleDateString('es-AR')}</td>
+                    <td className="px-4 py-2 text-sm dark:text-white/80">{l.createdAt?.split('T')[0] || new Date(l.createdAt).toLocaleDateString('es-AR')}</td>
                     <td className="px-4 py-2 text-sm">
                       <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
                         l.type === 'REFUND' ? 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-400' :
@@ -438,6 +475,15 @@ export default function VendorCommissionPage() {
                     </td>
                     <td className="px-4 py-2 text-sm text-gray-500 dark:text-white/60">{l.notes || '—'}</td>
                     <td className="px-4 py-2 text-sm dark:text-white/80">{l.createdBy}</td>
+                    <td className="px-4 py-2 text-center">
+                      <button
+                        onClick={() => handleDeleteLiquidation(l.id)}
+                        className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 text-sm"
+                        title="Eliminar liquidación"
+                      >
+                        ✕
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
