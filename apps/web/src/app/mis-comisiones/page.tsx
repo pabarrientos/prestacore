@@ -120,10 +120,14 @@ export default function MisComisionesPage() {
       <h1 className="text-2xl md:text-3xl font-bold mb-6 dark:text-white/[.87]">Mis Comisiones</h1>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
         <div className="bg-white rounded-lg shadow p-6 dark:bg-[#1e1e1e]">
           <p className="text-sm text-gray-500 dark:text-white/60 mb-1">Total Generada</p>
           <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(summary.totalGenerated)}</p>
+        </div>
+        <div className="bg-white rounded-lg shadow p-6 dark:bg-[#1e1e1e]">
+          <p className="text-sm text-gray-500 dark:text-white/60 mb-1">Total Proyectada</p>
+          <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{formatCurrency(summary.totalProjected)}</p>
         </div>
         <div className="bg-white rounded-lg shadow p-6 dark:bg-[#1e1e1e]">
           <p className="text-sm text-gray-500 dark:text-white/60 mb-1">Total Liquidada</p>

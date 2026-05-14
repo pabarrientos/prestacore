@@ -277,7 +277,7 @@ export class CommissionService {
         where: { id: loanId },
         data: {
           commissionGenerated: finalCommission,
-          commissionProjected: projectedCommission,
+          commissionProjected: finalCommission, // Closed loan: projected = generated
         },
       });
       return finalCommission;
