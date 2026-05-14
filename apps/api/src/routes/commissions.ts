@@ -357,11 +357,12 @@ router.get('/vendor/:vendorId', authMiddleware, rbacMiddleware([Role.ADMIN, Role
       return;
     }
 
-    // Get commission summary across all loans
+    // Get commission summary across all non-PENDING loans
     const loans = await prisma.loan.findMany({
       where: {
         assignedVendorId: vendorId,
         commissionPercentage: { not: null },
+        status: { not: 'PENDING' },
       },
       select: {
         commissionGenerated: true,
