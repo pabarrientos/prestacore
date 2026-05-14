@@ -727,6 +727,13 @@ router.patch('/:id/approve', authMiddleware, requireAdmin, async (req: AuthReque
       },
     });
 
+    // Recalculate commission after approval (ADVANCED mode needs this)
+    if (updatedLoan.assignedVendorId) {
+      CommissionService.recalculateLoan(id).catch(err => {
+        console.error('Commission recalculation error after approval:', err);
+      });
+    }
+
     res.json({
       success: true,
       data: updatedLoan,
