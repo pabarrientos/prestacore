@@ -145,14 +145,11 @@ export default function CommissionsPage() {
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-white/60">
                   Vendedor
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-white/60">
-                  Comisión %
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-white/60">
-                  Modalidad
-                </th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-white/60">
                   Generada
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-white/60">
+                  Proyectada
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-white/60">
                   Liquidada
@@ -171,7 +168,7 @@ export default function CommissionsPage() {
             <tbody className="divide-y divide-gray-200 dark:divide-[#333]">
               {vendors.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-gray-500 dark:text-white/60">
+                  <td colSpan={7} className="px-4 py-8 text-center text-gray-500 dark:text-white/60">
                     No hay vendedores registrados
                   </td>
                 </tr>
@@ -184,18 +181,11 @@ export default function CommissionsPage() {
                       </div>
                       <div className="text-sm text-gray-500 dark:text-white/60">{vendor.email}</div>
                     </td>
-                    <td className="px-4 py-3">
-                      {vendor.commissionPercentage !== null ? (
-                        <span className="text-gray-900 dark:text-white">{vendor.commissionPercentage}%</span>
-                      ) : (
-                        <span className="text-gray-400 dark:text-white/40">No configurada</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {getModeBadge(vendor.commissionMode)}
-                    </td>
                     <td className="px-4 py-3 text-right font-medium text-gray-900 dark:text-white">
                       {formatCurrency(summary.totalGenerated)}
+                    </td>
+                    <td className="px-4 py-3 text-right font-medium text-blue-600 dark:text-blue-400">
+                      {formatCurrency(summary.totalProjected)}
                     </td>
                     <td className="px-4 py-3 text-right font-medium text-green-600 dark:text-green-400">
                       {formatCurrency(summary.totalLiquidated)}
