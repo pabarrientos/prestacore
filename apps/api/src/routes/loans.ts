@@ -706,37 +706,27 @@ router.patch('/:id/approve', authMiddleware, requireAdmin, async (req: AuthReque
         status: LoanStatus.ACTIVE,
         approvedAt: new Date(),
         approvedBy: req.user!.userId,
-        // Keep the original startedAt from the pending loan - don't overwrite with today
-      },
-      include: {
-        client: {
-          include: {
-            user: {
-              select: {
-                firstName: true,
-                lastName: true,
-                email: true,
-                phone: true,
-              },
-            },
-          },
-        },
-        installments: {
-          orderBy: { installmentNumber: 'asc' },
-        },
       },
     });
 
-    // Recalculate commission after approval (ADVANCED mode needs this)
+    // Recalculate commission after approval
     if (updatedLoan.assignedVendorId) {
-      CommissionService.recalculateLoan(id).catch(err => {
-        console.error('Commission recalculation error after approval:', err);
-      });
+      await CommissionService.recalculateLoan(id);
     }
+
+    // Re-fetch with updated commission fields
+    const refreshed = await prisma.loan.findUnique({
+      where: { id },
+      include: {
+        client: { include: { user: { select: { firstName: true, lastName: true, email: true, phone: true } } } },
+        installments: { orderBy: { installmentNumber: 'asc' } },
+        payments: { orderBy: { createdAt: 'desc' } },
+      },
+    });
 
     res.json({
       success: true,
-      data: updatedLoan,
+      data: refreshed,
     });
   } catch (error) {
     console.error('Approve loan error:', error);
@@ -913,30 +903,42 @@ router.patch('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res:
     if (status) {
       // Allow status changes: PENDING -> ACTIVE, ACTIVE -> DEFAULTED, DEFAULTED -> ACTIVE
       if (status === 'DEFAULTED' && loan.status === 'ACTIVE') {
-        const updated = await prisma.loan.update({
+        await prisma.loan.update({
           where: { id },
           data: { status: LoanStatus.DEFAULTED },
         });
-        // Recalculate commission (DEFAULTED treated as final status)
-        if (updated.assignedVendorId) {
-          CommissionService.recalculateLoan(id).catch(err => {
-            console.error('Commission recalculation error after DEFAULTED:', err);
-          });
+        // Recalculate commission and return updated loan
+        if (loan.assignedVendorId) {
+          await CommissionService.recalculateLoan(id);
         }
+        const updated = await prisma.loan.findUnique({
+          where: { id },
+          include: {
+            client: { include: { user: { select: { firstName: true, lastName: true } } } },
+            installments: { orderBy: { installmentNumber: 'asc' } },
+            payments: { orderBy: { createdAt: 'desc' } },
+          },
+        });
         res.json({ success: true, data: updated });
         return;
       }
       
       if (status === 'ACTIVE' && (loan.status === 'DEFAULTED' || loan.status === 'PENDING')) {
-        const updated = await prisma.loan.update({
+        await prisma.loan.update({
           where: { id },
           data: { status: LoanStatus.ACTIVE },
         });
-        if (updated.assignedVendorId) {
-          CommissionService.recalculateLoan(id).catch(err => {
-            console.error('Commission recalculation error after re-activation:', err);
-          });
+        if (loan.assignedVendorId) {
+          await CommissionService.recalculateLoan(id);
         }
+        const updated = await prisma.loan.findUnique({
+          where: { id },
+          include: {
+            client: { include: { user: { select: { firstName: true, lastName: true } } } },
+            installments: { orderBy: { installmentNumber: 'asc' } },
+            payments: { orderBy: { createdAt: 'desc' } },
+          },
+        });
         res.json({ success: true, data: updated });
         return;
       }
