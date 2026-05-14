@@ -222,8 +222,8 @@ export class CommissionService {
     );
     const projectedCommission = Math.round(totalInterest * (percentage / 100) * 100) / 100;
 
-    // ADVANCED mode: full commission from start (unless PAID or REFINANCIADO — use actual collection)
-    if (mode === 'ADVANCED' && loan.status !== 'PAID' && loan.status !== 'REFINANCIADO') {
+    // ADVANCED mode: full commission from start (unless PAID, REFINANCIADO or DEFAULTED — use actual collection)
+    if (mode === 'ADVANCED' && loan.status !== 'PAID' && loan.status !== 'REFINANCIADO' && loan.status !== 'DEFAULTED') {
       await prisma.loan.update({
         where: { id: loanId },
         data: { 
@@ -240,7 +240,7 @@ export class CommissionService {
     // Get installments with real payments for commission calculation
     // For PAID/REFINANCIADO: only count installments that actually had payments (paidAmount > 0)
     // For active loans: exclude PENDING (not paid yet), include all others
-    const isFinalStatus = loan.status === 'PAID' || loan.status === 'REFINANCIADO';
+    const isFinalStatus = loan.status === 'PAID' || loan.status === 'REFINANCIADO' || loan.status === 'DEFAULTED';
     const totalPrincipal = Number(loan.amount);
 
     // For PAID or REFINANCIADO loans: commission = gananciaReal × %

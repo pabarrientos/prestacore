@@ -917,6 +917,12 @@ router.patch('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res:
           where: { id },
           data: { status: LoanStatus.DEFAULTED },
         });
+        // Recalculate commission (DEFAULTED treated as final status)
+        if (updated.assignedVendorId) {
+          CommissionService.recalculateLoan(id).catch(err => {
+            console.error('Commission recalculation error after DEFAULTED:', err);
+          });
+        }
         res.json({ success: true, data: updated });
         return;
       }
@@ -926,6 +932,11 @@ router.patch('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res:
           where: { id },
           data: { status: LoanStatus.ACTIVE },
         });
+        if (updated.assignedVendorId) {
+          CommissionService.recalculateLoan(id).catch(err => {
+            console.error('Commission recalculation error after re-activation:', err);
+          });
+        }
         res.json({ success: true, data: updated });
         return;
       }
