@@ -138,10 +138,8 @@ export default function MisComisionesPage() {
           <p className={`text-2xl font-bold ${summary.pending < 0 ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400'}`}>{formatCurrency(summary.pending)}</p>
         </div>
         <div className="bg-white rounded-lg shadow p-6 dark:bg-[#1e1e1e]">
-          <p className="text-sm text-gray-500 dark:text-white/60 mb-1">Mi Tasa</p>
-          <p className="text-2xl font-bold text-primary-600 dark:text-[#39ff14]">
-            {vendor.commissionPercentage !== null ? `${vendor.commissionPercentage}%` : '-'}
-          </p>
+          <p className="text-sm text-gray-500 dark:text-white/60 mb-1">Mis Préstamos</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">{summary.loansCount}</p>
         </div>
       </div>
 
