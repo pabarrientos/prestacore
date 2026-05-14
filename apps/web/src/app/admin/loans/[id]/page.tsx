@@ -433,7 +433,7 @@ export default function LoanDetailPage() {
                   });
                   const data = await res.json();
                   if (data.success) {
-                    setLoan({ ...loan, status: 'DEFAULTED' });
+                    setLoan(data.data);
                   } else {
                     alert(data.error || 'Error al marcar como DEFAULTED');
                   }
@@ -462,7 +462,7 @@ export default function LoanDetailPage() {
                   });
                   const data = await res.json();
                   if (data.success) {
-                    setLoan({ ...loan, status: 'ACTIVE' });
+                    setLoan(data.data);
                   } else {
                     alert(data.error || 'Error al reactivar el préstamo');
                   }
