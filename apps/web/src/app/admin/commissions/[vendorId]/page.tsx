@@ -51,8 +51,7 @@ export default function VendorCommissionPage() {
   const [audits, setAudits] = useState<AuditEntry[]>([]);
   const [liquidations, setLiquidations] = useState<LiquidationEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  
+
   // Form state
   const [percentage, setPercentage] = useState('');
   const [mode, setMode] = useState('PROPORTIONAL');
@@ -84,7 +83,7 @@ export default function VendorCommissionPage() {
       })
       .catch(err => {
         console.error(err);
-        setError('Error al cargar datos del vendedor');
+        setMessage({ type: 'error', text: 'Error al cargar datos del vendedor' });
       });
 
     // Fetch audit history

@@ -36,7 +36,6 @@ interface User {
 export default function CommissionsPage() {
   const { user, token } = useAuth();
   const [vendors, setVendors] = useState<VendorSummary[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -51,7 +50,6 @@ export default function CommissionsPage() {
       .then(data => {
         if (data.success) {
           const vendorUsers = data.data.filter((u: User) => u.role === 'VENDEDOR');
-          setUsers(vendorUsers);
           
           // Fetch commission summary for each vendor
           Promise.all(
@@ -106,25 +104,6 @@ export default function CommissionsPage() {
       style: 'currency',
       currency: 'ARS',
     }).format(amount);
-  };
-
-  const getModeBadge = (mode: string | null) => {
-    const styles: Record<string, string> = {
-      PROPORTIONAL: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-400',
-      AFTER_CAPITAL_RECOVERY: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-400',
-      ADVANCED: 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-400',
-    };
-    const labels: Record<string, string> = {
-      PROPORTIONAL: 'Proporcional',
-      AFTER_CAPITAL_RECOVERY: 'Después Capital',
-      ADVANCED: 'Adelantado',
-    };
-    if (!mode) return null;
-    return (
-      <span className={`px-2 py-1 text-xs font-medium rounded ${styles[mode] || 'bg-gray-100 text-gray-800'}`}>
-        {labels[mode] || mode}
-      </span>
-    );
   };
 
   return (
