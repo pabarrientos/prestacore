@@ -201,6 +201,15 @@ export class CommissionService {
     if (!loan.assignedVendorId || loan.commissionPercentage === null) {
       return null;
     }
+
+    // PENDING loans: no commission generated (not approved/disbursed yet)
+    if (loan.status === 'PENDING') {
+      await prisma.loan.update({
+        where: { id: loanId },
+        data: { commissionGenerated: 0 },
+      });
+      return 0;
+    }
     
     const mode = loan.commissionMode ?? CommissionMode.PROPORTIONAL;
     const percentage = loan.commissionPercentage;
