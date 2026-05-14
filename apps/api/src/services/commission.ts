@@ -188,10 +188,10 @@ export class CommissionService {
         },
         payments: {
           where: { status: 'COMPLETED' },
-          select: { amount: true },
+          select: { amount: true, installmentId: true, notes: true },
         },
       },
-    }) as (LoanWithInstallments & { payments?: Array<{ amount: number }> }) | null;
+    }) as (LoanWithInstallments & { payments?: Array<{ amount: number; installmentId: string | null; notes: string | null }> }) | null;
     
     if (!loan) {
       return null;
@@ -243,22 +243,44 @@ export class CommissionService {
     const isFinalStatus = loan.status === 'PAID' || loan.status === 'REFINANCIADO' || loan.status === 'DEFAULTED';
     const totalPrincipal = Number(loan.amount);
 
-    // For PAID or REFINANCIADO loans: commission = gananciaReal × %
-    // gananciaReal = max(0, totalPayments - loanPrincipal)
-    // This accounts for ALL payments (installment + free payments like capitalExtra)
+    // For PAID/REFINANCIADO/DEFAULTED: commission based on real profit
     if (isFinalStatus) {
-      const totalPayments = (loan.payments || []).reduce((sum, p) => sum + Number(p.amount), 0);
+      const allPayments = loan.payments || [];
+      const totalPayments = allPayments.reduce((sum, p) => sum + Number(p.amount), 0);
       const gananciaReal = Math.max(0, totalPayments - totalPrincipal);
-      const realCommission = Math.round(gananciaReal * (percentage / 100) * 100) / 100;
+      let finalCommission = Math.round(gananciaReal * (percentage / 100) * 100) / 100;
+
+      // REFINANCIADO fallback: if no profit, use proportional + mora to not lose commission
+      if (loan.status === 'REFINANCIADO' && finalCommission === 0) {
+        // Calculate proportional commission on paid installments
+        const paidInstallments = loan.installments.filter(
+          (inst) => inst.status !== 'PENDING' && Number(inst.paidAmount) > 0
+        );
+        let proportionalCommission = 0;
+        for (const inst of paidInstallments) {
+          const interestCollected = Number(inst.interest) * Math.min(Number(inst.paidAmount) / Number(inst.amount), 1);
+          proportionalCommission += Math.round(interestCollected * (percentage / 100) * 100) / 100;
+        }
+
+        // Add mora payments (exclude "reduce nuevo capital" payments)
+        let moraCommission = 0;
+        for (const p of allPayments) {
+          if (!p.installmentId && Number(p.amount) > 0 && (p.notes || '').includes('Mora')) {
+            moraCommission += Math.round(Number(p.amount) * (percentage / 100) * 100) / 100;
+          }
+        }
+
+        finalCommission = Math.round((proportionalCommission + moraCommission) * 100) / 100;
+      }
 
       await prisma.loan.update({
         where: { id: loanId },
         data: {
-          commissionGenerated: realCommission,
+          commissionGenerated: finalCommission,
           commissionProjected: projectedCommission,
         },
       });
-      return realCommission;
+      return finalCommission;
     }
 
     // For active loans: per-installment calculation
