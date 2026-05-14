@@ -18,6 +18,11 @@ interface DashboardMetrics {
     count: number;
     amount: number;
   }[];
+  commission?: {
+    totalGenerated: number;
+    totalProjected: number;
+    totalLiquidated: number;
+  };
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -114,6 +119,30 @@ export default function AdminDashboard() {
           </p>
         </div>
       </div>
+
+      {/* Commission Summary */}
+      {metrics?.commission && (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+          <div className="bg-white rounded-lg shadow p-6 dark:bg-[#1e1e1e]">
+            <p className="text-sm text-gray-500 dark:text-white/60">Comisión Generada</p>
+            <p className="text-3xl font-bold text-gray-900 dark:text-white">
+              ${(metrics.commission.totalGenerated || 0).toLocaleString()}
+            </p>
+          </div>
+          <div className="bg-white rounded-lg shadow p-6 dark:bg-[#1e1e1e]">
+            <p className="text-sm text-gray-500 dark:text-white/60">Comisión Proyectada</p>
+            <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+              ${(metrics.commission.totalProjected || 0).toLocaleString()}
+            </p>
+          </div>
+          <div className="bg-white rounded-lg shadow p-6 dark:bg-[#1e1e1e]">
+            <p className="text-sm text-gray-500 dark:text-white/60">Comisión Liquidada</p>
+            <p className="text-3xl font-bold text-green-600 dark:text-green-400">
+              ${(metrics.commission.totalLiquidated || 0).toLocaleString()}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Distribución por Antigüedad de Mora */}
       {metrics?.overdueByDays && metrics.overdueByDays.length > 0 && (

@@ -37,6 +37,7 @@ router.get('/', authMiddleware, requireVendor, async (req: AuthRequest, res: Res
       totalDisbursed,
       totalCollected,
       overdueInstallments,
+      commissionTotals,
     ] = await Promise.all([
       // Total loans count
       prisma.loan.count({ where: whereClause }),
@@ -92,6 +93,19 @@ router.get('/', authMiddleware, requireVendor, async (req: AuthRequest, res: Res
         select: {
           balance: true,
           dueDate: true,
+        },
+      }),
+      // Commission totals (excluding PENDING)
+      prisma.loan.aggregate({
+        where: {
+          ...whereClause,
+          commissionPercentage: { not: null },
+          status: { not: 'PENDING' },
+        },
+        _sum: {
+          commissionGenerated: true,
+          commissionProjected: true,
+          commissionLiquidated: true,
         },
       }),
     ]);
@@ -161,6 +175,11 @@ router.get('/', authMiddleware, requireVendor, async (req: AuthRequest, res: Res
         totalDisbursed: Number(totalDisbursed._sum.amount) || 0,
         totalCollected: Number(totalCollected._sum.amount) || 0,
         statusBreakdown,
+        commission: {
+          totalGenerated: Number(commissionTotals._sum.commissionGenerated || 0),
+          totalProjected: Number(commissionTotals._sum.commissionProjected || 0),
+          totalLiquidated: Number(commissionTotals._sum.commissionLiquidated || 0),
+        },
         // Extended metrics
         totalOverdueInstallments,
         totalOverdueAmount: Math.round(totalOverdueAmount * 100) / 100,
