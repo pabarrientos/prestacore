@@ -186,8 +186,12 @@ export class CommissionService {
         installments: {
           orderBy: { installmentNumber: 'asc' },
         },
+        payments: {
+          where: { status: 'COMPLETED' },
+          select: { amount: true },
+        },
       },
-    }) as LoanWithInstallments | null;
+    }) as (LoanWithInstallments & { payments?: Array<{ amount: number }> }) | null;
     
     if (!loan) {
       return null;
@@ -228,10 +232,32 @@ export class CommissionService {
     // For PAID/REFINANCIADO: only count installments that actually had payments (paidAmount > 0)
     // For active loans: exclude PENDING (not paid yet), include all others
     const isFinalStatus = loan.status === 'PAID' || loan.status === 'REFINANCIADO';
+    const totalPrincipal = Number(loan.amount);
+
+    // For PAID or REFINANCIADO loans: commission = gananciaReal × %
+    // gananciaReal = max(0, totalPayments - loanPrincipal)
+    // This accounts for ALL payments (installment + free payments like capitalExtra)
+    if (isFinalStatus) {
+      const totalPayments = (loan.payments || []).reduce((sum, p) => sum + Number(p.amount), 0);
+      const gananciaReal = Math.max(0, totalPayments - totalPrincipal);
+      const realCommission = Math.round(gananciaReal * (percentage / 100) * 100) / 100;
+
+      await prisma.loan.update({
+        where: { id: loanId },
+        data: {
+          commissionGenerated: realCommission,
+          commissionProjected: projectedCommission,
+        },
+      });
+      return realCommission;
+    }
+
+    // For active loans: per-installment calculation
+    // Get only paid or partially paid installments (exclude PENDING)
     const activeInstallments = loan.installments.filter(
-      (inst) => inst.status !== 'PENDING' && (!isFinalStatus || Number(inst.paidAmount) > 0)
+      (inst) => inst.status !== 'PENDING'
     );
-    
+
     if (activeInstallments.length === 0) {
       await prisma.loan.update({
         where: { id: loanId },
@@ -246,7 +272,6 @@ export class CommissionService {
     // Calculate commission using strategy
     let totalCommission = 0;
     let capitalRecoveredSoFar = 0;
-    const totalPrincipal = Number(loan.amount);
 
     for (const installment of activeInstallments) {
       const result = strategy.calculateInstallmentCommission(
