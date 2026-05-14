@@ -427,6 +427,7 @@ router.post('/liquidate', authMiddleware, requireAdmin, async (req: AuthRequest,
       where: {
         assignedVendorId: vendorId,
         commissionPercentage: { not: null },
+        status: { not: 'PENDING' },
       },
       select: {
         id: true,
@@ -548,6 +549,7 @@ router.delete('/liquidations/:id', authMiddleware, requireAdmin, async (req: Aut
       where: {
         assignedVendorId: vendorId,
         commissionPercentage: { not: null },
+        status: { not: 'PENDING' },
       },
       select: {
         id: true,
@@ -590,6 +592,7 @@ router.post('/rebalance/:vendorId', authMiddleware, requireAdmin, async (req: Au
       where: {
         assignedVendorId: vendorId,
         commissionPercentage: { not: null },
+        status: { not: 'PENDING' },
       },
       select: {
         id: true,
