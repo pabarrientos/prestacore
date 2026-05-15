@@ -141,6 +141,42 @@ pnpm start           # Start de producción (local)
 3. **Tests antes de PR**: Ejecutar `pnpm test` antes de subir cambios
 4. **Conventional Commits**: Usar formato `feat:`, `fix:`, `docs:`, etc.
 
+## 🕐 Timezone
+
+El sistema está configurado para operar en **Argentina (ART, UTC-3)**. Esto es crítico porque los cálculos de mora y vencimientos comparan fechas sin almacenar timezone en la base de datos (`timestamp without time zone`).
+
+### Configuración actual
+
+| Componente | Timezone | Dónde se configura |
+|-----------|----------|-------------------|
+| API (dev) | `America/Argentina/Buenos_Aires` | `docker-compose.override.yml` → `TZ` |
+| API (prod) | `America/Argentina/Buenos_Aires` | `docker-compose.yml` + `apps/api/Dockerfile` → `ENV TZ` |
+| Web (dev) | `America/Argentina/Buenos_Aires` | `docker-compose.override.yml` → `TZ` |
+| Web (prod) | `America/Argentina/Buenos_Aires` | `docker-compose.yml` + `apps/web/Dockerfile` → `ENV TZ` |
+| PostgreSQL | **UTC** (default) | No configurado explícitamente |
+
+> ⚠️ **Importante**: PostgreSQL corre en UTC. Los cálculos de fecha en SQL deben usar casts explícitos (`::date`) para comparar solo la parte de fecha y evitar desplazamientos. Ver `apps/api/src/routes/dashboard.ts` como referencia.
+
+### Si se despliega en otro país
+
+Si el sistema se usa en una zona horaria distinta, hay que cambiar **3 cosas**:
+
+1. **Docker / contenedores**: Cambiar `TZ` en todos los archivos de configuración:
+   - `docker-compose.yml` (API + Web)
+   - `docker-compose.override.yml` (API + Web)
+   - `apps/api/Dockerfile` (`ENV TZ=...`)
+   - `apps/web/Dockerfile` (`ENV TZ=...`)
+
+2. **Código**: Si hay lógica que dependa de `new Date()` o `Intl.DateTimeFormat`, verificar que use la timezone correcta. Revisar:
+   - `apps/api/src/services/datetime.ts` — si se usa `Intl.DateTimeFormat` con timezone hardcodeado
+   - `apps/web/src/app/admin/overdue/page.tsx` — `formatDate` con `es-AR`
+
+3. **PostgreSQL**: Evaluar si conviene cambiar el timezone del servidor PG con:
+   ```sql
+   ALTER DATABASE prestamos SET timezone TO 'America/Argentina/Buenos_Aires';
+   ```
+   Esto afecta cómo PG convierte `TIMESTAMPTZ → timestamp` en los parámetros de queries. Si no se cambia, las queries deben seguir usando `::date` para comparaciones de fecha.
+
 ## 🤖 Guidelines para Agentes
 
 1. **Leer antes de escribir**: Siempre leer archivos existentes para entender patrones
