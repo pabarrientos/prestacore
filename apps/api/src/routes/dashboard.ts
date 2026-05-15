@@ -4,7 +4,7 @@ import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { requireVendor } from '../middleware/rbac';
 import { MoraService } from '../services/mora';
 import { getRate } from '../services/settings';
-import { getNow, getToday } from '../services/datetime';
+import { getToday } from '../services/datetime';
 
 const router: ReturnType<typeof Router> = Router();
 const prisma = new PrismaClient();
@@ -82,19 +82,16 @@ router.get('/', authMiddleware, requireVendor, async (req: AuthRequest, res: Res
         },
       }),
 
-      // Overdue installments - dynamic calculation based on dueDate - EXCLUDE PENDING, PAID, DEFAULTED and REFINANCIADO loans
-      // Use getToday() to compare only dates (no time)
-      prisma.installment.findMany({
-        where: {
-          status: { not: InstallmentStatus.PAID },
-          dueDate: { lt: todayDateOnly }, // Compare using date-only
-          loan: overdueLoanFilter,
-        },
-        select: {
-          balance: true,
-          dueDate: true,
-        },
-      }),
+      // Overdue installments - cast to date to avoid timezone-dependent comparison
+      prisma.$queryRawUnsafe<Array<{ balance: number; dueDate: Date }>>(`
+        SELECT i."balance", i."dueDate"
+        FROM "Installment" i
+        JOIN "Loan" l ON i."loanId" = l.id
+        WHERE i.status != 'PAID'
+          AND i."dueDate"::date < $1::date
+          AND l.status NOT IN ('PENDING', 'PAID', 'DEFAULTED', 'REFINANCIADO')
+          ${overdueLoanFilter.assignedVendorId ? `AND l."assignedVendorId" = '${overdueLoanFilter.assignedVendorId}'` : ''}
+      `, todayDateOnly),
       // Commission totals (excluding PENDING)
       prisma.loan.aggregate({
         where: {
@@ -251,12 +248,12 @@ router.get('/recent', authMiddleware, requireVendor, async (req: AuthRequest, re
 router.get('/overdue', authMiddleware, requireVendor, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { vendorId, from, to } = req.query;
-    const now = await getNow();
+    const today = await getToday();
 
     // Base where clause - NO filter by status, we calculate dynamically - EXCLUDE PENDING, PAID, DEFAULTED and REFINANCIADO loans
     const whereClause: any = {
       status: { not: InstallmentStatus.PAID }, // Exclude paid only
-      dueDate: { lt: now }, // Overdue based on date
+      dueDate: { lt: today }, // Overdue based on date (midnight in local timezone)
       loan: {
         status: { notIn: [LoanStatus.PENDING, LoanStatus.PAID, LoanStatus.DEFAULTED, LoanStatus.REFINANCIADO] },
       },
@@ -295,14 +292,14 @@ router.get('/overdue', authMiddleware, requireVendor, async (req: AuthRequest, r
       JOIN "Client" c ON l."clientId" = c.id
       JOIN "User" u ON c."userId" = u.id
       WHERE i.status != 'PAID'
-        AND i."dueDate" < $1
+        AND i."dueDate"::date < $1::date
         AND l.status NOT IN ('PENDING', 'PAID', 'DEFAULTED', 'REFINANCIADO')
         ${req.user!.role === Role.VENDEDOR ? `AND l."assignedVendorId" = '${req.user!.userId}'` : ''}
         ${vendorId ? `AND l."assignedVendorId" = '${vendorId}'` : ''}
         ${from ? `AND i."dueDate" >= '${from}'` : ''}
         ${to ? `AND i."dueDate" <= '${to}'` : ''}
       ORDER BY u."lastName" ASC, u."firstName" ASC, l.id ASC, i."dueDate" ASC, i."installmentNumber" ASC
-    `, now);
+    `, today);
 
     // Calculate summary
     let totalOverdue = 0;
@@ -314,7 +311,7 @@ router.get('/overdue', authMiddleware, requireVendor, async (req: AuthRequest, r
     const installments = await Promise.all(overdueInstallments.map(async (inst) => {
       // Parse dueDate from raw query (comes as string or Date depending on driver)
       const dueDate = inst.dueDate instanceof Date ? inst.dueDate : new Date(inst.dueDate);
-      const daysOverdue = await MoraService.calculateDaysOverdue(dueDate, now);
+      const daysOverdue = await MoraService.calculateDaysOverdue(dueDate);
       const moraAmount = daysOverdue > 0
         ? MoraService.calculate({
             installmentAmount: Number(inst.balance),
