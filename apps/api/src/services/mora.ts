@@ -76,24 +76,15 @@ export class MoraService {
     const { getToday } = await import('./datetime');
     const today = await getToday();
     
-    // Extract date-only using UTC methods to avoid local timezone shifts
-    // PostgreSQL stores dates as naive TIMESTAMP; pg driver returns them as UTC
+    // Create a date for the dueDate (without time component)
     const dueDateObj = new Date(dueDate);
-    const dueDateOnly = Date.UTC(
-      dueDateObj.getUTCFullYear(),
-      dueDateObj.getUTCMonth(),
-      dueDateObj.getUTCDate()
-    );
+    const dueDateOnly = new Date(dueDateObj.getFullYear(), dueDateObj.getMonth(), dueDateObj.getDate());
     
-    // Use provided referenceDate or today's date
+    // Use provided referenceDate or today's date in timezone
     const refDate = referenceDate || today;
-    const refDateOnly = Date.UTC(
-      refDate.getUTCFullYear(),
-      refDate.getUTCMonth(),
-      refDate.getUTCDate()
-    );
+    const refDateOnly = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate());
     
-    const diffTime = refDateOnly - dueDateOnly;
+    const diffTime = refDateOnly.getTime() - dueDateOnly.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return Math.max(0, diffDays);
   }

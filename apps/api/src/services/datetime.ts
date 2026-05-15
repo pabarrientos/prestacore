@@ -1,23 +1,11 @@
-// Date utilities with explicit Argentina timezone (ART, UTC-3)
-// Does NOT depend on system timezone — safe for Docker containers in UTC
-
-const TIMEZONE = 'America/Argentina/Buenos_Aires';
+// Simple date utilities - no timezone needed (all calculations use date-only)
 
 /**
- * Obtiene la fecha de hoy en Argentina (sin hora, usando Date.UTC para evitar TZ del sistema)
+ * Obtiene la fecha de hoy (sin hora)
  */
 export async function getToday(): Promise<Date> {
   const now = new Date();
-  // Extract date parts in ART timezone regardless of system TZ
-  const fmt = new Intl.DateTimeFormat('en-CA', {
-    timeZone: TIMEZONE,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
-  const [year, month, day] = fmt.format(now).split('-').map(Number);
-  // Construct as UTC midnight to keep comparison timezone-agnostic
-  return new Date(Date.UTC(year, month - 1, day));
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 }
 
 /**
@@ -29,22 +17,12 @@ export function getNow(): Date {
 
 /**
  * Verifica si una fecha está vencida (solo compara día, ignora hora)
- * Usa UTC methods para evitar desplazamiento de timezone con fechas de la DB
  */
 export async function isDateBeforeToday(checkDate: Date | string): Promise<boolean> {
   const today = await getToday();
   const dateObj = typeof checkDate === 'string' ? new Date(checkDate) : checkDate;
-  const checkDateOnly = Date.UTC(
-    dateObj.getUTCFullYear(),
-    dateObj.getUTCMonth(),
-    dateObj.getUTCDate()
-  );
-  const todayOnly = Date.UTC(
-    today.getUTCFullYear(),
-    today.getUTCMonth(),
-    today.getUTCDate()
-  );
-  return checkDateOnly < todayOnly;
+  const checkDateOnly = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+  return checkDateOnly < today;
 }
 
 export default {

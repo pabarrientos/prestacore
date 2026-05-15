@@ -117,49 +117,49 @@ describe('MoraService', () => {
   });
 
   describe('calculateDaysOverdue', () => {
-    it('should calculate days overdue correctly', async () => {
+    it('should calculate days overdue correctly', () => {
       const dueDate = new Date('2024-01-01');
       const referenceDate = new Date('2024-01-16');
       
-      const days = await MoraService.calculateDaysOverdue(dueDate, referenceDate);
+      const days = MoraService.calculateDaysOverdue(dueDate, referenceDate);
       expect(days).toBe(15);
     });
 
-    it('should return 0 for future due dates', async () => {
+    it('should return 0 for future due dates', () => {
       const dueDate = new Date('2024-01-20');
       const referenceDate = new Date('2024-01-15');
       
-      const days = await MoraService.calculateDaysOverdue(dueDate, referenceDate);
+      const days = MoraService.calculateDaysOverdue(dueDate, referenceDate);
       expect(days).toBe(0);
     });
 
-    it('should return exact days for same-day reference', async () => {
+    it('should return exact days for same-day reference', () => {
       const dueDate = new Date('2024-01-01');
       const referenceDate = new Date('2024-01-01');
       
-      const days = await MoraService.calculateDaysOverdue(dueDate, referenceDate);
+      const days = MoraService.calculateDaysOverdue(dueDate, referenceDate);
       expect(days).toBe(0);
     });
   });
 
   describe('isOverdue', () => {
-    it('should return true for overdue installment', async () => {
+    it('should return true for overdue installment', () => {
       const dueDate = new Date('2024-01-01');
       const referenceDate = new Date('2024-01-16');
       
-      expect(await MoraService.isOverdue(dueDate, referenceDate)).toBe(true);
+      expect(MoraService.isOverdue(dueDate, referenceDate)).toBe(true);
     });
 
-    it('should return false for not yet due installment', async () => {
+    it('should return false for not yet due installment', () => {
       const dueDate = new Date('2024-01-20');
       const referenceDate = new Date('2024-01-15');
       
-      expect(await MoraService.isOverdue(dueDate, referenceDate)).toBe(false);
+      expect(MoraService.isOverdue(dueDate, referenceDate)).toBe(false);
     });
   });
 
   describe('calculateBulk', () => {
-    it('should calculate mora for multiple installments', async () => {
+    it('should calculate mora for multiple installments', () => {
       const installments = [
         { amount: 1000, dueDate: new Date('2024-01-01') },
         { amount: 1000, dueDate: new Date('2024-02-01') },
@@ -167,7 +167,7 @@ describe('MoraService', () => {
       
       const referenceDate = new Date('2024-02-15');
       
-      const result = await MoraService.calculateBulk(installments, 0.0005, referenceDate);
+      const result = MoraService.calculateBulk(installments, 0.0005, referenceDate);
       
       // First installment: 45 days overdue = 1000 * 0.0005 * 45 = 22.5
       // Second installment: 14 days overdue = 1000 * 0.0005 * 14 = 7
@@ -175,7 +175,7 @@ describe('MoraService', () => {
       expect(result.totalPayable).toBeCloseTo(2029.5, 0);
     });
 
-    it('should not charge mora for current installments', async () => {
+    it('should not charge mora for current installments', () => {
       const installments = [
         { amount: 1000, dueDate: new Date('2024-01-01') },  // overdue
         { amount: 1000, dueDate: new Date('2024-02-20') },  // not due yet
@@ -183,7 +183,7 @@ describe('MoraService', () => {
       
       const referenceDate = new Date('2024-02-15');
       
-      const result = await MoraService.calculateBulk(installments, 0.0005, referenceDate);
+      const result = MoraService.calculateBulk(installments, 0.0005, referenceDate);
       
       // Only first installment is overdue
       expect(result.moraAmount).toBeGreaterThan(0);
