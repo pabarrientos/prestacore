@@ -41,6 +41,7 @@ RUN apt-get update && apt-get install -y locales && \
 
 ENV LANG=es_AR.UTF-8
 ENV LC_ALL=es_AR.UTF-8
+ENV TZ=America/Argentina/Buenos_Aires
 
 # Copy everything from builder
 COPY --from=builder /app .

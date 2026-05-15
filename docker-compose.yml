@@ -38,6 +38,7 @@ services:
       JWT_EXPIRES_IN: 7d
       LANG: es_AR.UTF-8
       LC_ALL: es_AR.UTF-8
+      TZ: America/Argentina/Buenos_Aires
     ports:
       - "3001:3001"
     depends_on:
@@ -56,6 +57,7 @@ services:
       NODE_ENV: production
       LANG: es_AR.UTF-8
       LC_ALL: es_AR.UTF-8
+      TZ: America/Argentina/Buenos_Aires
     ports:
       - "3000:3000"
     depends_on:
