@@ -4,7 +4,7 @@ FROM node:20-slim AS builder
 WORKDIR /app
 
 # Install pnpm globally
-RUN npm install -g pnpm@latest
+RUN npm install -g pnpm
 
 # Copy workspace root configuration
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json ./
