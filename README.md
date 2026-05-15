@@ -321,6 +321,32 @@ NEXT_PUBLIC_API_URL=http://tu-dominio.com:3001
 
 > **Nota**: `DATABASE_URL`, `PORT`, `JWT_EXPIRES_IN` y `NODE_ENV` están configurados directamente en `docker-compose.yml` y no necesitan sobrescribirse.
 
+## 🕐 Timezone
+
+El sistema opera en **Argentina (ART, UTC-3)**. Todos los cálculos de fechas (mora, vencimientos, cuotas) dependen de esta configuración.
+
+La zona horaria se configura en **4 lugares**:
+
+| Componente | Timezone | Dónde |
+|-----------|----------|-------|
+| API (dev) | `America/Argentina/Buenos_Aires` | `docker-compose.override.yml` → `TZ` |
+| API (prod) | `America/Argentina/Buenos_Aires` | `docker-compose.yml` + `apps/api/Dockerfile` → `ENV TZ` |
+| Web (dev) | `America/Argentina/Buenos_Aires` | `docker-compose.override.yml` → `TZ` |
+| Web (prod) | `America/Argentina/Buenos_Aires` | `docker-compose.yml` + `apps/web/Dockerfile` → `ENV TZ` |
+
+> PostgreSQL corre en UTC por defecto. Las queries usan `::date` para comparar solo la fecha sin timezone.
+
+### Si desplegás en otro país
+
+Cambiá `America/Argentina/Buenos_Aires` por la timezone de IANA que corresponda (ej: `America/Mexico_City`, `America/Santiago`, `Europe/Madrid`) en:
+
+1. `docker-compose.yml` — API + Web
+2. `docker-compose.override.yml` — API + Web
+3. `apps/api/Dockerfile` — `ENV TZ=...`
+4. `apps/web/Dockerfile` — `ENV TZ=...`
+5. Revisar `apps/api/src/services/datetime.ts` si tiene timezone hardcodeada
+6. Revisar `apps/web/src/app/admin/overdue/page.tsx` — `formatDate`
+
 ## 📄 Licencia
 
 MIT
