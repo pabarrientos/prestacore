@@ -51,6 +51,7 @@ export default function ProfileLayout({
         { href: '/admin/collection-actions', label: 'Cobranzas' },
         { href: '/admin/settings', label: 'Configuración' },
         { href: '/admin/users', label: 'Usuarios' },
+        { href: '/admin/commissions', label: 'Comisiones' },
         { href: '/profile', label: 'Mi Perfil' },
       ]
     : isVendor
