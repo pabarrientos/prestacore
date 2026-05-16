@@ -221,7 +221,7 @@ export default function SimulatorPage() {
         amortizationSystem: backendData.amortizationSystem,
         schedule: backendData.schedule.map((item: any) => ({
           number: item.number,
-          date: new Date(item.dueDate), // Pass raw ISO date to PDF (timezone-safe)
+          date: new Date(item.dueDate.replace('Z', '')), // Pass raw ISO date to PDF (timezone-safe)
           payment: item.amount,
           principal: item.principal,
           interest: item.interest,

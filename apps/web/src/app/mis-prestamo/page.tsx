@@ -167,7 +167,7 @@ export default function MisPrestamosPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap dark:text-white/[.87]">
-                        {loan.startedAt ? new Date(loan.startedAt).toLocaleDateString('es-AR') : '-'}
+                        {loan.startedAt ? new Date(loan.startedAt.replace('Z', '')).toLocaleDateString() : '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <button
