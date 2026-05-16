@@ -32,6 +32,35 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
+/**
+ * Decode the JWT payload without verifying the signature.
+ * Returns null if the token is malformed (not a valid JWT structure).
+ */
+function decodeJWTPayload(token: string): Record<string, unknown> | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const payload = parts[1];
+    // Replace base64url chars and pad
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const decoded = atob(base64);
+    return JSON.parse(decoded);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Check whether a JWT token has expired based on its `exp` claim.
+ * Returns true if the token is missing, malformed, or expired.
+ */
+function isTokenExpired(token: string): boolean {
+  const payload = decodeJWTPayload(token);
+  if (!payload || typeof payload.exp !== 'number') return true;
+  // exp is in seconds, Date.now() is in milliseconds
+  return payload.exp * 1000 < Date.now();
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -41,10 +70,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Check for existing token on mount
     const storedToken = localStorage.getItem('token');
     const storedUser = localStorage.getItem('user');
-    
-    if (storedToken && storedUser) {
+
+    if (storedToken && storedUser && !isTokenExpired(storedToken)) {
       setToken(storedToken);
       setUser(JSON.parse(storedUser));
+    } else {
+      // Token expired, missing, or malformed — clean up
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
     }
     setIsLoading(false);
   }, []);
