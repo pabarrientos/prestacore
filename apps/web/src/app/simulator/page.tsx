@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import { PDFButton } from '@/components/simulator/PDFButton';
+import { getTodayString } from '@/lib/datetime';
 
 const LOAN_STORAGE_KEY = 'pending_loan_request';
 
@@ -26,6 +27,7 @@ interface LoanRequest {
   annualRate: number;
   amortizationSystem: AmortizationSystem;
   schedule: ScheduleItem[];
+  startDate: string;
 }
 
 interface RateConfig {
@@ -74,7 +76,8 @@ export default function SimulatorPage() {
     amount: '',
     term: '12',
     frequency: 'MONTHLY',
-    amortizationSystem: 'FRENCH' as AmortizationSystem,
+    amortizationSystem: 'FRENCH',
+    startDate: getTodayString(),
   });
   const [rates, setRates] = useState<RateConfig | null>(null);
   const [result, setResult] = useState<SimulationResult | null>(null);
@@ -95,6 +98,7 @@ export default function SimulatorPage() {
       annualRate: result.annualRate,
       amortizationSystem: result.amortizationSystem,
       schedule: result.schedule,
+      startDate: formData.startDate,
     };
 
     // Store in sessionStorage (persists until browser closed)
@@ -196,6 +200,7 @@ export default function SimulatorPage() {
           termMonths: term,
           frequency,
           amortizationSystem: formData.amortizationSystem,
+          startDate: formData.startDate || undefined,
         }),
       });
 
@@ -341,6 +346,19 @@ export default function SimulatorPage() {
                     Tasa {labels.period}: <span className="font-medium">{baseRate}%</span>
                   </p>
                 )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
+                  Fecha de inicio
+                </label>
+                <input
+                  type="date"
+                  name="startDate"
+                  value={formData.startDate}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 min-h-[44px] border rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14]"
+                />
               </div>
 
               <div className="p-3 bg-gray-50 rounded-lg dark:bg-[#1a1a1a]">

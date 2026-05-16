@@ -15,6 +15,7 @@ interface LoanRequest {
   totalPayment: number;
   annualRate: number;
   amortizationSystem: string;
+  startDate: string;
   schedule: Array<{
     number: number;
     date: string;
@@ -114,6 +115,7 @@ export default function SolicitarPage() {
         termMonths: loanRequest.term,
         frequency: loanRequest.frequency,
         amortizationSystem: loanRequest.amortizationSystem,
+        startDate: loanRequest.startDate,
         schedule: loanRequest.schedule.map(item => ({
           number: item.number,
           dueDate: parseDate(item.date),
