@@ -72,19 +72,25 @@ export class MoraService {
    * Uses timezone-aware comparison
    */
   static async calculateDaysOverdue(dueDate: Date, referenceDate?: Date): Promise<number> {
-    // Get today's date in the configured timezone (without time component)
     const { getToday } = await import('./datetime');
     const today = await getToday();
     
-    // Create a date for the dueDate (without time component)
+    // Extract date-only using UTC methods — pg driver returns naive timestamps as UTC
     const dueDateObj = new Date(dueDate);
-    const dueDateOnly = new Date(dueDateObj.getFullYear(), dueDateObj.getMonth(), dueDateObj.getDate());
+    const dueDateOnly = Date.UTC(
+      dueDateObj.getUTCFullYear(),
+      dueDateObj.getUTCMonth(),
+      dueDateObj.getUTCDate()
+    );
     
-    // Use provided referenceDate or today's date in timezone
     const refDate = referenceDate || today;
-    const refDateOnly = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate());
+    const refDateOnly = Date.UTC(
+      refDate.getUTCFullYear(),
+      refDate.getUTCMonth(),
+      refDate.getUTCDate()
+    );
     
-    const diffTime = refDateOnly.getTime() - dueDateOnly.getTime();
+    const diffTime = refDateOnly - dueDateOnly;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return Math.max(0, diffDays);
   }

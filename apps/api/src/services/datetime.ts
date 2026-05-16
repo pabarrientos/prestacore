@@ -21,8 +21,18 @@ export function getNow(): Date {
 export async function isDateBeforeToday(checkDate: Date | string): Promise<boolean> {
   const today = await getToday();
   const dateObj = typeof checkDate === 'string' ? new Date(checkDate) : checkDate;
-  const checkDateOnly = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
-  return checkDateOnly < today;
+  // Use UTC methods — pg driver returns naive timestamps as UTC
+  const checkDateOnly = Date.UTC(
+    dateObj.getUTCFullYear(),
+    dateObj.getUTCMonth(),
+    dateObj.getUTCDate()
+  );
+  const todayOnly = Date.UTC(
+    today.getUTCFullYear(),
+    today.getUTCMonth(),
+    today.getUTCDate()
+  );
+  return checkDateOnly < todayOnly;
 }
 
 export default {

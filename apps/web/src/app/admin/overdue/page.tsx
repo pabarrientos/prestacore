@@ -38,11 +38,14 @@ interface OverdueSummary {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-// Helper function to format date without timezone issues
+// Helper function to format date in Argentina timezone
+// Server sends naive timestamps (e.g. "2026-05-14 00:00:00") or ISO strings
+// from the pg driver. Extract date parts manually to avoid timezone misparsing.
 function formatDate(dateStr: string): string {
   if (!dateStr) return '-';
-  const dateTime = dateStr.replace('Z', '');
-  return new Date(dateTime).toLocaleDateString();
+  const datePart = dateStr.includes(' ') ? dateStr.split(' ')[0] : dateStr.split('T')[0];
+  const [year, month, day] = datePart.split('-').map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString('es-AR');
 }
 
 export default function OverduePage() {
