@@ -216,8 +216,8 @@ export default function LoansPage() {
                     {loan.status}
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex gap-3">
+                <td className="px-6 py-4">
+                  <div className="flex flex-col gap-1">
                     <a
                       href={`/admin/loans/${loan.id}`}
                       className="text-primary-600 hover:text-primary-900 dark:text-[#39ff14] dark:hover:text-[#32e012]"
