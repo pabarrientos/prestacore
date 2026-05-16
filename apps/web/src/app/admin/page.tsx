@@ -150,11 +150,19 @@ export default function AdminDashboard() {
           <h2 className="text-lg font-semibold mb-4 dark:text-white/[.87]">Distribución de Mora por Antigüedad</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
             {metrics.overdueByDays.map((item) => {
-              const isZero = item.range === '0 días';
+              const colorMap: Record<string, string> = {
+                '0 días': 'text-yellow-500 dark:text-yellow-400',
+                '1-7 días': 'text-orange-500 dark:text-orange-400',
+                '8-14 días': 'text-orange-600 dark:text-orange-300',
+                '15-30 días': 'text-red-500 dark:text-red-400',
+                '31-60 días': 'text-red-600 dark:text-red-300',
+                '60+ días': 'text-red-700 dark:text-red-200',
+              };
+              const color = colorMap[item.range] || 'text-red-600 dark:text-red-400';
               return (
               <div key={item.range} className="text-center p-4 bg-gray-50 rounded-lg dark:bg-[#1a1a1a]">
                 <p className="text-sm font-medium dark:text-white/[.87]">{item.range}</p>
-                <p className={`text-2xl font-bold ${isZero ? 'text-yellow-500 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'}`}>{item.count}</p>
+                <p className={`text-2xl font-bold ${color}`}>{item.count}</p>
                 <p className="text-xs text-gray-500 dark:text-white/60">
                   ${item.amount.toLocaleString()}
                 </p>
