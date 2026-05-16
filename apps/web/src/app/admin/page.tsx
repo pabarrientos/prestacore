@@ -149,15 +149,18 @@ export default function AdminDashboard() {
         <div className="mt-6 bg-white rounded-lg shadow p-6 dark:bg-[#1e1e1e]">
           <h2 className="text-lg font-semibold mb-4 dark:text-white/[.87]">Distribución de Mora por Antigüedad</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-            {metrics.overdueByDays.map((item) => (
+            {metrics.overdueByDays.map((item) => {
+              const isZero = item.range === '0 días';
+              return (
               <div key={item.range} className="text-center p-4 bg-gray-50 rounded-lg dark:bg-[#1a1a1a]">
                 <p className="text-sm font-medium dark:text-white/[.87]">{item.range}</p>
-                <p className="text-2xl font-bold text-red-600 dark:text-red-400">{item.count}</p>
+                <p className={`text-2xl font-bold ${isZero ? 'text-yellow-500 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'}`}>{item.count}</p>
                 <p className="text-xs text-gray-500 dark:text-white/60">
                   ${item.amount.toLocaleString()}
                 </p>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

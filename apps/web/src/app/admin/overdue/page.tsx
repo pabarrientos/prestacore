@@ -157,15 +157,26 @@ export default function OverduePage() {
         <div className="bg-white dark:bg-[#1e1e1e] rounded-lg shadow p-6 mb-6">
           <h2 className="text-lg font-semibold mb-4 dark:text-white/[.87]">Distribución por Antigüedad</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-            {summary.byDays.map((item) => (
+            {summary.byDays.map((item) => {
+              const colorMap: Record<string, string> = {
+                '0 días': 'text-yellow-600 dark:text-yellow-400',
+                '1-7 días': 'text-orange-600 dark:text-orange-400',
+                '8-14 días': 'text-orange-700 dark:text-orange-300',
+                '15-30 días': 'text-red-600 dark:text-red-400',
+                '31-60 días': 'text-red-700 dark:text-red-300',
+                '60+ días': 'text-red-800 dark:text-red-200',
+              };
+              const color = colorMap[item.range] || 'dark:text-white/[.87]';
+              return (
               <div key={item.range} className="text-center p-3 bg-gray-50 dark:bg-[#2a2a2a] rounded-lg">
                 <p className="text-sm font-medium dark:text-white/[.87]">{item.range}</p>
-                <p className="text-lg font-bold dark:text-white/[.87]">{item.count}</p>
+                <p className={`text-lg font-bold ${color}`}>{item.count}</p>
                 <p className="text-xs text-gray-500 dark:text-white/38">
                   ${item.amount.toLocaleString()}
                 </p>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -289,14 +300,36 @@ export default function OverduePage() {
                       ${inst.moraAmount.toLocaleString()}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-1 text-xs rounded-full ${inst.daysOverdue > 30 ? 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-400' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-400'}`}>
-                        {inst.daysOverdue}
-                      </span>
+                      {(() => {
+                        const d = inst.daysOverdue;
+                        const badge = d === 0
+                          ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300'
+                          : d <= 7
+                          ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300'
+                          : d <= 30
+                          ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+                          : 'bg-red-200 text-red-900 dark:bg-red-900/60 dark:text-red-200';
+                        return (
+                          <span className={`px-2 py-1 text-xs rounded-full ${badge}`}>
+                            {d}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-1 text-xs rounded-full ${inst.daysOverdue > 0 ? 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-400' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-400'}`}>
-                        {inst.daysOverdue > 0 ? 'OVERDUE' : 'PENDING'}
-                      </span>
+                      {inst.daysOverdue === 0 ? (
+                        <span className="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300">
+                          VENCE HOY
+                        </span>
+                      ) : inst.daysOverdue > 0 ? (
+                        <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300">
+                          OVERDUE
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300">
+                          PENDING
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-col gap-1">

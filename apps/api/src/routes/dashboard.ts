@@ -88,7 +88,7 @@ router.get('/', authMiddleware, requireVendor, async (req: AuthRequest, res: Res
         FROM "Installment" i
         JOIN "Loan" l ON i."loanId" = l.id
         WHERE i.status != 'PAID'
-          AND i."dueDate"::date < $1::date
+          AND i."dueDate"::date <= $1::date
           AND l.status NOT IN ('PENDING', 'PAID', 'DEFAULTED', 'REFINANCIADO')
           ${overdueLoanFilter.assignedVendorId ? `AND l."assignedVendorId" = '${overdueLoanFilter.assignedVendorId}'` : ''}
       `, todayDateOnly),
@@ -118,7 +118,8 @@ router.get('/', authMiddleware, requireVendor, async (req: AuthRequest, res: Res
     for (const inst of overdueInstallments) {
       const daysOverdue = await MoraService.calculateDaysOverdue(inst.dueDate, today);
       let range: string;
-      if (daysOverdue <= 7) range = '1-7 días';
+      if (daysOverdue == 0) range = '0 días';
+      else if (daysOverdue <= 7) range = '1-7 días';
       else if (daysOverdue <= 14) range = '8-14 días';
       else if (daysOverdue <= 30) range = '15-30 días';
       else if (daysOverdue <= 60) range = '31-60 días';
@@ -131,11 +132,16 @@ router.get('/', authMiddleware, requireVendor, async (req: AuthRequest, res: Res
       });
     }
 
-    const overdueByDays = Array.from(byDaysMap.entries()).map(([range, data]) => ({
-      range,
-      count: data.count,
-      amount: Math.round(data.amount * 100) / 100,
-    }));
+    const overdueByDays = Array.from(byDaysMap.entries())
+      .sort(([a], [b]) => {
+        const order = ['0 días', '1-7 días', '8-14 días', '15-30 días', '31-60 días', '60+ días'];
+        return order.indexOf(a) - order.indexOf(b);
+      })
+      .map(([range, data]) => ({
+        range,
+        count: data.count,
+        amount: Math.round(data.amount * 100) / 100,
+      }));
 
     // Calculate future collection amount - sum of all installments with balance > 0 - EXCLUDE PENDING, PAID, DEFAULTED and REFINANCIADO loans
     const loanFilter: any = {
@@ -292,7 +298,7 @@ router.get('/overdue', authMiddleware, requireVendor, async (req: AuthRequest, r
       JOIN "Client" c ON l."clientId" = c.id
       JOIN "User" u ON c."userId" = u.id
       WHERE i.status != 'PAID'
-        AND i."dueDate"::date < $1::date
+        AND i."dueDate"::date <= $1::date
         AND l.status NOT IN ('PENDING', 'PAID', 'DEFAULTED', 'REFINANCIADO')
         ${req.user!.role === Role.VENDEDOR ? `AND l."assignedVendorId" = '${req.user!.userId}'` : ''}
         ${vendorId ? `AND l."assignedVendorId" = '${vendorId}'` : ''}
@@ -325,7 +331,8 @@ router.get('/overdue', authMiddleware, requireVendor, async (req: AuthRequest, r
 
       // Group by days
       let range: string;
-      if (daysOverdue <= 7) range = '1-7 días';
+      if (daysOverdue == 0) range = '0 días';
+      else if (daysOverdue <= 7) range = '1-7 días';
       else if (daysOverdue <= 14) range = '8-14 días';
       else if (daysOverdue <= 30) range = '15-30 días';
       else if (daysOverdue <= 60) range = '31-60 días';
@@ -362,11 +369,16 @@ router.get('/overdue', authMiddleware, requireVendor, async (req: AuthRequest, r
       };
     }));
 
-    const byDays = Array.from(byDaysMap.entries()).map(([range, data]) => ({
-      range,
-      count: data.count,
-      amount: Math.round(data.amount * 100) / 100,
-    }));
+    const byDays = Array.from(byDaysMap.entries())
+      .sort(([a], [b]) => {
+        const order = ['0 días', '1-7 días', '8-14 días', '15-30 días', '31-60 días', '60+ días'];
+        return order.indexOf(a) - order.indexOf(b);
+      })
+      .map(([range, data]) => ({
+        range,
+        count: data.count,
+        amount: Math.round(data.amount * 100) / 100,
+      }));
 
     res.json({
       success: true,
