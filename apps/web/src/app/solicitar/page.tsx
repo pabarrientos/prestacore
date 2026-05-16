@@ -96,10 +96,14 @@ export default function SolicitarPage() {
     });
 
     try {
-      // Parse Spanish date format (DD/MM/YYYY) to ISO string
-      const parseSpanishDate = (dateStr: string): string => {
+      // Parse date to ISO string — handles both ISO and DD/MM/YYYY formats
+      const parseDate = (dateStr: string): string => {
+        // If already ISO format (has T or Z), return as-is
+        if (dateStr.includes('T') || dateStr.includes('Z')) {
+          return new Date(dateStr).toISOString();
+        }
+        // Spanish format: DD/MM/YYYY
         const [day, month, year] = dateStr.split('/');
-        // Create date at noon to avoid timezone issues
         const date = new Date(Number(year), Number(month) - 1, Number(day), 12, 0, 0);
         return date.toISOString();
       };
@@ -112,7 +116,7 @@ export default function SolicitarPage() {
         amortizationSystem: loanRequest.amortizationSystem,
         schedule: loanRequest.schedule.map(item => ({
           number: item.number,
-          dueDate: parseSpanishDate(item.date),
+          dueDate: parseDate(item.date),
           amount: item.payment,
           principal: item.principal,
           interest: item.interest,
