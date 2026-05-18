@@ -8,6 +8,7 @@ import PaymentForm from '@/components/PaymentForm';
 import RefinancingModal from '@/components/RefinancingModal';
 import CancelacionAnticipadaModal from '@/components/CancelacionAnticipadaModal';
 import CollectionActionsPanel from '@/components/CollectionActionsPanel';
+import { AccountStatementButton } from '@/components/loans/AccountStatementButton';
 
 interface LoanDetail {
   id: string;
@@ -416,6 +417,10 @@ export default function LoanDetailPage() {
             >
               Cancelación Anticipada
             </button>
+          )}
+          {/* Account Statement PDF — visible for ACTIVE, DEFAULTED, PAID, REFINANCIADO */}
+          {(loan.status === 'ACTIVE' || loan.status === 'DEFAULTED' || loan.status === 'PAID' || loan.status === 'REFINANCIADO') && (
+            <AccountStatementButton loanData={loan} />
           )}
           {/* Mark as DEFAULTED button for ACTIVE loans (admin only) */}
           {loan.status === 'ACTIVE' && user?.role === 'ADMIN' && (
