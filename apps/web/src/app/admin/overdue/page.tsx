@@ -161,10 +161,10 @@ export default function OverduePage() {
               const colorMap: Record<string, string> = {
                 '0 días': 'text-yellow-600 dark:text-yellow-400',
                 '1-7 días': 'text-orange-600 dark:text-orange-400',
-                '8-14 días': 'text-orange-700 dark:text-orange-300',
+                '8-14 días': 'text-orange-700 dark:text-orange-500',
                 '15-30 días': 'text-red-600 dark:text-red-400',
-                '31-60 días': 'text-red-700 dark:text-red-300',
-                '60+ días': 'text-red-800 dark:text-red-200',
+                '31-60 días': 'text-red-700 dark:text-red-500',
+                '60+ días': 'text-red-800 dark:text-red-600',
               };
               const color = colorMap[item.range] || 'dark:text-white/[.87]';
               return (
