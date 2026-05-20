@@ -7,11 +7,12 @@ import type { SimulationPDFData } from '@/lib/pdf/types';
 interface PDFButtonProps {
   simulationData: SimulationPDFData | null;
   disabled?: boolean;
+  roundingUnit?: number;
 }
 
 type ButtonState = 'default' | 'loading' | 'disabled';
 
-export function PDFButton({ simulationData, disabled = false }: PDFButtonProps) {
+export function PDFButton({ simulationData, disabled = false, roundingUnit = 1000 }: PDFButtonProps) {
   const [buttonState, setButtonState] = useState<ButtonState>(disabled ? 'disabled' : 'default');
 
   const handleClick = useCallback(async () => {
@@ -22,29 +23,14 @@ export function PDFButton({ simulationData, disabled = false }: PDFButtonProps) 
     setButtonState('loading');
 
     try {
-      // Fetch ROUNDING_UNIT from settings
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-      let roundingUnit = 1000;
-
-      try {
-        const response = await fetch(`${API_URL}/api/settings`);
-        const data = await response.json();
-        if (data.success && data.data && data.data.ROUNDING_UNIT) {
-          roundingUnit = parseFloat(data.data.ROUNDING_UNIT.value) || 1000;
-        }
-      } catch {
-        // Use default rounding unit on error
-        roundingUnit = 1000;
-      }
-
-      // Generate the PDF
+      // Generate the PDF using the prop-supplied rounding unit
       generateSimulatorPDF(simulationData, roundingUnit);
       setButtonState('default');
     } catch (error) {
       console.error('Error generating PDF:', error);
       setButtonState('default');
     }
-  }, [simulationData, buttonState]);
+  }, [simulationData, buttonState, roundingUnit]);
 
   // Determine button state
   const isDisabled = disabled || buttonState === 'disabled' || buttonState === 'loading';

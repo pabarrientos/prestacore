@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import { PDFButton } from '@/components/simulator/PDFButton';
 import { getTodayString } from '@/lib/datetime';
+import { roundForDisplay } from '@/lib/rounding';
 
 const LOAN_STORAGE_KEY = 'pending_loan_request';
 
@@ -83,6 +84,7 @@ export default function SimulatorPage() {
   const [result, setResult] = useState<SimulationResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [roundingUnit, setRoundingUnit] = useState<number>(1000);
 
   const handleRequestLoan = () => {
     if (!result) return;
@@ -114,19 +116,35 @@ export default function SimulatorPage() {
     }
   };
 
+  // Compute visually rounded totals from column sums (spec R2: never mutate state/sessionStorage)
+  const displayInstallmentAmount = result ? roundForDisplay(result.installmentAmount, roundingUnit) : 0;
+  const displayTotalPayment = result
+    ? result.schedule.reduce((sum, item) => sum + roundForDisplay(item.payment, roundingUnit), 0)
+    : 0;
+  const displayTotalInterest = result
+    ? result.schedule.reduce((sum, item) => sum + roundForDisplay(item.interest, roundingUnit), 0)
+    : 0;
+
   // Cargar tasas y sistema por defecto al iniciar
   useEffect(() => {
     Promise.all([
       fetch(`${API_URL}/api/settings/rates`).then(res => res.json()),
       fetch(`${API_URL}/api/settings/default-amortization-system`).then(res => res.json()),
+      fetch(`${API_URL}/api/settings`).then(res => res.json()).catch(() => ({ success: false })),
     ])
-      .then(([ratesData, systemData]) => {
+      .then(([ratesData, systemData, settingsData]) => {
         if (ratesData.success) {
           setRates(ratesData.data);
         }
         if (systemData.success) {
           const sys = systemData.data.defaultAmortizationSystem as AmortizationSystem;
           setFormData(prev => ({ ...prev, amortizationSystem: sys }));
+        }
+        if (settingsData.success && settingsData.data && settingsData.data.ROUNDING_UNIT) {
+          const unit = parseFloat(settingsData.data.ROUNDING_UNIT.value);
+          if (!isNaN(unit) && unit > 0) {
+            setRoundingUnit(unit);
+          }
         }
       })
       .catch(console.error)
@@ -406,7 +424,7 @@ export default function SimulatorPage() {
                 <div className="p-4 bg-primary-50 rounded-lg dark:bg-[#1a1a1a]">
                   <p className="text-sm text-gray-600 dark:text-white/60">Cuota ({labels.singular})</p>
                   <p className="text-3xl font-bold text-primary-700 dark:text-[#39ff14]">
-                    ${result.installmentAmount.toLocaleString()}
+                    ${displayInstallmentAmount.toLocaleString()}
                   </p>
                   <p className="text-xs text-gray-500 mt-1 dark:text-white/60">
                     {result.schedule.length} pagos {labels.plural}
@@ -417,7 +435,7 @@ export default function SimulatorPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="p-4 bg-gray-50 rounded-lg dark:bg-[#1a1a1a]">
                     <p className="text-sm text-gray-600 dark:text-white/60">Total Intereses</p>
-                    <p className="text-xl font-semibold dark:text-white/[.87]">${result.totalInterest.toLocaleString()}</p>
+                    <p className="text-xl font-semibold dark:text-white/[.87]">${displayTotalInterest.toLocaleString()}</p>
                   </div>
                   <div className="p-4 bg-gray-50 rounded-lg dark:bg-[#1a1a1a]">
                     <p className="text-sm text-gray-600 dark:text-white/60">Nro. de Pagos</p>
@@ -427,7 +445,7 @@ export default function SimulatorPage() {
 
                 <div className="p-4 bg-gray-50 rounded-lg dark:bg-[#1a1a1a]">
                   <p className="text-sm text-gray-600 dark:text-white/60">Total a Pagar</p>
-                  <p className="text-2xl font-bold dark:text-white/[.87]">${result.totalPayment.toLocaleString()}</p>
+                  <p className="text-2xl font-bold dark:text-white/[.87]">${displayTotalPayment.toLocaleString()}</p>
                 </div>
 
                 <div className="flex justify-end">
@@ -451,6 +469,7 @@ export default function SimulatorPage() {
                       },
                     }}
                     disabled={!result}
+                    roundingUnit={roundingUnit}
                   />
                 </div>
               </div>
@@ -489,11 +508,11 @@ export default function SimulatorPage() {
                     <tr key={item.number} className="border-t dark:border-gray-700">
                       <td className="px-4 py-2 dark:text-white/[.87]">{item.number}</td>
                       <td className="px-4 py-2 dark:text-white/[.87]">{new Date(item.date).toLocaleDateString()}</td>
-                      <td className="px-4 py-2 text-right dark:text-white/[.87]">${item.payment.toLocaleString()}</td>
-                      <td className="px-4 py-2 text-right text-green-600 dark:text-green-400">${item.principal.toLocaleString()}</td>
-                      <td className="px-4 py-2 text-right text-red-600 dark:text-red-400">${item.interest.toLocaleString()}</td>
-                      <td className="px-4 py-2 text-right font-medium dark:text-white/[.87]">${item.capitalBalance.toLocaleString()}</td>
-                      <td className="px-4 py-2 text-right dark:text-white/[.87]">${item.balance.toLocaleString()}</td>
+                      <td className="px-4 py-2 text-right dark:text-white/[.87]">${roundForDisplay(item.payment, roundingUnit).toLocaleString()}</td>
+                      <td className="px-4 py-2 text-right text-green-600 dark:text-green-400">${roundForDisplay(item.principal, roundingUnit).toLocaleString()}</td>
+                      <td className="px-4 py-2 text-right text-red-600 dark:text-red-400">${roundForDisplay(item.interest, roundingUnit).toLocaleString()}</td>
+                      <td className="px-4 py-2 text-right font-medium dark:text-white/[.87]">${roundForDisplay(item.capitalBalance, roundingUnit).toLocaleString()}</td>
+                      <td className="px-4 py-2 text-right dark:text-white/[.87]">${roundForDisplay(item.balance, roundingUnit).toLocaleString()}</td>
                     </tr>
                   ))}
                 </tbody>
