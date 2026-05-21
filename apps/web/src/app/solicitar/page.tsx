@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { apiFetch } from '@/lib/api';
+import { roundForDisplay } from '@/lib/rounding';
 
 const LOAN_STORAGE_KEY = 'pending_loan_request';
 
@@ -50,6 +51,17 @@ export default function SolicitarPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [createdLoan, setCreatedLoan] = useState<{ id: string } | null>(null);
+  const [roundingUnit, setRoundingUnit] = useState<number>(1000);
+
+  const displayInstallmentAmount = loanRequest
+    ? roundForDisplay(loanRequest.installmentAmount, roundingUnit)
+    : 0;
+  const displayTotalPayment = loanRequest
+    ? loanRequest.schedule.reduce((sum, item) => sum + roundForDisplay(item.payment, roundingUnit), 0)
+    : 0;
+  const displayTotalInterest = loanRequest
+    ? displayTotalPayment - loanRequest.amount
+    : 0;
 
   useEffect(() => {
     // First check if user is authenticated or redirect to login
@@ -76,6 +88,20 @@ export default function SolicitarPage() {
     }
     setLoading(false);
   }, [token, user, router]);
+
+  useEffect(() => {
+    apiFetch('/api/settings')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.data && data.data.ROUNDING_UNIT) {
+          const unit = parseFloat(data.data.ROUNDING_UNIT.value);
+          if (!isNaN(unit) && unit > 0) {
+            setRoundingUnit(unit);
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handleSubmit = async () => {
     if (!loanRequest || !token) {
@@ -305,7 +331,7 @@ export default function SolicitarPage() {
             <div>
               <p className="text-sm text-gray-500 dark:text-white/60">Cuota</p>
               <p className="text-xl font-bold text-primary-600 dark:text-[#39ff14]">
-                ${loanRequest.installmentAmount.toLocaleString()}
+                ${displayInstallmentAmount.toLocaleString()}
               </p>
             </div>
             <div>
@@ -321,13 +347,13 @@ export default function SolicitarPage() {
               <div>
                 <p className="text-sm text-gray-500 dark:text-white/60">Total Intereses</p>
                 <p className="dark:text-white/[.87]">
-                  ${loanRequest.totalInterest.toLocaleString()}
+                  ${displayTotalInterest.toLocaleString()}
                 </p>
               </div>
               <div>
                 <p className="text-sm text-gray-500 dark:text-white/60">Total a Pagar</p>
                 <p className="font-semibold dark:text-white/[.87]">
-                  ${loanRequest.totalPayment.toLocaleString()}
+                  ${displayTotalPayment.toLocaleString()}
                 </p>
               </div>
             </div>

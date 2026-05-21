@@ -120,7 +120,7 @@ export default function SimulatorPage() {
     ? result.schedule.reduce((sum, item) => sum + roundForDisplay(item.payment, roundingUnit), 0)
     : 0;
   const displayTotalInterest = result
-    ? result.schedule.reduce((sum, item) => sum + roundForDisplay(item.interest, roundingUnit), 0)
+    ? displayTotalPayment - parseFloat(formData.amount)
     : 0;
 
   // Cargar tasas y sistema por defecto al iniciar
