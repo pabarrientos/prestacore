@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+import { apiFetch } from '@/lib/api';
 
 interface CollectionActionType {
   code: string;
@@ -43,7 +42,7 @@ function formatDate(dateStr: string | null | undefined): string {
 }
 
 export default function CollectionActionsPanel({ loanId }: CollectionActionsPanelProps) {
-  const { token, user } = useAuth();
+  const { user } = useAuth();
   const [actions, setActions] = useState<CollectionAction[]>([]);
   const [types, setTypes] = useState<CollectionActionType[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,7 +59,7 @@ export default function CollectionActionsPanel({ loanId }: CollectionActionsPane
 
   // Fetch types from settings
   useEffect(() => {
-    fetch(`${API_URL}/api/settings/collection-action-types`)
+    apiFetch('/api/settings/collection-action-types')
       .then(res => res.json())
       .then(data => {
         if (data.success && data.data.types) {
@@ -72,11 +71,7 @@ export default function CollectionActionsPanel({ loanId }: CollectionActionsPane
 
   // Fetch collection actions
   useEffect(() => {
-    if (!token) return;
-
-    fetch(`${API_URL}/api/collection-actions/${loanId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    apiFetch(`/api/collection-actions/${loanId}`)
       .then(res => res.json())
       .then(data => {
         if (data.success) {
@@ -89,7 +84,7 @@ export default function CollectionActionsPanel({ loanId }: CollectionActionsPane
         console.error('Error loading collection actions:', err);
       })
       .finally(() => setLoading(false));
-  }, [loanId, token]);
+  }, [loanId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,11 +97,10 @@ export default function CollectionActionsPanel({ loanId }: CollectionActionsPane
     setFormError('');
 
     try {
-      const res = await fetch(`${API_URL}/api/collection-actions/${loanId}`, {
+      const res = await apiFetch(`/api/collection-actions/${loanId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           type: selectedType,
@@ -144,9 +138,8 @@ export default function CollectionActionsPanel({ loanId }: CollectionActionsPane
     if (!confirm('¿Estás seguro de eliminar esta acción?')) return;
 
     try {
-      const res = await fetch(`${API_URL}/api/collection-actions/${actionId}`, {
+      const res = await apiFetch(`/api/collection-actions/${actionId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
       });
 
       const data = await res.json();

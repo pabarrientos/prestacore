@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
+import { apiFetch } from '@/lib/api';
 import Link from 'next/link';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 interface VendorSummary {
   vendor: {
@@ -43,9 +42,7 @@ export default function CommissionsPage() {
     if (!token || user?.role !== 'ADMIN') return;
 
     // Fetch all vendors (users with role VENDEDOR)
-    fetch(`${API_URL}/api/users`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    apiFetch('/api/users')
       .then(res => res.json())
       .then(data => {
         if (data.success) {
@@ -54,9 +51,7 @@ export default function CommissionsPage() {
           // Fetch commission summary for each vendor
           Promise.all(
             vendorUsers.map((vendor: User) =>
-              fetch(`${API_URL}/api/commissions/vendor/${vendor.id}`, {
-                headers: { Authorization: `Bearer ${token}` },
-              })
+              apiFetch(`/api/commissions/vendor/${vendor.id}`)
                 .then(res => res.json())
                 .then(data => data.success ? data.data : null)
                 .catch(() => null)

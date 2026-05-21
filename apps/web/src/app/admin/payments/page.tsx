@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
+import { apiFetch } from '@/lib/api';
 import { getTodayString } from '@/lib/datetime';
 
 interface Payment {
@@ -39,13 +40,10 @@ interface ApiResponse {
   };
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-
 // Helper para formatear fecha YYYY-MM-DD a DD/MM/YYYY
 function formatDateDisplay(fecha: string): string {
   if (!fecha) return '-';
-  // Handle formats like "2026-04-15 00:00:00" or "2026-04-15"
-  const datePart = fecha.split(' ')[0]; // Get just the date part before the time
+  const datePart = fecha.split(' ')[0];
   const [year, month, day] = datePart.split('-');
   return `${day}/${month}/${year}`;
 }
@@ -91,11 +89,7 @@ export default function PagosPage() {
   // Fetch vendors for filter (admin only)
   useEffect(() => {
     if (token && user?.role === 'ADMIN') {
-      fetch(`${API_URL}/api/users/vendors`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
+      apiFetch('/api/users/vendors')
         .then((res) => res.json())
         .then((data) => {
           if (data.success) {
@@ -125,11 +119,7 @@ export default function PagosPage() {
       params.append('cliente', selectedCliente);
     }
 
-    fetch(`${API_URL}/api/payments/by-date?${params.toString()}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
+    apiFetch(`/api/payments/by-date?${params.toString()}`)
       .then((res) => res.json())
       .then((data: ApiResponse) => {
         if (data.success) {

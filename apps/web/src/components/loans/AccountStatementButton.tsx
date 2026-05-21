@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import { generateAccountStatementPDF } from '@/lib/pdf/accountStatementPDF';
 import type { AccountStatementPDFData } from '@/lib/pdf/types';
+import { apiFetch } from '@/lib/api';
 
 // ---------------------------------------------------------------------------
 // Types — mirror the LoanDetail shape from page.tsx so the button integrates
@@ -151,15 +152,13 @@ export function AccountStatementButton({
     setLoading(true);
 
     try {
-      // Fetch ROUNDING_UNIT and MORA_RATE from settings API (same pattern as PDFButton.tsx)
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
       let roundingUnit = 1000;
       let moraRate = 0.0005;
 
       try {
         const [settingsRes, ratesRes] = await Promise.all([
-          fetch(`${API_URL}/api/settings`),
-          fetch(`${API_URL}/api/settings/rates`),
+          apiFetch('/api/settings'),
+          apiFetch('/api/settings/rates'),
         ]);
 
         const settingsData = await settingsRes.json();

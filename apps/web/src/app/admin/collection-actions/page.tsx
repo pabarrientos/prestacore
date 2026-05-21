@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+import { apiFetch } from '@/lib/api';
 
 interface CollectionActionType {
   code: string;
@@ -81,7 +80,7 @@ export default function CollectionActionsPage() {
   // Fetch types and vendors on mount
   useEffect(() => {
     // Fetch types
-    fetch(`${API_URL}/api/settings/collection-action-types`)
+    apiFetch('/api/settings/collection-action-types')
       .then(res => res.json())
       .then(data => {
         if (data.success && data.data.types) {
@@ -92,9 +91,7 @@ export default function CollectionActionsPage() {
 
     // Fetch vendors
     if (token) {
-      fetch(`${API_URL}/api/users/vendors`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      apiFetch('/api/users/vendors')
         .then(res => res.json())
         .then(data => {
           if (data.success) {
@@ -118,9 +115,7 @@ export default function CollectionActionsPage() {
     if (selectedVendor) params.append('createdBy', selectedVendor);
     if (selectedType) params.append('type', selectedType);
 
-    fetch(`${API_URL}/api/collection-actions?${params.toString()}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    apiFetch(`/api/collection-actions?${params.toString()}`)
       .then(res => res.json())
       .then(data => {
         if (data.success) {

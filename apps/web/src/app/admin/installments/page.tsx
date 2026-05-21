@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
+import { apiFetch } from '@/lib/api';
 import { getTodayString } from '@/lib/datetime';
 import PaymentForm from '@/components/PaymentForm';
 import CollectionActionsModal from '@/components/CollectionActionsModal';
@@ -51,8 +52,6 @@ interface ApiResponse {
     };
   };
 }
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 // Helper para formatear fecha YYYY-MM-DD a DD/MM/YYYY
 function formatDateDisplay(fecha: string): string {
@@ -157,11 +156,7 @@ export default function InstallmentsPage() {
   // Fetch vendors for filter (admin only)
   useEffect(() => {
     if (token && user?.role === 'ADMIN') {
-      fetch(`${API_URL}/api/users/vendors`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
+      apiFetch('/api/users/vendors')
         .then((res) => res.json())
         .then((data) => {
           if (data.success) {
@@ -191,11 +186,7 @@ export default function InstallmentsPage() {
       params.append('cliente', selectedCliente);
     }
 
-    fetch(`${API_URL}/api/installments?${params.toString()}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
+    apiFetch(`/api/installments?${params.toString()}`)
       .then((res) => res.json())
       .then((data: ApiResponse) => {
         if (data.success) {

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
+import { apiFetch } from '@/lib/api';
 import Link from 'next/link';
 
 interface Client {
@@ -15,8 +16,6 @@ interface Client {
   monthlyIncome: number;
   createdAt: string;
 }
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export default function ClientsPage() {
   const { token, user } = useAuth();
@@ -32,11 +31,8 @@ export default function ClientsPage() {
 
     setDeleting(id);
     try {
-      const res = await fetch(`${API_URL}/api/clients/${id}`, {
+      const res = await apiFetch(`/api/clients/${id}`, {
         method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       });
       const data = await res.json();
       if (data.success) {
@@ -53,9 +49,7 @@ export default function ClientsPage() {
 
   useEffect(() => {
     if (token) {
-      fetch(`${API_URL}/api/clients`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      apiFetch('/api/clients')
         .then(res => res.json())
         .then(data => {
           if (data.success) {

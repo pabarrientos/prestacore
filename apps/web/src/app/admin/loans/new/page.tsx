@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { getTodayString } from '@/lib/datetime';
+import { apiFetch } from '@/lib/api';
 
 interface Client {
   id: string;
@@ -38,8 +39,6 @@ interface SimulationResult {
   annualRate: number;
   schedule: ScheduleItem[];
 }
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 const frequencyLabels: Record<string, { plural: string; singular: string }> = {
   WEEKLY: { plural: 'semanales', singular: 'semanal' },
@@ -85,8 +84,8 @@ function NewLoanForm() {
   // Cargar tasas, fecha inicial y sistema por defecto con timezone
   useEffect(() => {
     Promise.all([
-      fetch(`${API_URL}/api/settings/rates`).then(res => res.json()),
-      fetch(`${API_URL}/api/settings/default-amortization-system`).then(res => res.json()),
+      apiFetch('/api/settings/rates').then(res => res.json()),
+      apiFetch('/api/settings/default-amortization-system').then(res => res.json()),
     ])
       .then(([ratesData, systemData]) => {
         if (ratesData.success) {
@@ -113,9 +112,7 @@ function NewLoanForm() {
   useEffect(() => {
     if (clientSearch.length >= 2 && token) {
       const timeout = setTimeout(() => {
-        fetch(`${API_URL}/api/clients/search?q=${encodeURIComponent(clientSearch)}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
+        apiFetch(`/api/clients/search?q=${encodeURIComponent(clientSearch)}`)
           .then(res => res.json())
           .then(data => {
             if (data.success) {
@@ -135,9 +132,7 @@ function NewLoanForm() {
   // Setear client desde URL
   useEffect(() => {
     if (clientIdParam && token) {
-      fetch(`${API_URL}/api/clients/${clientIdParam}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      apiFetch(`/api/clients/${clientIdParam}`)
         .then(res => res.json())
         .then(data => {
           if (data.success && data.data) {
@@ -218,7 +213,7 @@ function NewLoanForm() {
 
       const annualRate = customRate * periodsPerYear;
 
-      const response = await fetch(`${API_URL}/api/loans/simulate`, {
+      const response = await apiFetch('/api/loans/simulate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -297,11 +292,10 @@ function NewLoanForm() {
         balance: item.balance,
       })) : [];
 
-      const res = await fetch(`${API_URL}/api/loans`, {
+      const res = await apiFetch('/api/loans', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           clientId: selectedClient.id,

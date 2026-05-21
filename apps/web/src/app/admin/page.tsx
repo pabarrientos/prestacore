@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
+import { apiFetch } from '@/lib/api';
 
 interface DashboardMetrics {
   totalLoans: number;
@@ -25,8 +26,6 @@ interface DashboardMetrics {
   };
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-
 export default function AdminDashboard() {
   const { token } = useAuth();
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
@@ -34,11 +33,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (token) {
-      fetch(`${API_URL}/api/dashboard`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
+      apiFetch('/api/dashboard')
         .then((res) => res.json())
         .then((data) => {
           if (data.success) {

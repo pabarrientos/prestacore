@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { calculateDaysOverdueFromStringSync } from '@/lib/datetime';
 import { roundForDisplay } from '@/lib/rounding';
 import { mergePaymentsByDate } from '@/lib/payments';
+import { apiFetch } from '@/lib/api';
 
 interface Installment {
   id: string;
@@ -84,8 +85,6 @@ interface LoanDetail {
   payments: Payment[];
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-
 const frequencyLabels: Record<string, { rate: string; plural: string; singular: string }> = {
   WEEKLY: { rate: 'semanal', plural: 'semanas', singular: 'semana' },
   BIWEEKLY: { rate: 'quincenal', plural: 'quincenas', singular: 'quincena' },
@@ -159,8 +158,8 @@ export default function MisPrestamosDetallePage() {
   // Fetch mora rate and rounding unit on mount
   useEffect(() => {
     Promise.all([
-      fetch(`${API_URL}/api/settings/rates`).then(res => res.json()),
-      fetch(`${API_URL}/api/settings`).then(res => res.json()),
+      apiFetch('/api/settings/rates').then(res => res.json()),
+      apiFetch('/api/settings').then(res => res.json()),
     ])
       .then(([ratesData, settingsData]) => {
         if (ratesData.success && ratesData.data.MORA_RATE) {
@@ -175,11 +174,7 @@ export default function MisPrestamosDetallePage() {
 
   useEffect(() => {
     if (token && params.id) {
-      fetch(`${API_URL}/api/loans/${params.id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
+      apiFetch(`/api/loans/${params.id}`)
         .then((res) => res.json())
         .then((data) => {
           if (data.success) {

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { apiFetch } from '@/lib/api';
 
 const LOAN_STORAGE_KEY = 'pending_loan_request';
 
@@ -26,8 +27,6 @@ interface LoanRequest {
     capitalBalance: number;
   }>;
 }
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 const frequencyLabels: Record<string, { label: string }> = {
   WEEKLY: { label: 'semanal' },
@@ -131,11 +130,10 @@ export default function SolicitarPage() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-      const response = await fetch(`${API_URL}/api/loans/request`, {
+      const response = await apiFetch('/api/loans/request', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(requestBody),
         signal: controller.signal,

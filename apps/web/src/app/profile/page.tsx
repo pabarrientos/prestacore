@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
+import { apiFetch } from '@/lib/api';
 
 interface UserData {
   id: string;
@@ -13,8 +14,6 @@ interface UserData {
   isActive: boolean;
   createdAt: string;
 }
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export default function ProfilePage() {
   const { token } = useAuth();
@@ -42,9 +41,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!token) return;
 
-    fetch(`${API_URL}/api/users/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    apiFetch('/api/users/me')
       .then((res) => res.json())
       .then((data) => {
         if (data.success) {
@@ -67,11 +64,10 @@ export default function ProfilePage() {
     setError('');
 
     try {
-      const res = await fetch(`${API_URL}/api/users/me`, {
+      const res = await apiFetch('/api/users/me', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           email: email || undefined,
@@ -121,11 +117,10 @@ export default function ProfilePage() {
 
     // Verify current password first using the /me endpoint
     try {
-      const res = await fetch(`${API_URL}/api/users/me`, {
+      const res = await apiFetch('/api/users/me', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           currentPassword,

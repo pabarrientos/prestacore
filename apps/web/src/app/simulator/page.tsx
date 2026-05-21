@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { PDFButton } from '@/components/simulator/PDFButton';
 import { getTodayString } from '@/lib/datetime';
 import { roundForDisplay } from '@/lib/rounding';
+import { apiFetch } from '@/lib/api';
 
 const LOAN_STORAGE_KEY = 'pending_loan_request';
 
@@ -59,9 +60,6 @@ interface SimulationResult {
   schedule: ScheduleItem[];
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-
-// Labels según frecuencia
 const frequencyLabels = {
   WEEKLY: { plural: 'semanales', singular: 'semanal', period: 'semanal' },
   BIWEEKLY: { plural: 'quincenales', singular: 'quincenal', period: 'quincenal' },
@@ -128,9 +126,9 @@ export default function SimulatorPage() {
   // Cargar tasas y sistema por defecto al iniciar
   useEffect(() => {
     Promise.all([
-      fetch(`${API_URL}/api/settings/rates`).then(res => res.json()),
-      fetch(`${API_URL}/api/settings/default-amortization-system`).then(res => res.json()),
-      fetch(`${API_URL}/api/settings`).then(res => res.json()).catch(() => ({ success: false })),
+      apiFetch('/api/settings/rates').then(res => res.json()),
+      apiFetch('/api/settings/default-amortization-system').then(res => res.json()),
+      apiFetch('/api/settings').then(res => res.json()).catch(() => ({ success: false })),
     ])
       .then(([ratesData, systemData, settingsData]) => {
         if (ratesData.success) {
@@ -207,7 +205,7 @@ export default function SimulatorPage() {
 
     try {
       // Call backend to calculate with the selected amortization system
-      const response = await fetch(`${API_URL}/api/loans/simulate`, {
+      const response = await apiFetch('/api/loans/simulate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

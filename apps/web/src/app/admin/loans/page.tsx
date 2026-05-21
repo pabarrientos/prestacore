@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
+import { apiFetch } from '@/lib/api';
 
 interface Loan {
   id: string;
@@ -46,8 +47,6 @@ function getPeriodicRate(annualRate: number, frequency: string): number {
   }
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-
 const statusColors: Record<string, string> = {
   PENDING: 'bg-yellow-100 text-yellow-800',
   ACTIVE: 'bg-green-100 text-green-800',
@@ -70,11 +69,8 @@ export default function LoansPage() {
 
     setDeleting(id);
     try {
-      const res = await fetch(`${API_URL}/api/loans/${id}`, {
+      const res = await apiFetch(`/api/loans/${id}`, {
         method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       });
       const data = await res.json();
       if (data.success) {
@@ -91,9 +87,7 @@ export default function LoansPage() {
 
   useEffect(() => {
     if (token) {
-      fetch(`${API_URL}/api/loans`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      apiFetch('/api/loans')
         .then(res => res.json())
         .then(data => {
           if (data.success) {

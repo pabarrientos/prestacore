@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
+import { apiFetch } from '@/lib/api';
 import { useParams } from 'next/navigation';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 interface VendorDetail {
   vendor: {
@@ -70,9 +69,7 @@ export default function VendorCommissionPage() {
     if (!token || user?.role !== 'ADMIN') return;
 
     // Fetch vendor commission data
-    fetch(`${API_URL}/api/commissions/vendor/${vendorId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    apiFetch(`/api/commissions/vendor/${vendorId}`)
       .then(res => res.json())
       .then(result => {
         if (result.success) {
@@ -87,9 +84,7 @@ export default function VendorCommissionPage() {
       });
 
     // Fetch audit history
-    fetch(`${API_URL}/api/commissions/audit/${vendorId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    apiFetch(`/api/commissions/audit/${vendorId}`)
       .then(res => res.json())
       .then(result => {
         if (result.success) {
@@ -99,9 +94,7 @@ export default function VendorCommissionPage() {
       .catch(err => console.error(err));
 
     // Fetch liquidation history
-    fetch(`${API_URL}/api/commissions/liquidations/${vendorId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    apiFetch(`/api/commissions/liquidations/${vendorId}`)
       .then(res => res.json())
       .then(result => {
         if (result.success) {
@@ -126,11 +119,10 @@ export default function VendorCommissionPage() {
     setMessage({ type: '', text: '' });
 
     try {
-      const res = await fetch(`${API_URL}/api/commissions/config/${vendorId}`, {
+      const res = await apiFetch(`/api/commissions/config/${vendorId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ percentage: pct, mode }),
       });
@@ -139,10 +131,7 @@ export default function VendorCommissionPage() {
 
       if (result.success) {
         setMessage({ type: 'success', text: 'Configuración actualizada correctamente' });
-        // Refresh data
-        const refreshRes = await fetch(`${API_URL}/api/commissions/vendor/${vendorId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const refreshRes = await apiFetch(`/api/commissions/vendor/${vendorId}`);
         const refreshData = await refreshRes.json();
         if (refreshData.success) {
           setData(refreshData.data);
@@ -171,11 +160,10 @@ export default function VendorCommissionPage() {
     setLiquidationMessage({ type: '', text: '' });
 
     try {
-      const res = await fetch(`${API_URL}/api/commissions/liquidate`, {
+      const res = await apiFetch('/api/commissions/liquidate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ vendorId, amount, type: liquidationType, date: liquidationDate, notes: liquidationNotes }),
       });
@@ -186,18 +174,12 @@ export default function VendorCommissionPage() {
         setLiquidationMessage({ type: 'success', text: `Liquidación de ${formatCurrency(amount)} registrada correctamente` });
         setLiquidationAmount('');
         setLiquidationNotes('');
-        // Refresh data
-        const refreshRes = await fetch(`${API_URL}/api/commissions/vendor/${vendorId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const refreshRes = await apiFetch(`/api/commissions/vendor/${vendorId}`);
         const refreshData = await refreshRes.json();
         if (refreshData.success) {
           setData(refreshData.data);
         }
-        // Refresh liquidation list
-        fetch(`${API_URL}/api/commissions/liquidations/${vendorId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
+        apiFetch(`/api/commissions/liquidations/${vendorId}`)
           .then(res => res.json())
           .then(r => { if (r.success) setLiquidations(r.data); })
           .catch(console.error);
@@ -214,15 +196,14 @@ export default function VendorCommissionPage() {
   const handleDeleteLiquidation = async (liquidationId: string) => {
     if (!token || !confirm('¿Eliminar esta liquidación? Se redistribuirán los montos entre los préstamos.')) return;
     try {
-      const res = await fetch(`${API_URL}/api/commissions/liquidations/${liquidationId}`, {
+      const res = await apiFetch(`/api/commissions/liquidations/${liquidationId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
       if (data.success) {
         const [vendorRes, liqRes] = await Promise.all([
-          fetch(`${API_URL}/api/commissions/vendor/${vendorId}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-          fetch(`${API_URL}/api/commissions/liquidations/${vendorId}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+          apiFetch(`/api/commissions/vendor/${vendorId}`).then(r => r.json()),
+          apiFetch(`/api/commissions/liquidations/${vendorId}`).then(r => r.json()),
         ]);
         if (vendorRes.success) setData(vendorRes.data);
         if (liqRes.success) setLiquidations(liqRes.data);
@@ -237,16 +218,15 @@ export default function VendorCommissionPage() {
   const handleRebalance = async () => {
     if (!token || !confirm('¿Rebalancear la distribución de comisiones entre préstamos? Se moverán los excesos a préstamos con espacio disponible.')) return;
     try {
-      const res = await fetch(`${API_URL}/api/commissions/rebalance/${vendorId}`, {
+      const res = await apiFetch(`/api/commissions/rebalance/${vendorId}`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
       if (data.success) {
         alert(data.data.message);
         const [vendorRes, liqRes] = await Promise.all([
-          fetch(`${API_URL}/api/commissions/vendor/${vendorId}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-          fetch(`${API_URL}/api/commissions/liquidations/${vendorId}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+          apiFetch(`/api/commissions/vendor/${vendorId}`).then(r => r.json()),
+          apiFetch(`/api/commissions/liquidations/${vendorId}`).then(r => r.json()),
         ]);
         if (vendorRes.success) setData(vendorRes.data);
         if (liqRes.success) setLiquidations(liqRes.data);

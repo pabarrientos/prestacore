@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import { roundForDisplay } from '@/lib/rounding';
+import { apiFetch } from '@/lib/api';
 
 interface Loan {
   id: string;
@@ -49,8 +50,6 @@ function getPeriodicRate(annualRate: number, frequency: string): number {
   }
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-
 const statusColors: Record<string, string> = {
   PENDING: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-400',
   ACTIVE: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-400',
@@ -70,7 +69,7 @@ export default function MisPrestamosPage() {
   const [roundingUnit, setRoundingUnit] = useState<number>(1000);
 
   useEffect(() => {
-    fetch(`${API_URL}/api/settings`)
+    apiFetch('/api/settings')
       .then((res) => res.json())
       .then((data) => {
         if (data.success && data.data.ROUNDING_UNIT) {
@@ -82,11 +81,7 @@ export default function MisPrestamosPage() {
 
   useEffect(() => {
     if (token) {
-      fetch(`${API_URL}/api/loans/mine?page=${page}&limit=${limit}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
+      apiFetch(`/api/loans/mine?page=${page}&limit=${limit}`)
         .then((res) => res.json())
         .then((data) => {
           if (data.success) {

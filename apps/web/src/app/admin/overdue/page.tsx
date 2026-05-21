@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import PaymentForm from '@/components/PaymentForm';
 import CollectionActionsModal from '@/components/CollectionActionsModal';
+import { apiFetch } from '@/lib/api';
 
 interface OverdueInstallment {
   id: string;
@@ -36,11 +37,6 @@ interface OverdueSummary {
   }[];
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-
-// Helper function to format date in Argentina timezone
-// Server sends naive timestamps (e.g. "2026-05-14 00:00:00") or ISO strings
-// from the pg driver. Extract date parts manually to avoid timezone misparsing.
 function formatDate(dateStr: string): string {
   if (!dateStr) return '-';
   const datePart = dateStr.includes(' ') ? dateStr.split(' ')[0] : dateStr.split('T')[0];
@@ -68,24 +64,18 @@ export default function OverduePage() {
   const [showCollectionModal, setShowCollectionModal] = useState(false);
   const [selectedCollectionLoanId, setSelectedCollectionLoanId] = useState('');
 
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-
   useEffect(() => {
     loadOverdueData();
   }, []);
 
   const loadOverdueData = () => {
-    if (!token) return;
-
     setLoading(true);
     const params = new URLSearchParams();
     if (vendorId) params.append('vendorId', vendorId);
     if (fromDate) params.append('from', fromDate);
     if (toDate) params.append('to', toDate);
 
-    fetch(`${API_URL}/api/dashboard/overdue?${params.toString()}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    apiFetch(`/api/dashboard/overdue?${params.toString()}`)
       .then((res) => res.json())
       .then((data) => {
         if (data.success) {

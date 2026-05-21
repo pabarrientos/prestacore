@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { getTodayString } from '@/lib/datetime';
 import { useAuth } from '@/lib/auth-context';
+import { apiFetch } from '@/lib/api';
 
 interface InstallmentOption {
   id: string;
@@ -32,8 +33,6 @@ interface PaymentFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
 }
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export default function PaymentForm({ loanId, payment, preselectedInstallmentId, onSuccess, onCancel }: PaymentFormProps) {
   const { user } = useAuth();
@@ -77,13 +76,7 @@ export default function PaymentForm({ loanId, payment, preselectedInstallmentId,
   }, [payment]);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
-    // Fetch loan balance to get installments
-    fetch(`${API_URL}/api/payments/balance/${loanId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    apiFetch(`/api/payments/balance/${loanId}`)
       .then((res) => res.json())
       .then((data) => {
         if (data.success) {
@@ -98,12 +91,7 @@ export default function PaymentForm({ loanId, payment, preselectedInstallmentId,
 
   // Cargar configuración de redondeo
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
-    fetch(`${API_URL}/api/settings`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    apiFetch('/api/settings')
       .then((res) => res.json())
       .then((data) => {
         if (data.success && data.data.ROUNDING_UNIT) {
@@ -116,15 +104,11 @@ export default function PaymentForm({ loanId, payment, preselectedInstallmentId,
   // Función para recalcular mora cuando cambia la fecha de pago
   const recalculateMora = async (date: string) => {
     if (!loanId || !selectedInstallmentId) return;
-    
-    const token = localStorage.getItem('token');
-    if (!token) return;
 
     setMoraLoading(true);
     try {
-      const res = await fetch(
-        `${API_URL}/api/payments/balance/${loanId}/at?date=${date}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+      const res = await apiFetch(
+        `/api/payments/balance/${loanId}/at?date=${date}`,
       );
       const data = await res.json();
       
@@ -179,12 +163,6 @@ export default function PaymentForm({ loanId, payment, preselectedInstallmentId,
     setError('');
     setSuccess('');
 
-    const token = localStorage.getItem('token');
-    if (!token) {
-      setError('No hay token de autenticación');
-      return;
-    }
-
     const amountNum = parseFloat(amount);
     if (isNaN(amountNum) || amountNum <= 0) {
       setError('El monto debe ser mayor a 0');
@@ -218,11 +196,10 @@ export default function PaymentForm({ loanId, payment, preselectedInstallmentId,
 
       if (isEditing && payment?.id) {
         // Edit existing payment
-        res = await fetch(`${API_URL}/api/payments/${payment.id}`, {
+        res = await apiFetch(`/api/payments/${payment.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             amount: amountNum,
@@ -240,11 +217,10 @@ export default function PaymentForm({ loanId, payment, preselectedInstallmentId,
         }
       } else {
         // Create new payment
-        res = await fetch(`${API_URL}/api/payments`, {
+        res = await apiFetch('/api/payments', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             loanId,
@@ -261,11 +237,10 @@ export default function PaymentForm({ loanId, payment, preselectedInstallmentId,
           // Si hay mora y se debe registrar (incluso $0 para tracking)
           if (moraAmount >= 0) {
             try {
-              const moraRes = await fetch(`${API_URL}/api/payments/mora`, {
+              const moraRes = await apiFetch('/api/payments/mora', {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
-                  Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify({
                   loanId,

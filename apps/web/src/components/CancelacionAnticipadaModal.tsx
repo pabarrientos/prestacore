@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { apiFetch } from '@/lib/api';
 
 interface DebtBreakdown {
   capitalPendiente: number;
@@ -21,7 +22,6 @@ interface CancelacionAnticipadaModalProps {
   onCancel: () => void;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export default function CancelacionAnticipadaModal({ loanId, onSuccess, onCancel }: CancelacionAnticipadaModalProps) {
   const [preview, setPreview] = useState<CancelacionAnticipadaPreview | null>(null);
@@ -38,7 +38,7 @@ export default function CancelacionAnticipadaModal({ loanId, onSuccess, onCancel
 
   // Fetch initial preview
   useEffect(() => {
-    fetch(`${API_URL}/api/loans/${loanId}/preview-cancelacion-anticipada`, {
+    apiFetch(`/api/loans/${loanId}/preview-cancelacion-anticipada`, {
       headers: { 'Content-Type': 'application/json' },
     })
       .then((res) => res.json())
@@ -74,24 +74,16 @@ export default function CancelacionAnticipadaModal({ loanId, onSuccess, onCancel
     setExecuteLoading(true);
     setError('');
 
-    const token = localStorage.getItem('token');
-    if (!token) {
-      setError('No hay token de autenticación');
-      setExecuteLoading(false);
-      return;
-    }
-
     try {
       const body: { interesesVencidosManual?: number } = {};
       if (interesesVencidosModificado) {
         body.interesesVencidosManual = parseFloat(interesesVencidosManual) || 0;
       }
 
-      const res = await fetch(`${API_URL}/api/loans/${loanId}/execute-cancelacion-anticipada`, {
+      const res = await apiFetch(`/api/loans/${loanId}/execute-cancelacion-anticipada`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(body),
       });

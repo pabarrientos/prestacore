@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { apiFetch } from '@/lib/api';
 
 interface ClientData {
   id: string;
@@ -20,8 +21,6 @@ interface ClientData {
     phone: string | null;
   };
 }
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export default function EditClientPage() {
   const params = useParams();
@@ -49,11 +48,7 @@ export default function EditClientPage() {
 
   useEffect(() => {
     if (token && params.id) {
-      fetch(`${API_URL}/api/clients/${params.id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
+      apiFetch(`/api/clients/${params.id}`)
         .then((res) => res.json())
         .then((data) => {
           if (data.success) {
@@ -98,11 +93,10 @@ export default function EditClientPage() {
     setSuccess('');
 
     try {
-      const res = await fetch(`${API_URL}/api/clients/${params.id}`, {
+      const res = await apiFetch(`/api/clients/${params.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           email: formData.email,

@@ -1,6 +1,7 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { setAuthRefs } from './api';
 
 interface User {
   id: string;
@@ -29,8 +30,6 @@ interface RegisterData {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 /**
  * Decode the JWT payload without verifying the signature.
@@ -61,13 +60,23 @@ function isTokenExpired(token: string): boolean {
   return payload.exp * 1000 < Date.now();
 }
 
+const AUTH_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const logout = useCallback(() => {
+    setUser(null);
+    setToken(null);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+  }, []);
+
+  setAuthRefs(token, logout);
+
   useEffect(() => {
-    // Check for existing token on mount
     const storedToken = localStorage.getItem('token');
     const storedUser = localStorage.getItem('user');
 
@@ -75,7 +84,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(storedToken);
       setUser(JSON.parse(storedUser));
     } else {
-      // Token expired, missing, or malformed — clean up
       localStorage.removeItem('token');
       localStorage.removeItem('user');
     }
@@ -83,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
-    const response = await fetch(`${API_URL}/api/auth/login`, {
+    const response = await fetch(`${AUTH_API_URL}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
@@ -105,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const register = async (registerData: RegisterData) => {
-    const response = await fetch(`${API_URL}/api/auth/register`, {
+    const response = await fetch(`${AUTH_API_URL}/api/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(registerData),
@@ -124,13 +132,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     localStorage.setItem('token', accessToken);
     localStorage.setItem('user', JSON.stringify(userData));
-  };
-
-  const logout = () => {
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
   };
 
   return (

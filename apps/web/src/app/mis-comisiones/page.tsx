@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+import { apiFetch } from '@/lib/api';
 
 interface VendorSummary {
   vendor: {
@@ -43,9 +42,7 @@ export default function MisComisionesPage() {
   useEffect(() => {
     if (!token || user?.role !== 'VENDEDOR') return;
 
-    fetch(`${API_URL}/api/commissions/vendor/${user.id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    apiFetch(`/api/commissions/vendor/${user.id}`)
       .then(res => res.json())
       .then(result => {
         if (result.success) {
@@ -60,9 +57,7 @@ export default function MisComisionesPage() {
       });
 
     // Fetch liquidation history
-    fetch(`${API_URL}/api/commissions/liquidations/${user.id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    apiFetch(`/api/commissions/liquidations/${user.id}`)
       .then(res => res.json())
       .then(result => {
         if (result.success) {

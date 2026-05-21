@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { apiFetch } from '@/lib/api';
 
 interface Loan {
   id: string;
@@ -40,8 +41,6 @@ interface SimulationResult {
   annualRate: number;
   schedule: ScheduleItem[];
 }
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 const frequencyLabels: Record<string, { plural: string; singular: string }> = {
   WEEKLY: { plural: 'semanales', singular: 'semanal' },
@@ -82,11 +81,7 @@ export default function EditLoanPage() {
 
   useEffect(() => {
     if (token && params.id) {
-      fetch(`${API_URL}/api/loans/${params.id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
+      apiFetch(`/api/loans/${params.id}`)
         .then((res) => res.json())
         .then((data) => {
           if (data.success) {
@@ -136,7 +131,7 @@ export default function EditLoanPage() {
     
     // Si cambia la frecuencia, cargar la tasa correspondiente
     if (name === 'frequency') {
-      const ratesRes = await fetch(`${API_URL}/api/settings/rates`);
+      const ratesRes = await apiFetch('/api/settings/rates');
       const ratesData = await ratesRes.json();
       if (ratesData.success) {
         const baseRates = ratesData.data;
@@ -193,7 +188,7 @@ export default function EditLoanPage() {
 
       const annualRate = customRate * periodsPerYear;
 
-      const response = await fetch(`${API_URL}/api/loans/simulate`, {
+      const response = await apiFetch('/api/loans/simulate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -270,11 +265,10 @@ export default function EditLoanPage() {
         balance: item.balance,
       })) : [];
 
-      const res = await fetch(`${API_URL}/api/loans/${params.id}`, {
+      const res = await apiFetch(`/api/loans/${params.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           amount,

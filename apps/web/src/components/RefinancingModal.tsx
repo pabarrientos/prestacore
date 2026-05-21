@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { getTodayString } from '@/lib/datetime';
+import { apiFetch } from '@/lib/api';
 
 interface RefinancingBreakdown {
   capitalPendiente: number;
@@ -40,8 +41,6 @@ interface RefinancingModalProps {
   onSuccess: () => void;
   onCancel: () => void;
 }
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 const frequencyOptions = [
   { value: 'WEEKLY', label: 'Semanal', periodsPerYear: 48 },
@@ -138,8 +137,7 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
 
   // Fetch rates and initial preview
   useEffect(() => {
-    // Fetch rates from settings
-    fetch(`${API_URL}/api/settings/rates`)
+    apiFetch('/api/settings/rates')
       .then(res => res.json())
       .then(data => {
         if (data.success) {
@@ -152,7 +150,7 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
       .catch(console.error);
 
     // Fetch default amortization system
-    fetch(`${API_URL}/api/settings/default-amortization-system`)
+    apiFetch('/api/settings/default-amortization-system')
       .then(res => res.json())
       .then(data => {
         if (data.success) {
@@ -162,7 +160,7 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
       .catch(console.error);
 
     // Fetch initial debt breakdown
-    fetch(`${API_URL}/api/loans/${loanId}/preview-refinancing`, {
+    apiFetch(`/api/loans/${loanId}/preview-refinancing`, {
       headers: { 'Content-Type': 'application/json' },
     })
       .then((res) => res.json())
@@ -254,8 +252,8 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
         params.set('interesesVencidosManual', currentInteresesVencidos.toString());
       }
       
-      const res = await fetch(
-        `${API_URL}/api/loans/${loanId}/preview-refinancing?${params.toString()}`,
+      const res = await apiFetch(
+        `/api/loans/${loanId}/preview-refinancing?${params.toString()}`,
         { headers: { 'Content-Type': 'application/json' } }
       );
       const data = await res.json();
@@ -281,13 +279,6 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
     setExecuteLoading(true);
     setError('');
 
-    const token = localStorage.getItem('token');
-    if (!token) {
-      setError('No hay token de autenticación');
-      setExecuteLoading(false);
-      return;
-    }
-
     try {
       // Convert period rate to annual rate for the API (backend expects annual rate)
       const annualRate = convertToAnnualRate(parseFloat(nuevaTasaInteres));
@@ -297,11 +288,10 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
         ? (parseFloat(interesesVencidosManual) || 0)
         : (preview?.breakdown.interesesVencidos || 0);
       
-      const res = await fetch(`${API_URL}/api/loans/${loanId}/execute-refinancing`, {
+      const res = await apiFetch(`/api/loans/${loanId}/execute-refinancing`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           nuevaTasaInteres: annualRate,

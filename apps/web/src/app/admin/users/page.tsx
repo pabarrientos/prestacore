@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/lib/auth-context';
+import { apiFetch } from '@/lib/api';
 import { UserTable } from './components/UserTable';
 import { UserModal } from './components/UserModal';
 
@@ -32,8 +33,6 @@ interface UpdateUserInput {
   isActive?: boolean;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-
 export default function UsersPage() {
   const { token, user: currentUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
@@ -58,9 +57,7 @@ export default function UsersPage() {
     if (searchFilter) params.append('search', searchFilter);
 
     try {
-      const res = await fetch(`${API_URL}/api/users?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiFetch(`/api/users?${params.toString()}`);
       const data = await res.json();
       if (data.success) {
         setUsers(data.data);
@@ -105,11 +102,10 @@ export default function UsersPage() {
     if (!token) return;
 
     try {
-      const res = await fetch(`${API_URL}/api/users/${user.id}`, {
+      const res = await apiFetch(`/api/users/${user.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ isActive: !user.isActive }),
       });
@@ -140,9 +136,8 @@ export default function UsersPage() {
     if (!confirm(confirmMessage)) return;
 
     try {
-      const res = await fetch(`${API_URL}/api/users/${user.id}`, {
+      const res = await apiFetch(`/api/users/${user.id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
       if (data.success) {
@@ -163,11 +158,10 @@ export default function UsersPage() {
 
     if (modalMode === 'create') {
       const createData = data as CreateUserInput;
-      const res = await fetch(`${API_URL}/api/users`, {
+      const res = await apiFetch('/api/users', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(createData),
       });
@@ -178,11 +172,10 @@ export default function UsersPage() {
       fetchUsers();
     } else if (modalMode === 'edit' && selectedUser) {
       const updateData = data as UpdateUserInput;
-      const res = await fetch(`${API_URL}/api/users/${selectedUser.id}`, {
+      const res = await apiFetch(`/api/users/${selectedUser.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(updateData),
       });
@@ -193,11 +186,10 @@ export default function UsersPage() {
       fetchUsers();
     } else if (modalMode === 'role' && selectedUser) {
       const roleData = { role: (data as { role: string }).role };
-      const res = await fetch(`${API_URL}/api/users/${selectedUser.id}/role`, {
+      const res = await apiFetch(`/api/users/${selectedUser.id}/role`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(roleData),
       });
@@ -208,11 +200,10 @@ export default function UsersPage() {
       fetchUsers();
     } else if (modalMode === 'password' && selectedUser) {
       const pwData = { newPassword: (data as { newPassword: string }).newPassword };
-      const res = await fetch(`${API_URL}/api/users/${selectedUser.id}/password`, {
+      const res = await apiFetch(`/api/users/${selectedUser.id}/password`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(pwData),
       });

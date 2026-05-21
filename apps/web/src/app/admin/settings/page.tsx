@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
+import { apiFetch } from '@/lib/api';
 import { useTheme } from 'next-themes';
 import { Theme } from '@/lib/theme';
 
@@ -9,8 +10,6 @@ interface Setting {
   value: string;
   description: string | null;
 }
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export default function SettingsPage() {
   const { user, token } = useAuth();
@@ -21,9 +20,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (token) {
-      fetch(`${API_URL}/api/settings`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      apiFetch('/api/settings')
         .then(res => res.json())
         .then(data => {
           if (data.success) {
@@ -55,11 +52,10 @@ export default function SettingsPage() {
     setMessage({ type: '', text: '' });
 
     try {
-      const res = await fetch(`${API_URL}/api/settings`, {
+      const res = await apiFetch('/api/settings', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           key,
@@ -410,9 +406,7 @@ function CollectionActionTypesEditor() {
 
   useEffect(() => {
     if (token) {
-      fetch(`${API_URL}/api/settings/collection-action-types`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      apiFetch('/api/settings/collection-action-types')
         .then(res => res.json())
         .then(data => {
           if (data.success && data.data.types) {
@@ -431,11 +425,10 @@ function CollectionActionTypesEditor() {
     setMessage({ type: '', text: '' });
 
     try {
-      const res = await fetch(`${API_URL}/api/settings`, {
+const res = await apiFetch('/api/settings', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           key: 'COLLECTION_ACTION_TYPES',

@@ -1,9 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/lib/auth-context';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+import { apiFetch } from '@/lib/api';
 
 interface CollectionActionType {
   code: string;
@@ -17,7 +15,6 @@ interface CollectionActionsModalProps {
 }
 
 export default function CollectionActionsModal({ loanId, onSuccess, onCancel }: CollectionActionsModalProps) {
-  const { token } = useAuth();
   const [types, setTypes] = useState<CollectionActionType[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -32,7 +29,7 @@ export default function CollectionActionsModal({ loanId, onSuccess, onCancel }: 
 
   // Fetch types from settings
   useEffect(() => {
-    fetch(`${API_URL}/api/settings/collection-action-types`)
+    apiFetch('/api/settings/collection-action-types')
       .then(res => res.json())
       .then(data => {
         if (data.success && data.data.types) {
@@ -54,11 +51,10 @@ export default function CollectionActionsModal({ loanId, onSuccess, onCancel }: 
     setError('');
 
     try {
-      const res = await fetch(`${API_URL}/api/collection-actions/${loanId}`, {
+      const res = await apiFetch(`/api/collection-actions/${loanId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           type: selectedType,

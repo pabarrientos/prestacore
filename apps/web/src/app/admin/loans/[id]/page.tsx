@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { calculateDaysOverdueFromStringSync } from '@/lib/datetime';
+import { apiFetch } from '@/lib/api';
 import PaymentForm from '@/components/PaymentForm';
 import RefinancingModal from '@/components/RefinancingModal';
 import CancelacionAnticipadaModal from '@/components/CancelacionAnticipadaModal';
@@ -90,8 +91,6 @@ interface Payment {
   installmentNumber?: number;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-
 const frequencyLabels: Record<string, { rate: string; plural: string; singular: string }> = {
   WEEKLY: { rate: 'semanal', plural: 'semanas', singular: 'semana' },
   BIWEEKLY: { rate: 'quincenal', plural: 'quincenas', singular: 'quincena' },
@@ -173,7 +172,7 @@ export default function LoanDetailPage() {
 
   // Fetch mora rate on mount
   useEffect(() => {
-    fetch(`${API_URL}/api/settings/rates`)
+    apiFetch('/api/settings/rates')
       .then(res => res.json())
       .then(data => {
         if (data.success && data.data.MORA_RATE) {
@@ -196,17 +195,14 @@ export default function LoanDetailPage() {
     if (!token) return;
 
     try {
-      const res = await fetch(`${API_URL}/api/payments/${payment.id}`, {
+      const res = await apiFetch(`/api/payments/${payment.id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
 
       if (data.success) {
         // Reload loan data
-        const res = await fetch(`${API_URL}/api/loans/${params.id}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await apiFetch(`/api/loans/${params.id}`);
         const loanData = await res.json();
         if (loanData.success) setLoan(loanData.data);
       } else {
@@ -223,9 +219,7 @@ export default function LoanDetailPage() {
     setEditingPayment(null);
     // Reload loan data
     if (token && params.id) {
-      fetch(`${API_URL}/api/loans/${params.id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      apiFetch(`/api/loans/${params.id}`)
         .then((res) => res.json())
         .then((data) => {
           if (data.success) setLoan(data.data);
@@ -236,12 +230,8 @@ export default function LoanDetailPage() {
   useEffect(() => {
     if (token && params.id) {
       Promise.all([
-        fetch(`${API_URL}/api/loans/${params.id}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${API_URL}/api/users/vendors`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
+        apiFetch(`/api/loans/${params.id}`),
+        apiFetch('/api/users/vendors'),
       ])
         .then(([loanRes, vendorsRes]) => Promise.all([loanRes.json(), vendorsRes.json()]))
         .then(([loanData, vendorsData]) => {
@@ -266,11 +256,8 @@ export default function LoanDetailPage() {
     if (!token) return;
     
     try {
-      const res = await fetch(`${API_URL}/api/loans/${params.id}/approve`, {
+      const res = await apiFetch(`/api/loans/${params.id}/approve`, {
         method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       });
       const data = await res.json();
       if (data.success) {
@@ -288,20 +275,16 @@ export default function LoanDetailPage() {
     setReassigning(true);
     try {
       // First update the vendor
-      const res = await fetch(`${API_URL}/api/loans/${params.id}`, {
+      const res = await apiFetch(`/api/loans/${params.id}`, {
         method: 'PATCH',
         headers: {
-          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ assignedVendorId: vendorId }),
       });
       const data = await res.json();
       if (data.success) {
-        // Reload full loan data to get installments
-        const loanRes = await fetch(`${API_URL}/api/loans/${params.id}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const loanRes = await apiFetch(`/api/loans/${params.id}`);
         const loanData = await loanRes.json();
         if (loanData.success) {
           setLoan(loanData.data);
@@ -326,9 +309,9 @@ export default function LoanDetailPage() {
     }
     setSavingCommission(true);
     try {
-      const res = await fetch(`${API_URL}/api/loans/${params.id}`, {
+      const res = await apiFetch(`/api/loans/${params.id}`, {
         method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ commissionPercentage: pct, commissionMode: editCommissionMode }),
       });
       const data = await res.json();
@@ -428,10 +411,9 @@ export default function LoanDetailPage() {
               onClick={async () => {
                 if (!confirm('¿Marcar este préstamo como DEFAULTED (en mora)?')) return;
                 try {
-                  const res = await fetch(`${API_URL}/api/loans/${params.id}`, {
+                  const res = await apiFetch(`/api/loans/${params.id}`, {
                     method: 'PATCH',
                     headers: { 
-                      Authorization: `Bearer ${token}`,
                       'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({ status: 'DEFAULTED' })
@@ -457,10 +439,9 @@ export default function LoanDetailPage() {
               onClick={async () => {
                 if (!confirm('¿Reactivar este préstamo (volver a ACTIVE)?')) return;
                 try {
-                  const res = await fetch(`${API_URL}/api/loans/${params.id}`, {
+                  const res = await apiFetch(`/api/loans/${params.id}`, {
                     method: 'PATCH',
                     headers: { 
-                      Authorization: `Bearer ${token}`,
                       'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({ status: 'ACTIVE' })
@@ -935,11 +916,8 @@ export default function LoanDetailPage() {
               loanId={loan.id}
               onSuccess={() => {
                 setShowRefinancing(false);
-                // Reload loan data
                 if (token && params.id) {
-                  fetch(`${API_URL}/api/loans/${params.id}`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                  })
+                  apiFetch(`/api/loans/${params.id}`)
                     .then((res) => res.json())
                     .then((data) => {
                       if (data.success) setLoan(data.data);
@@ -963,11 +941,8 @@ export default function LoanDetailPage() {
               loanId={loan.id}
               onSuccess={() => {
                 setShowCancelacionAnticipada(false);
-                // Reload loan data
                 if (token && params.id) {
-                  fetch(`${API_URL}/api/loans/${params.id}`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                  })
+                  apiFetch(`/api/loans/${params.id}`)
                     .then((res) => res.json())
                     .then((data) => {
                       if (data.success) setLoan(data.data);
