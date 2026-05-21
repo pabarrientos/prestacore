@@ -89,15 +89,6 @@ export interface InstallmentRow {
   status: string;
 }
 
-/** Merged payment row for the PDF table */
-export interface MergedPaymentRow {
-  date: string;
-  amount: number;
-  installmentNumber: number | null;
-  reference: string;
-  isAbonoACuenta: boolean;
-}
-
 /** Main data DTO for the account statement PDF */
 export interface AccountStatementPDFData {
   id: string;

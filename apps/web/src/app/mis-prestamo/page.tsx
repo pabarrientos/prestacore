@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
+import { roundForDisplay } from '@/lib/rounding';
 
 interface Loan {
   id: string;
@@ -66,6 +67,18 @@ export default function MisPrestamosPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [limit] = useState(20);
+  const [roundingUnit, setRoundingUnit] = useState<number>(1000);
+
+  useEffect(() => {
+    fetch(`${API_URL}/api/settings`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.data.ROUNDING_UNIT) {
+          setRoundingUnit(Number(data.data.ROUNDING_UNIT.value));
+        }
+      })
+      .catch(console.error);
+  }, []);
 
   useEffect(() => {
     if (token) {
@@ -98,19 +111,21 @@ export default function MisPrestamosPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6 dark:text-white/[.87]">Mis Préstamos</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <h1 className="text-2xl font-bold dark:text-white/[.87]">Mis Préstamos</h1>
+        <a
+          href="/simulator"
+          className="inline-block px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 dark:bg-[#39ff14] dark:text-black dark:hover:bg-[#32e012] text-center"
+        >
+          Solicitar un Préstamo
+        </a>
+      </div>
 
       {loans.length === 0 ? (
         <div className="bg-white rounded-lg shadow p-8 text-center dark:bg-[#1e1e1e]">
-          <p className="text-gray-600 dark:text-white/60 mb-4">
+          <p className="text-gray-600 dark:text-white/60">
             No tienes préstamos activos en este momento.
           </p>
-          <a
-            href="/simulator"
-            className="inline-block px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 dark:bg-[#39ff14] dark:text-black dark:hover:bg-[#32e012]"
-          >
-            Solicitar un Préstamo
-          </a>
         </div>
       ) : (
         <>
@@ -155,7 +170,7 @@ export default function MisPrestamosPage() {
                         {loan.termMonths} {frequencyLabels[loan.frequency]?.plural}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap dark:text-white/[.87]">
-                        ${loan.installmentAmount.toLocaleString()}
+                        ${roundForDisplay(loan.installmentAmount, roundingUnit).toLocaleString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span

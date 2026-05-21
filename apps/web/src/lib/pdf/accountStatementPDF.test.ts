@@ -6,9 +6,9 @@ import type {
   AccountStatementPDFData,
   InstallmentPDFData,
   PaymentPDFData,
-  MergedPaymentRow,
   InstallmentRow,
 } from './types';
+import type { MergedPaymentRow } from '@/lib/payments';
 
 // Use hoisted to ensure mocks are defined at the correct scope
 const { mockSetFontSize, mockText, mockSetTextColor, mockAutoTable, mockSave, mockAddPage, mockGetNumberOfPages, mockSetFillColor, mockSetDrawColor, mockSetLineWidth, mockRect, mockAddImage, mockGetCurrentPageInfo, mockSetFont, mockLine, mockSetPage } = vi.hoisted(() => ({
@@ -65,7 +65,8 @@ vi.mock('jspdf-autotable', () => {
   };
 });
 
-import { calculateInstallmentStatus, mergePayments, generateAccountStatementPDF, calculateMoraPagada, getPeriodRate, calculateMoraAcumulada } from './accountStatementPDF';
+import { calculateInstallmentStatus, generateAccountStatementPDF, calculateMoraPagada, getPeriodRate, calculateMoraAcumulada } from './accountStatementPDF';
+import { mergePayments } from '@/lib/payments';
 
 // Test data factory
 function makeMockInstallment(overrides: Partial<InstallmentPDFData> = {}): InstallmentPDFData {

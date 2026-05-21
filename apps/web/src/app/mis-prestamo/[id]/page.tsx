@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { calculateDaysOverdueFromStringSync } from '@/lib/datetime';
+import { roundForDisplay } from '@/lib/rounding';
+import { mergePaymentsByDate } from '@/lib/payments';
 
 interface Installment {
   id: string;
@@ -30,6 +32,9 @@ interface Payment {
   notes?: string;
   installmentId?: string;
   installmentNumber?: number;
+  installment?: {
+    installmentNumber?: number;
+  };
 }
 
 interface LoanDetail {
@@ -149,14 +154,20 @@ export default function MisPrestamosDetallePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [moraRate, setMoraRate] = useState(0.0005); // Default fallback
+  const [roundingUnit, setRoundingUnit] = useState<number>(1000);
 
-  // Fetch mora rate on mount
+  // Fetch mora rate and rounding unit on mount
   useEffect(() => {
-    fetch(`${API_URL}/api/settings/rates`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.success && data.data.MORA_RATE) {
-          setMoraRate(data.data.MORA_RATE);
+    Promise.all([
+      fetch(`${API_URL}/api/settings/rates`).then(res => res.json()),
+      fetch(`${API_URL}/api/settings`).then(res => res.json()),
+    ])
+      .then(([ratesData, settingsData]) => {
+        if (ratesData.success && ratesData.data.MORA_RATE) {
+          setMoraRate(ratesData.data.MORA_RATE);
+        }
+        if (settingsData.success && settingsData.data.ROUNDING_UNIT) {
+          setRoundingUnit(Number(settingsData.data.ROUNDING_UNIT.value));
         }
       })
       .catch(console.error);
@@ -184,6 +195,14 @@ export default function MisPrestamosDetallePage() {
         .finally(() => setLoading(false));
     }
   }, [token, params.id]);
+
+  const mergedPayments = useMemo(() => {
+    const flat = (loan?.payments ?? []).map(p => ({
+      ...p,
+      installmentNumber: p.installmentNumber ?? p.installment?.installmentNumber ?? undefined,
+    }));
+    return mergePaymentsByDate(flat);
+  }, [loan?.payments]);
 
   if (loading) {
     return (
@@ -266,15 +285,15 @@ export default function MisPrestamosDetallePage() {
           </div>
           <div>
             <p className="text-sm text-gray-500 dark:text-white/38">Cuota ({freq.singular})</p>
-            <p className="text-lg sm:text-xl font-bold dark:text-white/[.87]">${Number(loan.installmentAmount).toLocaleString()}</p>
+            <p className="text-lg sm:text-xl font-bold dark:text-white/[.87]">${roundForDisplay(Number(loan.installmentAmount), roundingUnit).toLocaleString()}</p>
           </div>
           <div>
             <p className="text-sm text-gray-500 dark:text-white/38">Total Intereses</p>
-            <p className="text-base sm:text-lg dark:text-white/[.87]">${Number(loan.totalInterest).toLocaleString()}</p>
+            <p className="text-base sm:text-lg dark:text-white/[.87]">${roundForDisplay(Number(loan.totalInterest), roundingUnit).toLocaleString()}</p>
           </div>
           <div>
             <p className="text-sm text-gray-500 dark:text-white/38">Total a Pagar</p>
-            <p className="text-base sm:text-lg dark:text-white/[.87]">${Number(loan.totalPayment).toLocaleString()}</p>
+            <p className="text-base sm:text-lg dark:text-white/[.87]">${roundForDisplay(Number(loan.totalPayment), roundingUnit).toLocaleString()}</p>
           </div>
           <div>
             <p className="text-sm text-gray-500 dark:text-white/38">Fecha de Inicio</p>
@@ -383,16 +402,16 @@ export default function MisPrestamosDetallePage() {
                 <tr key={inst.id} className={getRowClass(inst.dynamicStatus, inst.dueDate)}>
                   <td className="px-4 py-3 dark:text-white/[.87]">{inst.installmentNumber}</td>
                   <td className="px-4 py-3 dark:text-white/[.87]">{formatDate(inst.dueDate)}</td>
-                  <td className="px-4 py-3 dark:text-white/[.87]">${Number(inst.amount).toLocaleString()}</td>
-                  <td className="px-4 py-3 dark:text-white/[.87]">${Number(inst.principal).toLocaleString()}</td>
-                  <td className="px-4 py-3 dark:text-white/[.87]">${Number(inst.interest).toLocaleString()}</td>
-                  <td className="px-4 py-3 font-medium dark:text-white/[.87]">${Number(inst.capitalBalance || inst.balance).toLocaleString()}</td>
+                  <td className="px-4 py-3 dark:text-white/[.87]">${roundForDisplay(Number(inst.amount), roundingUnit).toLocaleString()}</td>
+                  <td className="px-4 py-3 dark:text-white/[.87]">${roundForDisplay(Number(inst.principal), roundingUnit).toLocaleString()}</td>
+                  <td className="px-4 py-3 dark:text-white/[.87]">${roundForDisplay(Number(inst.interest), roundingUnit).toLocaleString()}</td>
+                  <td className="px-4 py-3 font-medium dark:text-white/[.87]">${roundForDisplay(Number(inst.capitalBalance || inst.balance), roundingUnit).toLocaleString()}</td>
                   <td className="px-4 py-3 dark:text-white/[.87]">
                     <div className="flex flex-col">
-                      <span>${(Number(inst.balance)).toLocaleString()}</span>
+                      <span>${roundForDisplay(Number(inst.balance), roundingUnit).toLocaleString()}</span>
                       {inst.totalPaid > 0 && (
                         <span className="text-xs text-green-600 dark:text-green-400">
-                          Pagado: ${inst.totalPaid.toLocaleString()}
+                          Pagado: ${roundForDisplay(inst.totalPaid, roundingUnit).toLocaleString()}
                         </span>
                       )}
                     </div>
@@ -400,7 +419,7 @@ export default function MisPrestamosDetallePage() {
                   {(inst.dynamicStatus === 'PARTIAL' || inst.dynamicStatus === 'OVERDUE') ? (
                     <>
                       <td className="px-4 py-3 text-orange-600 dark:text-orange-400">
-                        ${inst.calculatedMora.toLocaleString()}
+                        ${roundForDisplay(inst.calculatedMora, roundingUnit).toLocaleString()}
                       </td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-1 text-xs rounded-full ${
@@ -433,7 +452,7 @@ export default function MisPrestamosDetallePage() {
       </div>
 
       {/* Payment History */}
-      {loan.payments && loan.payments.length > 0 && (
+      {mergedPayments.length > 0 && (
         <div className="bg-white dark:bg-[#1e1e1e] rounded-lg shadow overflow-hidden mb-6">
           <div className="p-4 border-b dark:border-gray-700">
             <h2 className="text-lg font-semibold dark:text-white/[.87]">Historial de Pagos</h2>
@@ -446,30 +465,25 @@ export default function MisPrestamosDetallePage() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-white/38 uppercase">Monto</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-white/38 uppercase">Cuota</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-white/38 uppercase">Referencia</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-white/38 uppercase">Notas</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {loan.payments.map((payment) => {
-                  const installment = loan.installments?.find(i => i.id === payment.installmentId);
-                  return (
-                  <tr key={payment.id}>
-                    <td className="px-4 py-3 dark:text-white/[.87]">{formatDate(payment.paymentDate)}</td>
-                    <td className="px-4 py-3 font-medium dark:text-white/[.87]">${Number(payment.amount).toLocaleString()}</td>
+                {mergedPayments.map((payment, idx) => (
+                  <tr key={`merged-payment-${idx}`}>
+                    <td className="px-4 py-3 dark:text-white/[.87]">{formatDate(payment.date)}</td>
+                    <td className="px-4 py-3 font-medium dark:text-white/[.87]">${roundForDisplay(payment.amount, roundingUnit).toLocaleString()}</td>
                     <td className="px-4 py-3">
-                      {installment ? (
+                      {payment.installmentNumber != null ? (
                         <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-400 rounded text-xs">
-                          Cuota #{installment.installmentNumber}
+                          Cuota #{payment.installmentNumber}
                         </span>
                       ) : (
                         <span className="text-gray-400 dark:text-white/38 text-xs">Abono a cuenta</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-sm dark:text-white/[.87]">{payment.reference || '-'}</td>
-                    <td className="px-4 py-3 text-sm dark:text-white/[.87]">{payment.notes || '-'}</td>
                   </tr>
-                  );
-                })}
+                ))}
               </tbody>
             </table>
           </div>
