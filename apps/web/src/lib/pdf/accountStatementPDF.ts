@@ -600,8 +600,19 @@ function addInstallmentsTable(
 
 function addPaymentsTable(doc: jsPDF, mergedPayments: MergedPaymentRow[]): void {
   const docAny = doc as unknown as Record<string, unknown>;
-  const lastY = (docAny.lastAutoTable as { finalY: number } | undefined)?.finalY ?? 40;
+  let lastY = (docAny.lastAutoTable as { finalY: number } | undefined)?.finalY ?? 40;
   const margin = 20;
+  const pageHeight = doc.internal.pageSize.height;
+
+  // Prevent orphan table header: autoTable draws head row BEFORE checking
+  // if a body row fits (margin.bottom=35). Section title(15+7) + table offset(18)
+  // + head row(~9) + first body row(~7) = ~56mm minimum from lastY.
+  // Check against pageHeight - margin.bottom to match autoTable's internal logic.
+  if (mergedPayments.length > 0 && lastY + 56 > pageHeight - 35) {
+    doc.addPage();
+    addHeader(doc, '');
+    lastY = 25;
+  }
 
   if (mergedPayments.length === 0) {
     // Section header even when no payments
