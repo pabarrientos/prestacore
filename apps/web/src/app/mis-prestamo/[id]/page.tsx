@@ -361,6 +361,11 @@ export default function MisPrestamosDetallePage() {
                 // Calculate payments for this installment
                 const paymentsForInstallment = loan.payments?.filter(p => p.installmentId === inst.id) || [];
                 const totalPaidForInstallment = paymentsForInstallment.reduce((sum, p) => sum + Number(p.amount), 0);
+
+                // Merged total paid for this cuota (matches payment history table)
+                const mergedTotalPaid = mergedPayments
+                  .filter(p => p.installmentNumber === inst.installmentNumber)
+                  .reduce((sum, p) => sum + p.amount, 0);
                 
                 // Calculate days overdue using string comparison (same as backend)
                 const daysOverdue = calculateDaysOverdueFromStringSync(inst.dueDate);
@@ -392,21 +397,23 @@ export default function MisPrestamosDetallePage() {
                   dynamicStatus = daysOverdue > 0 ? 'OVERDUE' : 'PENDING';
                 }
                 
-                return [...acc, { ...inst, capitalBalance, dynamicStatus, totalPaid: totalPaidForInstallment, calculatedMora, daysOverdue }];
-              }, [] as (Installment & { capitalBalance: number; dynamicStatus: string; totalPaid: number; calculatedMora: number; daysOverdue: number })[]).map((inst) => (
+                return [...acc, { ...inst, capitalBalance, dynamicStatus, totalPaid: totalPaidForInstallment, mergedTotalPaid, calculatedMora, daysOverdue }];
+              }, [] as (Installment & { capitalBalance: number; dynamicStatus: string; totalPaid: number; mergedTotalPaid: number; calculatedMora: number; daysOverdue: number })[]).map((inst) => (
                 <tr key={inst.id} className={getRowClass(inst.dynamicStatus, inst.dueDate)}>
                   <td className="px-4 py-3 dark:text-white/[.87]">{inst.installmentNumber}</td>
                   <td className="px-4 py-3 dark:text-white/[.87]">{formatDate(inst.dueDate)}</td>
                   <td className="px-4 py-3 dark:text-white/[.87]">${roundForDisplay(Number(inst.amount), roundingUnit).toLocaleString()}</td>
                   <td className="px-4 py-3 dark:text-white/[.87]">${roundForDisplay(Number(inst.principal), roundingUnit).toLocaleString()}</td>
                   <td className="px-4 py-3 dark:text-white/[.87]">${roundForDisplay(Number(inst.interest), roundingUnit).toLocaleString()}</td>
-                  <td className="px-4 py-3 font-medium dark:text-white/[.87]">${roundForDisplay(Number(inst.capitalBalance || inst.balance), roundingUnit).toLocaleString()}</td>
+                  <td className="px-4 py-3 font-medium dark:text-white/[.87]">${roundForDisplay(Number(inst.capitalBalance), roundingUnit).toLocaleString()}</td>
                   <td className="px-4 py-3 dark:text-white/[.87]">
                     <div className="flex flex-col">
-                      <span>${roundForDisplay(Number(inst.balance), roundingUnit).toLocaleString()}</span>
-                      {inst.totalPaid > 0 && (
+                      <span>${inst.dynamicStatus === 'PARTIAL' && Number(inst.balance) > 0
+                        ? (roundForDisplay(Number(inst.amount), roundingUnit) - inst.mergedTotalPaid).toLocaleString()
+                        : roundForDisplay(Number(inst.balance), roundingUnit).toLocaleString()}</span>
+                      {inst.mergedTotalPaid > 0 && (
                         <span className="text-xs text-green-600 dark:text-green-400">
-                          Pagado: ${roundForDisplay(inst.totalPaid, roundingUnit).toLocaleString()}
+                          Pagado: ${Number(inst.mergedTotalPaid).toLocaleString()}
                         </span>
                       )}
                     </div>
@@ -466,7 +473,7 @@ export default function MisPrestamosDetallePage() {
                 {mergedPayments.map((payment, idx) => (
                   <tr key={`merged-payment-${idx}`}>
                     <td className="px-4 py-3 dark:text-white/[.87]">{formatDate(payment.date)}</td>
-                    <td className="px-4 py-3 font-medium dark:text-white/[.87]">${roundForDisplay(payment.amount, roundingUnit).toLocaleString()}</td>
+                    <td className="px-4 py-3 font-medium dark:text-white/[.87]">${Number(payment.amount).toLocaleString()}</td>
                     <td className="px-4 py-3">
                       {payment.installmentNumber != null ? (
                         <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-400 rounded text-xs">

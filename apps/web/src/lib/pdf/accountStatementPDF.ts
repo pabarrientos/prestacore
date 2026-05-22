@@ -450,7 +450,7 @@ function addFinancialSummary(
 
   let y = startY + 18;
 
-  const totalPaid = mergedPayments.reduce((sum, p) => sum + roundUpInstallment(p.amount, roundingUnit), 0);
+  const totalPaid = mergedPayments.reduce((sum, p) => sum + p.amount, 0);
   const saldoPendiente = rows.reduce((sum, r) => sum + roundUpInstallment(r.saldo, roundingUnit), 0);
   const moraAcumulada = calculateMoraAcumulada(rows, roundingUnit);
   const moraPagada = calculateMoraPagada(data.installments, mergedPayments, roundingUnit);
@@ -530,7 +530,7 @@ function addInstallmentsTable(
     String(r.installmentNumber),
     formatDateToDDMMYYYY(r.dueDate),
     formatCurrency(roundUpInstallment(r.cuota, roundingUnit)),
-    formatCurrency(roundUpInstallment(r.saldo, roundingUnit)),
+    formatCurrency((r.status === 'PARTIAL' && r.saldo > 0) ? r.saldo : roundUpInstallment(r.saldo, roundingUnit)),
     (r.status === 'PARTIAL' || r.status === 'OVERDUE')
       ? formatCurrency(roundUpInstallment(r.mora, roundingUnit))
       : '-',
@@ -593,7 +593,7 @@ function addInstallmentsTable(
   });
 }
 
-function addPaymentsTable(doc: jsPDF, mergedPayments: MergedPaymentRow[], roundingUnit: number): void {
+function addPaymentsTable(doc: jsPDF, mergedPayments: MergedPaymentRow[]): void {
   const docAny = doc as unknown as Record<string, unknown>;
   const lastY = (docAny.lastAutoTable as { finalY: number } | undefined)?.finalY ?? 40;
   const margin = 20;
@@ -629,7 +629,7 @@ function addPaymentsTable(doc: jsPDF, mergedPayments: MergedPaymentRow[], roundi
 
   const tableData = mergedPayments.map((p) => [
     formatDateToDDMMYYYY(p.date),
-    formatCurrency(roundUpInstallment(p.amount, roundingUnit)),
+    formatCurrency(p.amount),
     p.installmentNumber != null ? `#${p.installmentNumber}` : '-',
     p.reference,
   ]);
@@ -713,7 +713,9 @@ export function generateAccountStatementPDF(data: AccountStatementPDFData, round
       dueDate: inst.dueDate,
       cuota: inst.amount,
       paid: totalPaid,
-      saldo: Number(inst.balance),
+      saldo: result.status === 'PARTIAL' && Number(inst.balance) > 0
+        ? roundUpInstallment(inst.amount, roundingUnit) - totalPaid
+        : Number(inst.balance),
       mora: result.mora,
       daysOverdue: result.daysOverdue,
       status: result.status,
@@ -751,7 +753,7 @@ export function generateAccountStatementPDF(data: AccountStatementPDFData, round
   addInstallmentsTable(doc, computedInstallments, roundingUnit, y);
 
   // Payments table
-  addPaymentsTable(doc, mergedPayments, roundingUnit);
+  addPaymentsTable(doc, mergedPayments);
 
   // Footer on every page (iterates all pages and draws footer on each)
   addFooter(doc);
