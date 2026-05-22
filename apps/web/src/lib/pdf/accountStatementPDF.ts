@@ -451,7 +451,12 @@ function addFinancialSummary(
   let y = startY + 18;
 
   const totalPaid = mergedPayments.reduce((sum, p) => sum + p.amount, 0);
-  const saldoPendiente = rows.reduce((sum, r) => sum + roundUpInstallment(r.saldo, roundingUnit), 0);
+  const saldoPendiente = rows.reduce((sum, r) => {
+    const displayedSaldo = (r.status === 'PARTIAL' && r.saldo > 0)
+      ? r.saldo
+      : roundUpInstallment(r.saldo, roundingUnit);
+    return sum + displayedSaldo;
+  }, 0);
   const moraAcumulada = calculateMoraAcumulada(rows, roundingUnit);
   const moraPagada = calculateMoraPagada(data.installments, mergedPayments, roundingUnit);
 

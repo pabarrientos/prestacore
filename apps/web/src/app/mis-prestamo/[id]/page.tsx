@@ -224,6 +224,10 @@ export default function MisPrestamosDetallePage() {
   const freq = frequencyLabels[loan.frequency] || frequencyLabels.MONTHLY;
   const periodicRate = getPeriodicRate(loan.interestRate, loan.frequency);
 
+  const displayTotalPayment = loan.installments
+    .reduce((sum, inst) => sum + roundForDisplay(Number(inst.amount), roundingUnit), 0);
+  const displayTotalInterest = displayTotalPayment - Number(loan.amount);
+
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
@@ -284,11 +288,11 @@ export default function MisPrestamosDetallePage() {
           </div>
           <div>
             <p className="text-sm text-gray-500 dark:text-white/38">Total Intereses</p>
-            <p className="text-base sm:text-lg dark:text-white/[.87]">${roundForDisplay(Number(loan.totalInterest), roundingUnit).toLocaleString()}</p>
+            <p className="text-base sm:text-lg dark:text-white/[.87]">${displayTotalInterest.toLocaleString()}</p>
           </div>
           <div>
             <p className="text-sm text-gray-500 dark:text-white/38">Total a Pagar</p>
-            <p className="text-base sm:text-lg dark:text-white/[.87]">${roundForDisplay(Number(loan.totalPayment), roundingUnit).toLocaleString()}</p>
+            <p className="text-base sm:text-lg dark:text-white/[.87]">${displayTotalPayment.toLocaleString()}</p>
           </div>
           <div>
             <p className="text-sm text-gray-500 dark:text-white/38">Fecha de Inicio</p>
