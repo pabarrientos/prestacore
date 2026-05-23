@@ -52,6 +52,7 @@ export default function ProfileLayout({
         { href: '/admin/settings', label: 'Configuración' },
         { href: '/admin/users', label: 'Usuarios' },
         { href: '/admin/commissions', label: 'Comisiones' },
+        { href: '/admin/settings/backups', label: 'Respaldos' },
         { href: '/profile', label: 'Mi Perfil' },
       ]
     : isVendor
