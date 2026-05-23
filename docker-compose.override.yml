@@ -9,7 +9,7 @@ services:
     image: node:20-bullseye-slim
     container_name: prestamos-api-dev
     working_dir: /app
-    command: sh -c "apt-get update && apt-get install -y locales && sed -i '/es_AR.UTF-8/s/^# //' /etc/locale.gen && locale-gen es_AR.UTF-8 && npm install -g pnpm && pnpm install --frozen-lockfile && cd packages/database && pnpm exec prisma generate && pnpm --filter @prestamos/api dev"
+    command: sh -c "apt-get update && apt-get install -y locales postgresql-client && sed -i '/es_AR.UTF-8/s/^# //' /etc/locale.gen && locale-gen es_AR.UTF-8 && npm install -g pnpm && pnpm install --frozen-lockfile && cd packages/database && pnpm exec prisma generate && pnpm --filter @prestamos/api dev"
     environment:
       DATABASE_URL: postgresql://prestamos:prestamos_dev@postgres:5432/prestamos?schema=public
       PORT: 3001
@@ -54,6 +54,7 @@ services:
       - "3000:3000"
     volumes:
       - ./apps/web:/app/apps/web
+      - ./apps/api/package.json:/app/apps/api/package.json
       - ./packages/database:/app/packages/database
       - ./packages/shared:/app/packages/shared
       - ./package.json:/app/package.json
