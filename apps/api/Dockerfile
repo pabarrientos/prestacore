@@ -18,7 +18,8 @@ COPY packages/shared/package.json ./packages/shared/
 # Install all dependencies (including devDependencies for build)
 RUN pnpm install --frozen-lockfile
 
-# Install PostgreSQL client for pg_dump/pg_restore (both build and production)
+# Install PostgreSQL client for pg_dump/pg_restore (build stage)
+# node:20-slim is Debian bookworm — postgresql-client-15 is in default repos
 RUN apt-get update && apt-get install -y postgresql-client-15
 
 # Copy all source code
@@ -39,7 +40,8 @@ FROM node:20-bullseye-slim AS production
 WORKDIR /app
 
 # Install Argentine locale (es_AR.UTF-8) AND PostgreSQL client
-RUN apt-get update && apt-get install -y locales postgresql-client-15 && \
+# node:20-bullseye-slim (Debian 11) — use postgresql-client (PG 13) which is compatible with PG 15 server
+RUN apt-get update && apt-get install -y locales postgresql-client && \
     sed -i '/es_AR.UTF-8/s/^# //' /etc/locale.gen && \
     locale-gen es_AR.UTF-8
 

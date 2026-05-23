@@ -13,6 +13,7 @@ import userRoutes from './routes/users';
 import collectionActionRoutes from './routes/collection-actions';
 import collectionActionByIdRoutes from './routes/collection-actions-by-id';
 import commissionRoutes from './routes/commissions';
+import backupRoutes from './routes/backups';
 import { seedDefaultAmortizationSystem } from './services/settings';
 
 config();
@@ -41,6 +42,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/collection-actions', collectionActionRoutes);
 app.use('/api/collection-actions', collectionActionByIdRoutes);
 app.use('/api/commissions', commissionRoutes);
+app.use('/api/backups', backupRoutes);
 
 // Error handling middleware
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {

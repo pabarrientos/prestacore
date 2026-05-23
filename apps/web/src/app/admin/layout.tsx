@@ -55,6 +55,7 @@ export default function AdminLayout({
     ? [
         { href: '/admin/users', label: 'Usuarios' },
         { href: '/admin/commissions', label: 'Comisiones' },
+        { href: '/admin/settings/backups', label: 'Respaldos' },
       ]
     : [];
 

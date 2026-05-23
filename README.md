@@ -161,6 +161,86 @@ cd apps/api && pnpm exec vitest run src/routes/
 cd apps/web && pnpm test:e2e
 ```
 
+## 💾 Respaldos de Base de Datos
+
+El sistema cuenta con un módulo completo de respaldo y restauración de PostgreSQL accesible desde **Admin → Configuración → Respaldos**.
+
+### Acceso
+
+- **Ruta**: `/admin/settings/backups` (solo ADMIN)
+- **Credencial por defecto**: `admin@prestamos.com` / `admin123`
+
+### Crear un respaldo manual
+
+1. Ir a **Admin → Configuración → Respaldos**
+2. Hacer clic en **"+ Crear Respaldo"**
+3. El respaldo se genera con `pg_dump` y aparece en la lista
+
+### Programar respaldos automáticos
+
+En la tarjeta **Programación de Respaldos**:
+
+1. Activar el toggle **Activo**
+2. Elegir frecuencia: **Diario**, **Semanal** o **Mensual**
+3. Configurar la hora (formato 24h, 0-23)
+4. Para semanal: elegir el día de la semana
+5. Para mensual: elegir el día del mes (1-31)
+6. Guardar
+
+### Política de retención
+
+En la misma tarjeta de programación, configurar:
+
+- **Máx. cantidad de respaldos**: elimina los más antiguos cuando se supere el límite
+- **Máx. edad (días)**: elimina respaldos más antiguos que el límite de días
+
+Ambos filtros se aplican simultáneamente.
+
+### Descargar respaldos
+
+Desde la lista de respaldos, hacer clic en **"Descargar"** en la fila correspondiente. El archivo `.dump` se guarda localmente.
+
+### Restaurar desde un respaldo existente
+
+1. En la lista, hacer clic en **"Restaurar"** en la fila del respaldo
+2. Se muestra una previsualización con tablas y cantidad de filas
+3. Marcar el checkbox de confirmación: *"Entiendo que esto sobreescribirá todos los datos actuales"*
+4. Hacer clic en **"Restaurar"**
+
+### Restaurar desde archivo externo
+
+1. Ir a la tarjeta **"Restaurar desde Archivo Externo"**
+2. Seleccionar un archivo `.sql`, `.dump` o `.tar`
+3. Hacer clic en **"Subir y Previsualizar"**
+4. Revisar la previsualización de tablas
+5. Usar el botón **"Restaurar"** que abre el diálogo de confirmación
+6. Confirmar la restauración
+
+### Almacenamiento
+
+Los archivos de respaldo se almacenan en el volumen Docker:
+
+```
+./storage/backups    # Host
+/app/backups         # Contenedor API
+```
+
+> **Nota**: `pg_dump` y `pg_restore` se ejecutan dentro del contenedor de la API (requiere `postgresql-client-15` instalado, ya incluido en el Dockerfile).
+
+### Endpoints API relacionados
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/api/backups` | Listar todos los respaldos |
+| POST | `/api/backups` | Crear respaldo manual |
+| GET | `/api/backups/:id/download` | Descargar archivo |
+| DELETE | `/api/backups/:id` | Eliminar respaldo |
+| POST | `/api/backups/upload` | Subir respaldo externo |
+| GET | `/api/backups/preview/:id` | Previsualizar tablas |
+| POST | `/api/backups/:id/restore` | Ejecutar restauración |
+| GET | `/api/backups/schedule` | Obtener configuración |
+| PATCH | `/api/backups/schedule` | Guardar schedule + retención |
+
 ## 📡 API Endpoints
 
 ### Autenticación
