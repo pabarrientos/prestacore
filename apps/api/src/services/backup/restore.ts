@@ -1,5 +1,6 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { stat } from 'fs/promises';
 
 const execAsync = promisify(exec);
 
@@ -88,32 +89,9 @@ export async function previewRestore(filepath: string): Promise<RestorePreview> 
     } catch {
       // Row counts are optional — table list is already shown
     }
-      
-      while ((match = copyRegex.exec(data)) !== null) {
-        const tableName = match[1];
-        if (!seenTables.has(tableName)) {
-          seenTables.add(tableName);
-          // Estimate row count from file size and table data
-          const tableCopyRegex = new RegExp(`COPY\\s+${tableName}[^;]+;`, 'gm');
-          const copies = data.match(tableCopyRegex);
-          let rowCount = 0;
-          
-          if (copies) {
-            for (const copy of copies) {
-              // Count newlines in COPY data section (rows)
-              const lines = copy.split('\n').length - 2; // -2 for header and ;
-              rowCount += Math.max(0, lines);
-            }
-          }
-          
-          tables.push({ name: tableName, rowCount });
-        }
-      }
-    }
 
     // Get file size
-    const fs = await import('fs/promises');
-    const stats = await fs.stat(filepath);
+    const stats = await stat(filepath);
 
     return {
       tables,
