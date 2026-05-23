@@ -72,7 +72,7 @@ export async function restoreBackup(id: string, confirm: true): Promise<void> {
 }
 
 // Get schedule config
-export async function getSchedule(): Promise<BackupSchedule> {
+export async function getSchedule(): Promise<BackupSchedule | null> {
   const res = await apiFetch('/api/backups/schedule');
   const data = await res.json();
   if (!data.success) throw new Error(data.error);

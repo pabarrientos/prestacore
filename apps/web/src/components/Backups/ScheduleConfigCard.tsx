@@ -28,9 +28,7 @@ export function ScheduleConfigCard() {
   useEffect(() => {
     getSchedule()
       .then((data) => {
-        setSchedule(data);
-        // retention is stored alongside schedule in BACKUP_SCHEDULE
-        // but the API returns only schedule, so we try to load from a separate key
+        if (data) setSchedule(data);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
