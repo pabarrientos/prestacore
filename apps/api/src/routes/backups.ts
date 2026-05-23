@@ -203,7 +203,9 @@ router.delete('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res
 // POST /api/backups/upload - Upload a backup file for restore
 router.post('/upload', authMiddleware, requireAdmin, upload.single('file'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
+    console.log('[upload] Received upload request');
     if (!req.file) {
+      console.log('[upload] No file in request');
       res.status(400).json({
         success: false,
         error: 'No file uploaded',
@@ -211,18 +213,24 @@ router.post('/upload', authMiddleware, requireAdmin, upload.single('file'), asyn
       return;
     }
 
+    console.log('[upload] File received:', req.file.originalname, req.file.size, 'bytes');
+
     const storage = new LocalStorage();
     const filename = `upload-${Date.now()}${path.extname(req.file.originalname)}`;
     const destPath = storage.getPath(filename);
 
     // Move file from temp location to backups directory
     // Use copyFile + unlink instead of rename to handle cross-device moves (Docker volumes)
+    console.log('[upload] Copying from', req.file.path, 'to', destPath);
     await fs.mkdir(path.dirname(destPath), { recursive: true });
     await fs.copyFile(req.file.path, destPath);
     await fs.unlink(req.file.path);
+    console.log('[upload] File copied successfully');
 
     // Validate the backup file
+    console.log('[upload] Validating backup file...');
     const isValid = await validateBackupFile(destPath);
+    console.log('[upload] Validation result:', isValid);
     if (!isValid) {
       await fs.unlink(destPath).catch(() => {});
       res.status(400).json({

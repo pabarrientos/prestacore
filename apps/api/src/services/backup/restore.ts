@@ -28,15 +28,20 @@ export async function previewRestore(filepath: string): Promise<RestorePreview> 
     });
 
     // Parse pg_restore output for table names
+    // Format: "NUMBER; OID SCHEMA_OID TYPE [DATA] SCHEMA TABLE_NAME OWNER"
     const tables: TableMetadata[] = [];
-    const tableRegex = /^\d+\.\s+(\S+)/gm;
+    const tableRegex = /^\d+;\s+\d+\s+\d+\s+TABLE(?:\s+DATA)?\s+(\S+)\s+(\S+)/gm;
     let match;
 
     while ((match = tableRegex.exec(stdout)) !== null) {
-      const name = match[1];
-      // Skip internal PostgreSQL tables and indexes
-      if (!name.startsWith('pg_') && !name.includes('_pkey') && !name.includes('_fkey')) {
-        tables.push({ name, rowCount: 0 });
+      const schema = match[1];
+      const name = match[2];
+      // Skip internal PostgreSQL objects, indexes, and constraints
+      if (schema === 'public' && !name.startsWith('pg_') && !name.includes('_pkey') && !name.includes('_fkey') && !name.includes('_idx')) {
+        // Only add each table once (TABLE DATA duplicates TABLE entries)
+        if (!tables.find(t => t.name === name)) {
+          tables.push({ name, rowCount: 0 });
+        }
       }
     }
 
