@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useCallback } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { ScheduleConfigCard } from '@/components/Backups/ScheduleConfigCard';
 import { BackupListTable } from '@/components/Backups/BackupListTable';
@@ -7,6 +8,11 @@ import { RestoreCard } from '@/components/Backups/RestoreCard';
 
 export default function BackupsPage() {
   const { user } = useAuth();
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleRefresh = useCallback(() => {
+    setRefreshKey(k => k + 1);
+  }, []);
 
   if (user?.role !== 'ADMIN') {
     return (
@@ -32,12 +38,12 @@ export default function BackupsPage() {
 
         {/* Right column: upload + restore */}
         <div className="space-y-6">
-          <RestoreCard />
+          <RestoreCard onUploaded={handleRefresh} />
         </div>
       </div>
 
       {/* Full width: backup list */}
-      <BackupListTable />
+      <BackupListTable refreshKey={refreshKey} onRefresh={handleRefresh} />
     </div>
   );
 }

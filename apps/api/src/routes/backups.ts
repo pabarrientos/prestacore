@@ -8,6 +8,7 @@ import path from 'path';
 import { createBackup } from '../services/backup/dump';
 import { previewRestore, validateBackupFile } from '../services/backup/restore';
 import { executeRestore } from '../services/backup/dump';
+import { reconcileBackups } from '../services/backup/reconcile';
 import { getScheduleConfig, updateScheduleConfig } from '../services/backup/scheduler';
 import { LocalStorage } from '../services/storage/LocalStorage';
 import fs from 'fs/promises';
@@ -335,8 +336,28 @@ router.post('/:id/restore', authMiddleware, requireAdmin, async (req: AuthReques
       return;
     }
 
+    // Create a safety backup before restoring
+    let safetyBackupId: string | null = null;
+    try {
+      const safetyBackup = await createBackup(prisma, 'MANUAL');
+      safetyBackupId = safetyBackup.id;
+      console.log('[restore] Pre-restore safety backup created:', safetyBackupId);
+    } catch (err) {
+      console.error('[restore] Failed to create safety backup:', err);
+      // Continue with restore even if safety backup fails
+    }
+
     // Execute the restore
     await executeRestore(prisma, id);
+
+    // Reconcile backup files on disk with database after restore
+    // (the Backup table may have been dropped and recreated by pg_restore --clean)
+    try {
+      const { created, removed } = await reconcileBackups(prisma);
+      console.log(`[restore] Reconciliation: ${created} created, ${removed} removed`);
+    } catch (err) {
+      console.error('[restore] Reconciliation failed:', err);
+    }
 
     res.json({
       success: true,

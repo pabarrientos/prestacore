@@ -25,7 +25,7 @@ const STATUS_COLORS: Record<string, string> = {
   RESTORING: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-400',
 };
 
-export function BackupListTable() {
+export function BackupListTable({ refreshKey, onRefresh }: { refreshKey?: number; onRefresh?: () => void }) {
   const [backups, setBackups] = useState<BackupRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -46,7 +46,7 @@ export function BackupListTable() {
 
   useEffect(() => {
     loadBackups();
-  }, []);
+  }, [refreshKey]);
 
   const handleCreate = async () => {
     setCreating(true);

@@ -5,7 +5,7 @@ import { uploadBackup, previewBackup } from '@/lib/backup-api';
 import type { RestorePreview } from '@/lib/backup-types';
 import { RestoreDialog } from './RestoreDialog';
 
-export function RestoreCard() {
+export function RestoreCard({ onUploaded }: { onUploaded?: () => void }) {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadedId, setUploadedId] = useState<string | null>(null);
@@ -35,6 +35,7 @@ export function RestoreCard() {
       const record = await uploadBackup(file);
       setUploadedId(record.id);
       setMessage({ type: 'success', text: 'Archivo subido. Cargando vista previa...' });
+      onUploaded?.();
       // Auto-preview after upload
       setPreviewLoading(true);
       previewBackup(record.id)
