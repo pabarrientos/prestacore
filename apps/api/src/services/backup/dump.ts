@@ -171,7 +171,8 @@ export async function executeRestore(
     '-p', dbParams.port,
     '-U', dbParams.user,
     '-d', dbParams.dbname,
-    '--clean', // Drop existing objects
+    '--clean',      // Drop existing objects before creating
+    '--if-exists',  // Don't error if object doesn't exist
     backup.filepath,
   ];
 
@@ -190,14 +191,20 @@ export async function executeRestore(
       data: { status: 'COMPLETED' },
     });
   } catch (error: any) {
-    // Update status to FAILED
-    await prisma.backup.update({
-      where: { id: backupId },
-      data: {
-        status: 'FAILED',
-        error: error.message || 'pg_restore failed',
-      },
-    });
+    // Try to update status to FAILED, but the backup record may have been
+    // dropped by pg_restore --clean if the restore partially completed
+    try {
+      await prisma.backup.update({
+        where: { id: backupId },
+        data: {
+          status: 'FAILED',
+          error: error.message || 'pg_restore failed',
+        },
+      });
+    } catch {
+      // Record was likely dropped during restore — can't update
+      console.error('Could not update backup status (record may have been dropped):', error.message);
+    }
     throw new Error(`pg_restore failed: ${error.message}`);
   }
 }
