@@ -1,6 +1,5 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { createReadStream } from 'fs';
 
 const execAsync = promisify(exec);
 
@@ -45,18 +44,50 @@ export async function previewRestore(filepath: string): Promise<RestorePreview> 
       }
     }
 
-    // For row counts, try to parse COPY statements in SQL dumps
-    // This is a fallback for .sql format files
-    if (tables.length === 0 && filepath.endsWith('.sql')) {
-      const copyRegex = /^COPY\s+(\S+)/gm;
-      const seenTables = new Set<string>();
+    // For row counts, restore dump to SQL text and count rows between COPY ... \.
+    try {
+      const { stdout: sqlOut } = await execAsync(
+        `pg_restore -f - "${filepath}" 2>/dev/null`,
+        { timeout: 60000, maxBuffer: 50 * 1024 * 1024 }
+      );
       
-      const stream = createReadStream(filepath, { encoding: 'utf-8' });
-      let data = '';
+      const lines = sqlOut.split('\n');
+      let currentTable: string | null = null;
+      let currentCount = 0;
       
-      for await (const chunk of stream) {
-        data += chunk;
+      for (const line of lines) {
+        // Detect COPY statement: COPY public."TableName" (...) FROM stdin;
+        const copyMatch = line.match(/^COPY\s+(?:public\.)?"?(\w+)"?\s*\(/);
+        if (copyMatch) {
+          // Save previous table count
+          if (currentTable) {
+            const t = tables.find(tbl => tbl.name === currentTable);
+            if (t) t.rowCount = currentCount;
+          }
+          currentTable = copyMatch[1];
+          currentCount = 0;
+          continue;
+        }
+        
+        // End of data marker
+        if (line.trim() === '\\.') {
+          if (currentTable) {
+            const t = tables.find(tbl => tbl.name === currentTable);
+            if (t) t.rowCount = currentCount;
+          }
+          currentTable = null;
+          currentCount = 0;
+          continue;
+        }
+        
+        // Count data rows (non-empty, non-comment lines inside COPY block)
+        if (currentTable && line.trim() !== '' && !line.startsWith('--')) {
+          currentCount++;
+        }
       }
+    } catch {
+      // Row counts are optional — table list is already shown
+    }
       
       while ((match = copyRegex.exec(data)) !== null) {
         const tableName = match[1];
