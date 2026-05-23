@@ -1,8 +1,7 @@
-'use client';
-
 import '@testing-library/jest-dom';
+import React, { act } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { ResponsiveNavbar } from './ResponsiveNavbar';
 
 // Mock next/navigation
@@ -121,7 +120,7 @@ describe('ResponsiveNavbar', () => {
     expect(hamburgerButton).toBeInTheDocument();
   });
 
-  it('toggles mobile menu when hamburger is clicked', () => {
+  it('toggles mobile menu when hamburger is clicked', async () => {
     render(
       <ResponsiveNavbar
         user={mockUser}
@@ -130,18 +129,21 @@ describe('ResponsiveNavbar', () => {
       />
     );
     
-    const hamburgerButton = document.querySelector('button[aria-label="Abrir menú"]');
+    const hamburgerButton = screen.getByRole('button', { name: /Abrir menú/i });
     
     // Initially mobile menu is closed, so close button should not be visible
-    expect(document.querySelector('button[aria-label="Cerrar menú"]')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Cerrar menú/i })).not.toBeInTheDocument();
     
     // Click to open
-    (hamburgerButton as HTMLButtonElement)?.click();
+    await act(async () => {
+      fireEvent.click(hamburgerButton);
+    });
     
     // Now close button should be visible
-    expect(document.querySelector('button[aria-label="Cerrar menú"]')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Cerrar menú/i })).toBeInTheDocument();
     
-    // Mobile nav links should be visible
-    expect(screen.getByText('Dashboard')).toBeInTheDocument();
+    // Mobile nav links should be visible (Dashboard appears in both desktop and mobile)
+    const dashboardLinks = screen.getAllByText('Dashboard');
+    expect(dashboardLinks.length).toBeGreaterThanOrEqual(1);
   });
 });

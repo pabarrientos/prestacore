@@ -136,7 +136,7 @@ describe('Loans API', () => {
       const res = await request(app)
         .post('/api/loans/simulate')
         .send({
-          amount: 500, // Too low
+          amount: 50, // Below min of 100
           interestRate: 15,
           termMonths: 12,
           frequency: 'MONTHLY',
