@@ -43,7 +43,7 @@ export default function BackupsPage() {
       </div>
 
       {/* Full width: backup list */}
-      <BackupListTable refreshKey={refreshKey} onRefresh={handleRefresh} />
+      <BackupListTable refreshKey={refreshKey} />
     </div>
   );
 }
