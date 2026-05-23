@@ -185,11 +185,16 @@ export async function executeRestore(
       env,
     });
 
-    // Update status to COMPLETED
-    await prisma.backup.update({
-      where: { id: backupId },
-      data: { status: 'COMPLETED' },
-    });
+    // Update status to COMPLETED (record may have been dropped/recreated by restore)
+    try {
+      await prisma.backup.update({
+        where: { id: backupId },
+        data: { status: 'COMPLETED' },
+      });
+    } catch {
+      // Record was likely dropped and recreated from dump — status update is optional
+      console.log('Backup record was recreated during restore — status update skipped');
+    }
   } catch (error: any) {
     // Try to update status to FAILED, but the backup record may have been
     // dropped by pg_restore --clean if the restore partially completed
