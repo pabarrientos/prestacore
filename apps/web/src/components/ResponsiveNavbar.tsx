@@ -142,7 +142,7 @@ export function ResponsiveNavbar({ user, navLinks, pathname }: ResponsiveNavbarP
                           href={child.href}
                           onClick={() => setOpenGroup(null)}
                           className={`block px-4 py-2 text-sm ${
-                            pathname === child.href || pathname.startsWith(child.href + '/')
+                            pathname === child.href
                               ? 'text-primary-600 bg-primary-50 dark:text-[#39ff14] dark:bg-[#39ff14]/10'
                               : 'text-gray-600 hover:bg-gray-50 dark:text-white/60 dark:hover:bg-white/5'
                           }`}
@@ -222,7 +222,7 @@ export function ResponsiveNavbar({ user, navLinks, pathname }: ResponsiveNavbarP
                               href={child.href}
                               onClick={() => { setOpenGroup(null); setMobileOpen(false); }}
                               className={`block text-sm font-medium py-2 min-h-[44px] flex items-center px-2 rounded-md ${
-                                pathname === child.href || pathname.startsWith(child.href + '/')
+                                pathname === child.href
                                   ? 'text-primary-600 bg-primary-50 dark:text-[#39ff14] dark:bg-[#39ff14]/10'
                                   : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50 dark:text-white/60 dark:hover:text-white/87 dark:hover:bg-white/5'
                               }`}
