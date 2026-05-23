@@ -47,16 +47,26 @@ export default function AdminLayout({
     { href: '/admin/payments', label: 'Pagos' },
     { href: '/admin/installments', label: 'Cuotas' },
     { href: '/admin/collection-actions', label: 'Cobranzas' },
-    { href: '/admin/settings', label: 'Configuración' },
   ];
 
   // Users and commissions links - only for ADMIN
   const adminOnlyLinks = user.role === 'ADMIN'
     ? [
-        { href: '/admin/users', label: 'Usuarios' },
         { href: '/admin/commissions', label: 'Comisiones' },
-        { href: '/admin/settings/backups', label: 'Respaldos' },
       ]
+    : [];
+
+  // System group: settings, users, backups (admin only links)
+  const systemGroup = user.role === 'ADMIN'
+    ? [{
+        label: 'Sistema',
+        href: '',
+        children: [
+          { href: '/admin/settings', label: 'Configuración' },
+          { href: '/admin/users', label: 'Usuarios' },
+          { href: '/admin/settings/backups', label: 'Respaldos' },
+        ],
+      }]
     : [];
 
   // Mi Perfil - for all authenticated users
@@ -78,10 +88,10 @@ export default function AdminLayout({
   // Add profile link to all users (always at the end)
   const allNavLinks = [...navLinks, ...profileLink];
 
-  // Add admin-only links (users, commissions) for ADMIN (before profile)
+  // Add admin-only links (commissions) for ADMIN (before profile)
   // Add vendor-specific links (mis-comisiones) for VENDEDOR (before profile)
   const finalNavLinks = user.role === 'ADMIN' 
-    ? [...allNavLinks.slice(0, -1), ...adminOnlyLinks, ...allNavLinks.slice(-1)]
+    ? [...allNavLinks.slice(0, -1), ...adminOnlyLinks, ...systemGroup, ...allNavLinks.slice(-1)]
     : user.role === 'VENDEDOR'
     ? [...allNavLinks.slice(0, -1), ...vendorLinks, ...allNavLinks.slice(-1)]
     : allNavLinks;

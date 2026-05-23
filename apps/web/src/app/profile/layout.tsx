@@ -49,10 +49,12 @@ export default function ProfileLayout({
         { href: '/admin/payments', label: 'Pagos' },
         { href: '/admin/installments', label: 'Cuotas' },
         { href: '/admin/collection-actions', label: 'Cobranzas' },
-        { href: '/admin/settings', label: 'Configuración' },
-        { href: '/admin/users', label: 'Usuarios' },
         { href: '/admin/commissions', label: 'Comisiones' },
-        { href: '/admin/settings/backups', label: 'Respaldos' },
+        { label: 'Sistema', href: '', children: [
+          { href: '/admin/settings', label: 'Configuración' },
+          { href: '/admin/users', label: 'Usuarios' },
+          { href: '/admin/settings/backups', label: 'Respaldos' },
+        ]},
         { href: '/profile', label: 'Mi Perfil' },
       ]
     : isVendor
