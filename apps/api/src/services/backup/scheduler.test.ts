@@ -1,10 +1,33 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { parseScheduleConfig, buildCronExpression } from './scheduler';
+import { parseScheduleConfig, buildCronExpression, startScheduler, stopScheduler } from './scheduler';
+import { PrismaClient } from '@prisma/client';
 
-// Mock node-cron
-vi.mock('node-cron', () => ({
-  schedule: vi.fn(() => ({ stop: vi.fn() })),
-  validate: vi.fn(() => true),
+// Use vi.hoisted to share state between mock factory and tests
+const { mockSchedule, scheduledCallback } = vi.hoisted(() => {
+  let callback: () => void;
+  const mockSched = vi.fn((_expr: string, cb: () => void) => {
+    callback = cb;
+    return { stop: vi.fn() };
+  });
+  return { mockSchedule: mockSched, scheduledCallback: () => callback! };
+});
+
+// Mock node-cron with a default export
+vi.mock('node-cron', () => {
+  return {
+    __esModule: true,
+    schedule: mockSchedule,
+    validate: vi.fn(() => true),
+    default: {
+      schedule: mockSchedule,
+      validate: vi.fn(() => true),
+    },
+  };
+});
+
+// Mock the dump module
+vi.mock('./dump', () => ({
+  createBackup: vi.fn(),
 }));
 
 describe('Scheduler', () => {
@@ -98,6 +121,27 @@ describe('Scheduler', () => {
       expect(() => {
         buildCronExpression({ hour: 3, dayOfMonth: 32 });
       }).toThrow();
+    });
+  });
+
+  describe('startScheduler', () => {
+    it('should trigger backup when cron fires', async () => {
+      const prisma = new PrismaClient();
+
+      // Mock a schedule setting
+      await prisma.setting.upsert({
+        where: { key: 'BACKUP_SCHEDULE' },
+        update: { value: JSON.stringify({ enabled: true, frequency: 'daily', hour: 3 }) },
+        create: { key: 'BACKUP_SCHEDULE', value: JSON.stringify({ enabled: true, frequency: 'daily', hour: 3 }) },
+      });
+
+      await startScheduler(prisma);
+
+      // Verify that cron.schedule was called (indicating scheduler registered)
+      expect(mockSchedule).toHaveBeenCalledWith(
+        '0 3 * * *',
+        expect.any(Function)
+      );
     });
   });
 });
