@@ -216,8 +216,10 @@ router.post('/upload', authMiddleware, requireAdmin, upload.single('file'), asyn
     const destPath = storage.getPath(filename);
 
     // Move file from temp location to backups directory
+    // Use copyFile + unlink instead of rename to handle cross-device moves (Docker volumes)
     await fs.mkdir(path.dirname(destPath), { recursive: true });
-    await fs.rename(req.file.path, destPath);
+    await fs.copyFile(req.file.path, destPath);
+    await fs.unlink(req.file.path);
 
     // Validate the backup file
     const isValid = await validateBackupFile(destPath);
