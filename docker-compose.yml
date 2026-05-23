@@ -41,6 +41,8 @@ services:
       TZ: America/Argentina/Buenos_Aires
     ports:
       - "3001:3001"
+    volumes:
+      - ./storage/backups:/app/backups
     depends_on:
       postgres:
         condition: service_healthy

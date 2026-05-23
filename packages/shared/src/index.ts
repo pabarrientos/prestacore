@@ -147,6 +147,44 @@ export interface DashboardMetrics {
 }
 
 // ============================================
+// Backup Types
+// ============================================
+
+export type BackupType = 'MANUAL' | 'SCHEDULED' | 'UPLOADED';
+export type BackupStatus = 'COMPLETED' | 'FAILED' | 'RESTORING';
+
+export interface BackupRecord {
+  id: string;
+  filename: string;
+  sizeBytes: number;
+  type: BackupType;
+  status: BackupStatus;
+  checksum?: string;
+  tablesMeta?: Array<{ name: string; rowCount: number }>;
+  error?: string;
+  createdAt: string;
+}
+
+export interface BackupSchedule {
+  enabled: boolean;
+  frequency: 'daily' | 'weekly' | 'monthly';
+  hour: number; // 0-23
+  dayOfWeek?: number; // 0-6 (Sunday-Saturday)
+  dayOfMonth?: number; // 1-31
+}
+
+export interface RetentionConfig {
+  maxCount?: number;
+  maxAgeDays?: number;
+}
+
+export interface RestorePreview {
+  tables: Array<{ name: string; rowCount: number }>;
+  totalTables: number;
+  fileSizeBytes: number;
+}
+
+// ============================================
 // API Response Types
 // ============================================
 

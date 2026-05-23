@@ -18,6 +18,9 @@ COPY packages/shared/package.json ./packages/shared/
 # Install all dependencies (including devDependencies for build)
 RUN pnpm install --frozen-lockfile
 
+# Install PostgreSQL client for pg_dump/pg_restore (both build and production)
+RUN apt-get update && apt-get install -y postgresql-client-15
+
 # Copy all source code
 COPY apps/api/ ./apps/api/
 COPY apps/web/ ./apps/web/
@@ -35,8 +38,8 @@ FROM node:20-bullseye-slim AS production
 
 WORKDIR /app
 
-# Install Argentine locale (es_AR.UTF-8)
-RUN apt-get update && apt-get install -y locales && \
+# Install Argentine locale (es_AR.UTF-8) AND PostgreSQL client
+RUN apt-get update && apt-get install -y locales postgresql-client-15 && \
     sed -i '/es_AR.UTF-8/s/^# //' /etc/locale.gen && \
     locale-gen es_AR.UTF-8
 

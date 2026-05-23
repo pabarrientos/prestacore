@@ -312,7 +312,30 @@ model SellerLiquidation {
   @@index([createdAt])
 }
 
-// Seller Commission Configuration Audit (immutable - no update/delete cascades)
+// ============================================
+// Backup Management
+// ============================================
+
+model Backup {
+  id         String   @id @default(cuid())
+  filename   String
+  filepath   String
+  sizeBytes  Int
+  type       String   // MANUAL | SCHEDULED | UPLOADED
+  status     String   // COMPLETED | FAILED | RESTORING
+  checksum   String?  // SHA-256 hash
+  tablesMeta Json?    // Array<{name: string, rowCount: number}>
+  error      String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([type])
+}
+
+// ============================================
+// Seller Commission Configuration Audit
+// ============================================
+
 model SellerCommissionAudit {
   id          String   @id @default(cuid())
   vendorId    String   // Vendor whose config was changed
