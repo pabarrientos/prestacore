@@ -1,10 +1,8 @@
-import { test, expect, Page } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 
 const API_URL = process.env.E2E_API_URL || 'http://localhost:3001';
-const WEB_URL = process.env.E2E_WEB_URL || 'http://localhost:3000';
-
 // Helper to create test users via API
-async function createTestUser(page: Page, email: string, role: 'ADMIN' | 'VENDEDOR' | 'CLIENTE') {
+async function createTestUser(email: string, role: 'ADMIN' | 'VENDEDOR' | 'CLIENTE') {
   // Using the API directly
   const res = await fetch(`${API_URL}/api/auth/register`, {
     method: 'POST',
@@ -43,12 +41,11 @@ async function getAuthToken(email: string): Promise<string | null> {
 test.describe('Commissions E2E', () => {
   const adminEmail = `admin-commission-${Date.now()}@example.com`;
   const vendorEmail = `vendor-commission-${Date.now()}@example.com`;
-  const vendorPassword = 'test123456';
 
   test.beforeAll(async () => {
     // Create admin and vendor users
-    await createTestUser(null as any, adminEmail, 'ADMIN');
-    await createTestUser(null as any, vendorEmail, 'VENDEDOR');
+    await createTestUser(adminEmail, 'ADMIN');
+    await createTestUser(vendorEmail, 'VENDEDOR');
   });
 
   test.afterAll(async () => {
@@ -125,15 +122,13 @@ test.describe('Commission Flow E2E', () => {
   const clientEmail = `client-flow-${Date.now()}@example.com`;
 
   let vendorId: string;
-  let clientId: string;
-  let loanId: string;
 
   test.beforeAll(async () => {
     // Create users
-    await createTestUser(null as any, adminEmail, 'ADMIN');
-    await createTestUser(null as any, vendorEmail, 'VENDEDOR');
+    await createTestUser(adminEmail, 'ADMIN');
+    await createTestUser(vendorEmail, 'VENDEDOR');
     
-    const clientRes = await createTestUser(null as any, clientEmail, 'CLIENTE');
+    await createTestUser(clientEmail, 'CLIENTE');
     
     // Get IDs via API
     const vendorToken = await getAuthToken(vendorEmail);
