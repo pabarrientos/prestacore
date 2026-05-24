@@ -19,6 +19,7 @@ services:
       LANG: es_AR.UTF-8
       LC_ALL: es_AR.UTF-8
       TZ: America/Argentina/Buenos_Aires
+      BACKUPS_DIR: /app/backups
     ports:
       - "3001:3001"
     volumes:
@@ -29,7 +30,7 @@ services:
       - ./package.json:/app/package.json
       - ./pnpm-lock.yaml:/app/pnpm-lock.yaml
       - ./pnpm-workspace.yaml:/app/pnpm-workspace.yaml
-      - ./storage/backups:/app/backups
+      - ${BACKUPS_HOST_DIR:-./storage/backups}:/app/backups
       # Avoid mounting node_modules from host
       - /app/apps/api/node_modules
       - /app/node_modules

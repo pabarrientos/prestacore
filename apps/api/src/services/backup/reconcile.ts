@@ -3,7 +3,7 @@ import { readdir, stat } from 'fs/promises';
 import { join, extname } from 'path';
 
 const ALLOWED_EXTENSIONS = ['.dump', '.sql', '.tar'];
-const BACKUPS_DIR = '/app/backups';
+const BACKUPS_DIR = process.env.BACKUPS_DIR || '/app/backups';
 
 /**
  * Reconcile backup files on disk with database records.

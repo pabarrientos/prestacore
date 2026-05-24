@@ -39,10 +39,11 @@ services:
       LANG: es_AR.UTF-8
       LC_ALL: es_AR.UTF-8
       TZ: America/Argentina/Buenos_Aires
+      BACKUPS_DIR: /app/backups
     ports:
       - "3001:3001"
     volumes:
-      - ./storage/backups:/app/backups
+      - ${BACKUPS_HOST_DIR:-./storage/backups}:/app/backups
     depends_on:
       postgres:
         condition: service_healthy
