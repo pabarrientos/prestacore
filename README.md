@@ -163,16 +163,16 @@ cd apps/web && pnpm test:e2e
 
 ## 💾 Respaldos de Base de Datos
 
-El sistema cuenta con un módulo completo de respaldo y restauración de PostgreSQL accesible desde **Admin → Configuración → Respaldos**.
+El sistema cuenta con un módulo completo de respaldo y restauración de PostgreSQL accesible desde **Admin → Sistema → Respaldos**.
 
 ### Acceso
 
 - **Ruta**: `/admin/settings/backups` (solo ADMIN)
-- **Credencial por defecto**: `admin@prestamos.com` / `admin123`
+- **Ubicación en menú**: Admin → **Sistema** ▼ → Respaldos
 
 ### Crear un respaldo manual
 
-1. Ir a **Admin → Configuración → Respaldos**
+1. Ir a **Admin → Sistema → Respaldos**
 2. Hacer clic en **"+ Crear Respaldo"**
 3. El respaldo se genera con `pg_dump` y aparece en la lista
 
@@ -207,6 +207,10 @@ Desde la lista de respaldos, hacer clic en **"Descargar"** en la fila correspond
 3. Marcar el checkbox de confirmación: *"Entiendo que esto sobreescribirá todos los datos actuales"*
 4. Hacer clic en **"Restaurar"**
 
+> **🔒 Seguridad**: Antes de ejecutar la restauración, el sistema crea automáticamente un respaldo de seguridad del estado actual. Si algo falla, ese respaldo queda disponible en la lista.
+>
+> **🔄 Reconciliación**: Después de restaurar, el sistema escanea el directorio de backups y recrea los registros de cualquier archivo que haya quedado huérfano (ej. respaldos creados antes de la restauración).
+
 ### Restaurar desde archivo externo
 
 1. Ir a la tarjeta **"Restaurar desde Archivo Externo"**
@@ -225,7 +229,9 @@ Los archivos de respaldo se almacenan en el volumen Docker:
 /app/backups         # Contenedor API
 ```
 
-> **Nota**: `pg_dump` y `pg_restore` se ejecutan dentro del contenedor de la API (requiere `postgresql-client-15` instalado, ya incluido en el Dockerfile).
+> **Nota**: `pg_dump` y `pg_restore` se ejecutan dentro del contenedor de la API. El Dockerfile de producción usa `node:20-slim` (Debian 12 bookworm) que incluye `postgresql-client-15` nativo, compatible con PostgreSQL 15.
+>
+> **Archivos huérfanos**: Si un archivo `.dump` existe en el directorio pero no tiene registro en la base de datos (ej. después de una restauración), el sistema lo detecta automáticamente y crea su registro al ejecutar cualquier operación de restore.
 
 ### Endpoints API relacionados
 
