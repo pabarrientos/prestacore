@@ -28,7 +28,8 @@ export function ScheduleConfigCard() {
   useEffect(() => {
     getSchedule()
       .then((data) => {
-        if (data) setSchedule(data);
+        if (data?.schedule) setSchedule(data.schedule);
+        if (data?.retention) setRetention(data.retention);
       })
       .catch(console.error)
       .finally(() => setLoading(false));

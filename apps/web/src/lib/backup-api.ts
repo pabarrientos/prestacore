@@ -71,8 +71,8 @@ export async function restoreBackup(id: string, confirm: true): Promise<void> {
   if (!data.success) throw new Error(data.error);
 }
 
-// Get schedule config
-export async function getSchedule(): Promise<BackupSchedule | null> {
+// Get schedule config (includes retention)
+export async function getSchedule(): Promise<{ schedule: BackupSchedule | null; retention: RetentionConfig | null }> {
   const res = await apiFetch('/api/backups/schedule');
   const data = await res.json();
   if (!data.success) throw new Error(data.error);

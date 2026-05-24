@@ -39,6 +39,10 @@ const scheduleSchema = z.object({
   hour: z.number().int().min(0).max(23),
   dayOfWeek: z.number().int().min(0).max(6).optional(),
   dayOfMonth: z.number().int().min(1).max(31).optional(),
+  retention: z.object({
+    maxCount: z.number().int().min(1).optional(),
+    maxAgeDays: z.number().int().min(1).optional(),
+  }).optional(),
 });
 
 const restoreSchema = z.object({
@@ -88,9 +92,22 @@ router.get('/schedule', authMiddleware, requireAdmin, async (_req, res: Response
   try {
     const schedule = await getScheduleConfig(prisma);
 
+    // Also load retention config
+    let retention = null;
+    try {
+      const retentionSetting = await prisma.setting.findUnique({
+        where: { key: 'BACKUP_RETENTION' },
+      });
+      if (retentionSetting) {
+        retention = JSON.parse(retentionSetting.value);
+      }
+    } catch {
+      // Retention config may not exist yet
+    }
+
     res.json({
       success: true,
-      data: schedule,
+      data: { schedule, retention },
     });
   } catch (error) {
     console.error('Get schedule error:', error);
@@ -106,7 +123,22 @@ router.patch('/schedule', authMiddleware, requireAdmin, async (req: AuthRequest,
   try {
     const body = scheduleSchema.parse(req.body);
 
-    await updateScheduleConfig(prisma, body);
+    // Extract retention before passing to updateScheduleConfig (which only handles schedule)
+    const { retention, ...scheduleConfig } = body;
+    await updateScheduleConfig(prisma, scheduleConfig);
+
+    // Save retention config separately
+    if (retention) {
+      await prisma.setting.upsert({
+        where: { key: 'BACKUP_RETENTION' },
+        update: { value: JSON.stringify(retention) },
+        create: {
+          key: 'BACKUP_RETENTION',
+          value: JSON.stringify(retention),
+          description: 'Backup retention policy (maxCount and/or maxAgeDays)',
+        },
+      });
+    }
 
     res.json({
       success: true,
