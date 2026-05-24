@@ -53,6 +53,19 @@ export default function AdminDashboard() {
     );
   }
 
+  if (!metrics) {
+    return (
+      <div>
+        <h1 className="text-2xl font-bold mb-6 dark:text-white/[.87]">Dashboard</h1>
+        <div className="bg-white rounded-lg shadow p-12 text-center dark:bg-[#1e1e1e]">
+          <p className="text-gray-500 dark:text-white/60">
+            No se pudieron cargar los datos. Verificá tu conexión e intentá nuevamente.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6 dark:text-white/[.87]">Dashboard</h1>

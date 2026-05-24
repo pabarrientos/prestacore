@@ -77,17 +77,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   setAuthRefs(token, logout);
 
   useEffect(() => {
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
+    const initAuth = async () => {
+      const storedToken = localStorage.getItem('token');
+      const storedUser = localStorage.getItem('user');
 
-    if (storedToken && storedUser && !isTokenExpired(storedToken)) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-    } else {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-    }
-    setIsLoading(false);
+      if (storedToken && storedUser && !isTokenExpired(storedToken)) {
+        try {
+          const res = await fetch(`${AUTH_API_URL}/api/auth/me`, {
+            headers: { Authorization: `Bearer ${storedToken}` },
+          });
+          if (res.ok) {
+            setToken(storedToken);
+            setUser(JSON.parse(storedUser));
+          } else {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+          }
+        } catch {
+          // Network error — fallback to stored session, first API call will invalidate if needed
+          setToken(storedToken);
+          setUser(JSON.parse(storedUser));
+        }
+      } else {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      }
+      setIsLoading(false);
+    };
+    initAuth();
   }, []);
 
   const login = async (email: string, password: string) => {

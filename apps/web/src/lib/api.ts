@@ -34,8 +34,7 @@ export async function apiFetch(
     if (currentLogout) {
       currentLogout();
     }
-    window.location.href = '/login';
-    throw new Error('Unauthorized');
+    throw new Error('Session expired');
   }
 
   return response;
