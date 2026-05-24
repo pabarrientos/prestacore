@@ -222,11 +222,23 @@ Desde la lista de respaldos, hacer clic en **"Descargar"** en la fila correspond
 
 ### Almacenamiento
 
-Los archivos de respaldo se almacenan en el volumen Docker:
+La carpeta de backups se configura con variables de entorno:
+
+| Variable | Default | Dónde se define | Propósito |
+|----------|---------|----------------|-----------|
+| `BACKUPS_HOST_DIR` | `./storage/backups` | `.env` (raíz) o variable del host | Carpeta en el host montada como volumen en el contenedor |
+| `BACKUPS_DIR` | `/app/backups` | `environment:` en docker-compose, o `apps/api/.env` | Ruta dentro del contenedor API donde se leen/escriben los backups |
+
+**Para cambiar la ubicación**, editá `.env` en la raíz del proyecto:
+
+```bash
+BACKUPS_HOST_DIR=/mnt/nas/prestamos-backups
+```
+
+El volumen se monta automáticamente:
 
 ```
-./storage/backups    # Host
-/app/backups         # Contenedor API
+${BACKUPS_HOST_DIR:-./storage/backups}  →  /app/backups
 ```
 
 > **Nota**: `pg_dump` y `pg_restore` se ejecutan dentro del contenedor de la API. El Dockerfile de producción usa `node:20-slim` (Debian 12 bookworm) que incluye `postgresql-client-15` nativo, compatible con PostgreSQL 15.
