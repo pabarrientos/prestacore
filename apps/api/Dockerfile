@@ -35,13 +35,13 @@ RUN cd packages/database && pnpm exec prisma generate
 RUN cd apps/api && pnpm run build
 
 # ---- Production Stage ----
-FROM node:20-bullseye-slim AS production
+FROM node:20-slim AS production
 
 WORKDIR /app
 
 # Install Argentine locale (es_AR.UTF-8) AND PostgreSQL client
-# node:20-bullseye-slim (Debian 11) — use postgresql-client (PG 13) which is compatible with PG 15 server
-RUN apt-get update && apt-get install -y locales postgresql-client && \
+# node:20-slim is Debian bookworm — postgresql-client-15 is in default repos
+RUN apt-get update && apt-get install -y locales postgresql-client-15 && \
     sed -i '/es_AR.UTF-8/s/^# //' /etc/locale.gen && \
     locale-gen es_AR.UTF-8
 
