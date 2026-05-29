@@ -493,7 +493,7 @@ router.put('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: R
     const remainingPending = await prisma.installment.count({
       where: {
         loanId: payment.loanId,
-        status: { not: InstallmentStatus.PAID },
+        status: { notIn: [InstallmentStatus.PAID, InstallmentStatus.INTEREST_ONLY, InstallmentStatus.CANCELADA_POR_REFINANCIACION] },
       },
     });
 
@@ -671,6 +671,70 @@ router.post('/mora', authMiddleware, requireVendor, async (req: AuthRequest, res
   }
 });
 
+// Validation schema for interest-only payment
+const createInterestOnlyPaymentSchema = z.object({
+  loanId: z.string().cuid('Invalid loan ID'),
+  installmentId: z.string().cuid('Invalid installment ID'),
+  amount: z.number().positive('Amount must be greater than 0'),
+  paymentDate: z.string().optional(),
+  reference: z.string().max(100).optional(),
+  notes: z.string().max(500).optional(),
+});
+
+// POST /api/payments/interest-only - Register an interest-only payment
+router.post('/interest-only', authMiddleware, requireVendor, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const validation = createInterestOnlyPaymentSchema.safeParse(req.body);
+    if (!validation.success) {
+      res.status(400).json({
+        success: false,
+        error: 'Validation error',
+        details: validation.error.errors,
+      });
+      return;
+    }
+
+    const { loanId, installmentId, amount, reference, notes, paymentDate } = validation.data;
+
+    const result = await PaymentService.processInterestOnlyPayment({
+      loanId,
+      installmentId,
+      amount,
+      reference,
+      notes,
+      paymentDate,
+    });
+
+    if (!result.success) {
+      res.status(400).json({
+        success: false,
+        error: result.error,
+      });
+      return;
+    }
+
+    res.status(201).json({
+      success: true,
+      data: {
+        id: result.payment!.id,
+        loanId: result.payment!.loanId,
+        amount: Number(result.payment!.amount),
+        status: result.payment!.status,
+        reference: result.payment!.reference,
+        notes: result.payment!.notes,
+        paymentDate: result.payment!.paymentDate?.toISOString() || result.payment!.createdAt.toISOString(),
+        createdAt: result.payment!.createdAt.toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error('Interest-only payment error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+    });
+  }
+});
+
 // GET /api/payments/balance/:loanId/at?date=YYYY-MM-DD - Get balance with mora calculated at specific date
 router.get('/balance/:loanId/at', authMiddleware, requireVendor, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -826,7 +890,7 @@ router.delete('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res
     const remainingPending = await prisma.installment.count({
       where: {
         loanId: payment.loanId,
-        status: { not: InstallmentStatus.PAID },
+        status: { notIn: [InstallmentStatus.PAID, InstallmentStatus.INTEREST_ONLY, InstallmentStatus.CANCELADA_POR_REFINANCIACION] },
       },
     });
 

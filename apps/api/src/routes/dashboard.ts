@@ -83,15 +83,15 @@ router.get('/', authMiddleware, requireVendor, async (req: AuthRequest, res: Res
       }),
 
       // Overdue installments — use ::date to avoid PG timezone-dependent comparison
-      prisma.$queryRawUnsafe<Array<{ balance: number; dueDate: Date }>>(`
-        SELECT i."balance", i."dueDate"
-        FROM "Installment" i
-        JOIN "Loan" l ON i."loanId" = l.id
-        WHERE i.status != 'PAID'
-          AND i."dueDate"::date <= $1::date
-          AND l.status NOT IN ('PENDING', 'PAID', 'DEFAULTED', 'REFINANCIADO')
-          ${overdueLoanFilter.assignedVendorId ? `AND l."assignedVendorId" = '${overdueLoanFilter.assignedVendorId}'` : ''}
-      `, todayDateOnly),
+       prisma.$queryRawUnsafe<Array<{ balance: number; dueDate: Date }>>(`
+         SELECT i."balance", i."dueDate"
+         FROM "Installment" i
+         JOIN "Loan" l ON i."loanId" = l.id
+         WHERE i.status NOT IN ('PAID', 'INTEREST_ONLY')
+           AND i."dueDate"::date <= $1::date
+           AND l.status NOT IN ('PENDING', 'PAID', 'DEFAULTED', 'REFINANCIADO')
+           ${overdueLoanFilter.assignedVendorId ? `AND l."assignedVendorId" = '${overdueLoanFilter.assignedVendorId}'` : ''}
+       `, todayDateOnly),
       // Commission totals (excluding PENDING)
       prisma.loan.aggregate({
         where: {
@@ -258,7 +258,7 @@ router.get('/overdue', authMiddleware, requireVendor, async (req: AuthRequest, r
 
     // Base where clause
     const whereClause: any = {
-      status: { not: InstallmentStatus.PAID }, // Exclude paid only
+      status: { notIn: [InstallmentStatus.PAID, InstallmentStatus.INTEREST_ONLY] },
       dueDate: { lt: today }, // Overdue based on date (midnight in local timezone)
       loan: {
         status: { notIn: [LoanStatus.PENDING, LoanStatus.PAID, LoanStatus.DEFAULTED, LoanStatus.REFINANCIADO] },
@@ -297,7 +297,7 @@ router.get('/overdue', authMiddleware, requireVendor, async (req: AuthRequest, r
       JOIN "Loan" l ON i."loanId" = l.id
       JOIN "Client" c ON l."clientId" = c.id
       JOIN "User" u ON c."userId" = u.id
-      WHERE i.status != 'PAID'
+      WHERE i.status NOT IN ('PAID', 'INTEREST_ONLY')
         AND i."dueDate"::date <= $1::date
         AND l.status NOT IN ('PENDING', 'PAID', 'DEFAULTED', 'REFINANCIADO')
         ${req.user!.role === Role.VENDEDOR ? `AND l."assignedVendorId" = '${req.user!.userId}'` : ''}
