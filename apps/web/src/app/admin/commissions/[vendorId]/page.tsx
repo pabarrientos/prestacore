@@ -493,7 +493,7 @@ export default function VendorCommissionPage() {
                     <td className="px-4 py-2 text-center">
                       <button
                         onClick={() => handleDeleteLiquidation(l.id)}
-                        className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 text-sm"
+                        className="px-2 py-1 text-xs font-medium bg-red-100 text-red-700 rounded hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50"
                         title="Eliminar liquidación"
                       >
                         ✕

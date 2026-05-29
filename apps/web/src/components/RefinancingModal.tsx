@@ -483,7 +483,7 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
                       setInteresesVencidosModificado(true);
                       setInteresesVencidosManual(preview.breakdown.interesesVencidos.toString());
                     }}
-                    className="text-xs text-orange-600 hover:text-orange-800 mt-1 dark:text-orange-500 dark:hover:text-orange-400"
+                    className="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-700 rounded hover:bg-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:hover:bg-orange-900/50"
                   >
                     Editar
                   </button>

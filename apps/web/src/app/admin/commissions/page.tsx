@@ -173,7 +173,7 @@ export default function CommissionsPage() {
                     <td className="px-4 py-3 text-center">
                       <Link
                         href={`/admin/commissions/${vendor.id}`}
-                        className="text-primary-600 hover:text-primary-800 dark:text-[#39ff14] dark:hover:text-[#32e012] text-sm font-medium"
+                        className="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50 inline-block"
                       >
                         Ver detalle
                       </Link>

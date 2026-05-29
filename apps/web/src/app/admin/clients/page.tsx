@@ -144,10 +144,10 @@ export default function ClientsPage() {
                   ${client.monthlyIncome.toLocaleString()}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex flex-col gap-1">
+                  <div className="flex flex-wrap gap-1.5">
                     <a
                       href={`/admin/loans/new?clientId=${client.id}`}
-                      className="text-primary-600 hover:text-primary-900 text-sm dark:text-[#39ff14] dark:hover:text-[#32e012]"
+                      className="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50"
                     >
                       Crear Préstamo
                     </a>
@@ -155,14 +155,14 @@ export default function ClientsPage() {
                       <>
                         <a
                           href={`/admin/clients/${client.id}`}
-                          className="text-blue-600 hover:text-blue-900 text-sm dark:text-blue-400 dark:hover:text-blue-300"
+                          className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50"
                         >
                           Editar
                         </a>
                         <button
                           onClick={() => handleDelete(client.id)}
                           disabled={deleting === client.id}
-                          className="text-red-600 hover:text-red-900 text-sm text-left disabled:opacity-50 dark:text-red-400 dark:hover:text-red-300"
+                          className="px-2 py-1 text-xs font-medium bg-red-100 text-red-700 rounded hover:bg-red-200 disabled:opacity-50 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50"
                         >
                           {deleting === client.id ? 'Eliminando...' : 'Eliminar'}
                         </button>

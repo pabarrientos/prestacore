@@ -312,7 +312,7 @@ export default function PagosPage() {
                       {payment.vendedor || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm dark:text-white/[.87]">
-                      <a href={`/admin/loans/${payment.prestamoId}`} onClick={(e) => e.stopPropagation()} className="text-primary-600 hover:text-primary-900 dark:text-[#39ff14] dark:hover:text-[#2ecc71]">
+                      <a href={`/admin/loans/${payment.prestamoId}`} onClick={(e) => e.stopPropagation()} className="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50">
                         {payment.prestamoId.slice(0, 8)}...
                       </a>
                     </td>
