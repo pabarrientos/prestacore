@@ -18,6 +18,7 @@ const STATUS_GREEN: [number, number, number] = [220, 252, 231];
 const STATUS_RED: [number, number, number] = [254, 202, 202];
 const STATUS_ORANGE: [number, number, number] = [254, 215, 170];
 const STATUS_PURPLE: [number, number, number] = [233, 213, 255];
+const STATUS_BLUE: [number, number, number] = [219, 234, 254];
 
 // ============================================================
 // Pure Functions — Status Calculation & Payment Merging
@@ -50,6 +51,8 @@ export function calculateInstallmentStatus(
 
   if (isPaidLoan) {
     status = 'PAID';
+  } else if (installment.status === 'INTEREST_ONLY') {
+    status = 'INTEREST_ONLY';
   } else if (totalPaidForInstallment >= Number(installment.amount)) {
     status = 'PAID';
   } else if (totalPaidForInstallment > 0) {
@@ -203,6 +206,7 @@ function getStatusLabel(status: string): string {
     OVERDUE: 'Vencido',
     PARTIAL: 'Parcial',
     CANCELADA_POR_REFINANCIACION: 'Refinanciada',
+    INTEREST_ONLY: 'Solo Interés',
     ACTIVE: 'Activo',
     DEFAULTED: 'En Mora',
   };
@@ -219,6 +223,8 @@ function getStatusColor(status: string): [number, number, number] | null {
       return STATUS_ORANGE;
     case 'CANCELADA_POR_REFINANCIACION':
       return STATUS_PURPLE;
+    case 'INTEREST_ONLY':
+      return STATUS_BLUE;
     default:
       return null;
   }
