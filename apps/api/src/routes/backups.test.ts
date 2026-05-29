@@ -173,9 +173,9 @@ describe('Backups API', () => {
         .expect(200);
 
       expect(res.body.success).toBe(true);
-      expect(res.body.data).toHaveProperty('enabled');
-      expect(res.body.data).toHaveProperty('frequency');
-      expect(res.body.data).toHaveProperty('hour');
+      expect(res.body.data.schedule).toHaveProperty('enabled');
+      expect(res.body.data.schedule).toHaveProperty('frequency');
+      expect(res.body.data.schedule).toHaveProperty('hour');
     });
 
     it('should return null when no schedule configured', async () => {
@@ -187,7 +187,7 @@ describe('Backups API', () => {
         .expect(200);
 
       expect(res.body.success).toBe(true);
-      expect(res.body.data).toBeNull();
+      expect(res.body.data.schedule).toBeNull();
     });
 
     it('should reject non-admin user', async () => {
