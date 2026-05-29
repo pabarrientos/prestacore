@@ -211,17 +211,17 @@ export default function LoansPage() {
                   </span>
                 </td>
                 <td className="px-6 py-4">
-                  <div className="flex flex-col gap-1">
+                  <div className="flex flex-wrap gap-1.5">
                     <a
                       href={`/admin/loans/${loan.id}`}
-                      className="text-primary-600 hover:text-primary-900 dark:text-[#39ff14] dark:hover:text-[#32e012]"
+                      className="px-2 py-1 text-xs font-medium bg-primary-100 text-primary-700 rounded hover:bg-primary-200 dark:bg-primary-900/30 dark:text-[#39ff14] dark:hover:bg-primary-900/50"
                     >
                       Ver
                     </a>
                     {user?.role === 'ADMIN' && loan.status === 'PENDING' && (
                       <a
                         href={`/admin/loans/${loan.id}/edit`}
-                        className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                        className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50"
                       >
                         Editar
                       </a>
@@ -230,7 +230,7 @@ export default function LoansPage() {
                       <button
                         onClick={() => handleDelete(loan.id)}
                         disabled={deleting === loan.id}
-                        className="text-red-600 hover:text-red-900 disabled:opacity-50 dark:text-red-400 dark:hover:text-red-300"
+                        className="px-2 py-1 text-xs font-medium bg-red-100 text-red-700 rounded hover:bg-red-200 disabled:opacity-50 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50"
                       >
                         {deleting === loan.id ? 'Eliminando...' : 'Eliminar'}
                       </button>

@@ -182,23 +182,23 @@ export function BackupListTable({ refreshKey }: { refreshKey?: number }) {
                     })}
                   </td>
                   <td className="py-3 text-right">
-                    <div className="flex justify-end gap-2">
+                    <div className="flex justify-end gap-1.5">
                       <button
                         onClick={() => handleDownload(backup.id, backup.filename)}
-                        className="px-2 py-1 text-xs border rounded hover:bg-gray-50 dark:border-[#333] dark:text-white/60 dark:hover:bg-white/5"
+                        className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
                       >
                         Descargar
                       </button>
                       <button
                         onClick={() => setRestoreId(backup.id)}
-                        className="px-2 py-1 text-xs border border-yellow-500 text-yellow-600 rounded hover:bg-yellow-50 dark:border-yellow-500/50 dark:text-yellow-400 dark:hover:bg-yellow-900/20"
+                        className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-700 rounded hover:bg-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:hover:bg-yellow-900/50"
                       >
                         Restaurar
                       </button>
                       <button
                         onClick={() => handleDelete(backup.id)}
                         disabled={deletingId === backup.id}
-                        className="px-2 py-1 text-xs border border-red-500 text-red-600 rounded hover:bg-red-50 disabled:opacity-50 dark:border-red-500/50 dark:text-red-400 dark:hover:bg-red-900/20"
+                        className="px-2 py-1 text-xs font-medium bg-red-100 text-red-700 rounded hover:bg-red-200 disabled:opacity-50 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50"
                       >
                         {deletingId === backup.id ? '...' : 'Eliminar'}
                       </button>

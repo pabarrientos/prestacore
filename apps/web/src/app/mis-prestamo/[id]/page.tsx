@@ -113,10 +113,12 @@ const installmentStatusColors: Record<string, string> = {
   OVERDUE: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-400',
   PARTIAL: 'bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-400',
   CANCELADA_POR_REFINANCIACION: 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-400',
+  INTEREST_ONLY: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-400',
 };
 
 function isOverdue(dueDate: string, status: string): boolean {
   if (status === 'PAID') return false;
+  if (status === 'INTEREST_ONLY') return false;
   // Use string-based date comparison (date-only, no time)
   const daysOverdue = calculateDaysOverdueFromStringSync(dueDate);
   return daysOverdue > 0;
@@ -125,6 +127,7 @@ function isOverdue(dueDate: string, status: string): boolean {
 function getRowClass(status: string, dueDate: string): string {
   if (status === 'PAID') return 'bg-green-50 dark:bg-green-900/20';
   if (status === 'CANCELADA_POR_REFINANCIACION') return 'bg-purple-50 dark:bg-purple-900/20';
+  if (status === 'INTEREST_ONLY') return 'bg-blue-50 dark:bg-blue-900/20';
   if (isOverdue(dueDate, status)) return 'bg-red-50 dark:bg-red-900/20';
   return '';
 }
@@ -356,7 +359,9 @@ export default function MisPrestamosDetallePage() {
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {loan.installments.reduce((acc, inst, idx) => {
                 const prevCapitalBalance = idx === 0 ? loan.amount : acc[idx - 1].capitalBalance;
-                const capitalBalance = prevCapitalBalance - inst.principal;
+                const capitalBalance = inst.status === 'INTEREST_ONLY'
+                  ? prevCapitalBalance
+                  : prevCapitalBalance - inst.principal;
                 
                 // Calculate status dynamically based on actual payments AND loan status
                 const isRefinanced = loan.status === 'REFINANCIADO';
@@ -383,6 +388,10 @@ export default function MisPrestamosDetallePage() {
                 // First check: if loan is PAID -> all installments are PAID
                 if (isPaidLoan) {
                   dynamicStatus = 'PAID';
+                }
+                // INTEREST_ONLY: closed historically, always show INTEREST_ONLY
+                else if (inst.status === 'INTEREST_ONLY') {
+                  dynamicStatus = 'INTEREST_ONLY';
                 }
                 // Second check: if payment covers the full amount -> PAID (even if loan is refinanced)
                 else if (totalPaidForInstallment >= Number(inst.amount)) {
@@ -447,6 +456,7 @@ export default function MisPrestamosDetallePage() {
                     <span className={`px-2 py-1 text-xs rounded-full ${installmentStatusColors[inst.dynamicStatus]}`}>
                       {inst.dynamicStatus === 'PARTIAL' ? 'PARCIAL' : 
                        inst.dynamicStatus === 'CANCELADA_POR_REFINANCIACION' ? 'REFINANCIADA' : 
+                       inst.dynamicStatus === 'INTEREST_ONLY' ? 'SOLO INTERÉS' : 
                        inst.dynamicStatus}
                     </span>
                   </td>

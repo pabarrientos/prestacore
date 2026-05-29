@@ -322,25 +322,25 @@ export default function OverduePage() {
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex flex-col gap-1">
+                      <div className="flex flex-wrap gap-1.5">
                         <button
                           onClick={() => {
                             setSelectedLoanId(inst.loan.id);
                             setSelectedInstallmentId(inst.id);
                             setShowPaymentModal(true);
                           }}
-                          className="text-primary-600 dark:text-[#39ff14] hover:text-primary-800 dark:hover:text-[#32e612] text-sm font-medium text-left"
+                          className="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50"
                         >
-                          Pagar →
+                          Pagar
                         </button>
                         <button
                           onClick={() => {
                             setSelectedCollectionLoanId(inst.loan.id);
                             setShowCollectionModal(true);
                           }}
-                          className="text-orange-600 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-300 text-sm font-medium text-left"
+                          className="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-700 rounded hover:bg-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:hover:bg-orange-900/50"
                         >
-                          Cobranza →
+                          Cobranza
                         </button>
                       </div>
                     </td>

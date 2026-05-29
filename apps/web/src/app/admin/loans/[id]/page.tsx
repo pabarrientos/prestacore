@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { calculateDaysOverdueFromStringSync } from '@/lib/datetime';
 import { apiFetch } from '@/lib/api';
 import PaymentForm from '@/components/PaymentForm';
+import InterestOnlyPaymentModal from '@/components/InterestOnlyPaymentModal';
 import RefinancingModal from '@/components/RefinancingModal';
 import CancelacionAnticipadaModal from '@/components/CancelacionAnticipadaModal';
 import CollectionActionsPanel from '@/components/CollectionActionsPanel';
@@ -121,6 +122,7 @@ const installmentStatusColors: Record<string, string> = {
   OVERDUE: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-400',
   PARTIAL: 'bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-400',
   CANCELADA_POR_REFINANCIACION: 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-400',
+  INTEREST_ONLY: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-400',
 };
 
 function isOverdue(dueDate: string, status: string): boolean {
@@ -133,6 +135,7 @@ function isOverdue(dueDate: string, status: string): boolean {
 function getRowClass(status: string, dueDate: string): string {
   if (status === 'PAID') return 'bg-green-50 dark:bg-green-900/20';
   if (status === 'CANCELADA_POR_REFINANCIACION') return 'bg-purple-50 dark:bg-purple-900/20';
+  if (status === 'INTEREST_ONLY') return 'bg-blue-50 dark:bg-blue-900/20';
   if (isOverdue(dueDate, status)) return 'bg-red-50 dark:bg-red-900/20';
   return '';
 }
@@ -161,6 +164,7 @@ export default function LoanDetailPage() {
   const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
   const [showRefinancing, setShowRefinancing] = useState(false);
   const [showCancelacionAnticipada, setShowCancelacionAnticipada] = useState(false);
+  const [interestOnlyInstallment, setInterestOnlyInstallment] = useState<Installment | null>(null);
   const [moraRate, setMoraRate] = useState(0.0005); // Default fallback
   const [showVendorSelect, setShowVendorSelect] = useState(false);
   const [vendors, setVendors] = useState<{ id: string; firstName: string; lastName: string }[]>([]);
@@ -720,13 +724,17 @@ export default function LoanDetailPage() {
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-white/38 uppercase">Mora</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-white/38 uppercase">Días Venc.</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-white/38 uppercase">Estado</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-white/38 uppercase">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {loan.installments.reduce((acc, inst, idx) => {
                 // Calculate capital balance: starts at loan amount, decreases by principal each installment
+                // Skip INTEREST_ONLY installments — their principal was NOT paid (deferred to new installment)
                 const prevCapitalBalance = idx === 0 ? loan.amount : acc[idx - 1].capitalBalance;
-                const capitalBalance = prevCapitalBalance - inst.principal;
+                const capitalBalance = inst.status === 'INTEREST_ONLY'
+                  ? prevCapitalBalance
+                  : prevCapitalBalance - inst.principal;
                 
                 // Calculate status dynamically based on actual payments AND loan status
                 const isRefinanced = loan.status === 'REFINANCIADO';
@@ -747,6 +755,10 @@ export default function LoanDetailPage() {
                 // First check: if loan is PAID -> all installments are PAID
                 if (isPaidLoan) {
                   dynamicStatus = 'PAID';
+                }
+                // INTEREST_ONLY: closed historically, always show INTEREST_ONLY
+                else if (inst.status === 'INTEREST_ONLY') {
+                  dynamicStatus = 'INTEREST_ONLY';
                 }
                 // Second check: if payment covers the full amount -> PAID (even if loan is refinanced)
                 else if (totalPaidForInstallment >= Number(inst.amount)) {
@@ -809,12 +821,36 @@ export default function LoanDetailPage() {
                     <span className={`px-2 py-1 text-xs rounded-full ${installmentStatusColors[inst.dynamicStatus]}`}>
                       {inst.dynamicStatus === 'PARTIAL' ? 'PARCIAL' : 
                        inst.dynamicStatus === 'CANCELADA_POR_REFINANCIACION' ? 'REFINANCIADA' : 
+                       inst.dynamicStatus === 'INTEREST_ONLY' ? 'SOLO INTERÉS' : 
                        inst.dynamicStatus}
                     </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    {(loan.status === 'ACTIVE' || loan.status === 'DEFAULTED') &&
+                     inst.dynamicStatus !== 'PAID' && 
+                     inst.dynamicStatus !== 'INTEREST_ONLY' &&
+                     inst.dynamicStatus !== 'CANCELADA_POR_REFINANCIACION' && (
+                      <button
+                        onClick={() => setInterestOnlyInstallment(inst)}
+                        className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50"
+                        title="Pagar solo el interés de esta cuota"
+                      >
+                        Solo Interés
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
             </tbody>
+            <tfoot>
+              <tr className="bg-gray-100 dark:bg-[#2a2a2a] font-semibold">
+                <td className="px-4 py-3 text-right dark:text-white/[.87]" colSpan={6}>Total Saldo:</td>
+                <td className="px-4 py-3 dark:text-white/[.87]">
+                  ${loan.installments.reduce((sum, inst) => sum + Number(inst.balance), 0).toLocaleString()}
+                </td>
+                <td className="px-4 py-3" colSpan={4}></td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       </div>
@@ -860,25 +896,36 @@ export default function LoanDetailPage() {
                     <td className="px-4 py-3 text-sm dark:text-white/[.87]">{payment.notes || '-'}</td>
                     {user?.role === 'ADMIN' && (
                       <td className="px-4 py-3">
+                        <div className="flex gap-1.5">
                         <button
                           onClick={() => handleEditPayment(payment)}
-                          className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm mr-3"
+                          className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50"
                         >
                           Editar
                         </button>
                         <button
                           onClick={() => handleDeletePayment(payment)}
-                          className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm"
+                          className="px-2 py-1 text-xs font-medium bg-red-100 text-red-700 rounded hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50"
                         >
                           Eliminar
                         </button>
+                        </div>
                       </td>
                     )}
                   </tr>
                   );
                 })}
               </tbody>
-            </table>
+            <tfoot>
+              <tr className="bg-gray-100 dark:bg-[#2a2a2a] font-semibold">
+                <td className="px-4 py-3 text-right dark:text-white/[.87]">Total:</td>
+                <td className="px-4 py-3 dark:text-white/[.87]">
+                  ${loan.payments.reduce((sum, p) => sum + Number(p.amount), 0).toLocaleString()}
+                </td>
+                <td className="px-4 py-3" colSpan={user?.role === 'ADMIN' ? 4 : 3}></td>
+              </tr>
+            </tfoot>
+          </table>
           </div>
         </div>
       )}
@@ -900,6 +947,39 @@ export default function LoanDetailPage() {
                 setShowPaymentForm(false);
                 setEditingPayment(null);
               }}
+            />
+          </div>
+        </div>
+        </>
+      )}
+
+      {/* Interest Only Payment Modal */}
+      {interestOnlyInstallment && loan && (
+        <>
+          <div className="fixed inset-0 z-50 bg-black bg-opacity-50 dark:bg-opacity-70" onClick={() => setInterestOnlyInstallment(null)} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="max-w-lg w-full my-8 max-h-[90vh] overflow-y-auto">
+            <InterestOnlyPaymentModal
+              loanId={loan.id}
+              installment={{
+                id: interestOnlyInstallment.id,
+                installmentNumber: interestOnlyInstallment.installmentNumber,
+                dueDate: interestOnlyInstallment.dueDate,
+                amount: interestOnlyInstallment.amount,
+                principal: interestOnlyInstallment.principal,
+                interest: interestOnlyInstallment.interest,
+              }}
+              onSuccess={() => {
+                setInterestOnlyInstallment(null);
+                if (token && params.id) {
+                  apiFetch(`/api/loans/${params.id}`)
+                    .then((res) => res.json())
+                    .then((data) => {
+                      if (data.success) setLoan(data.data);
+                    });
+                }
+              }}
+              onCancel={() => setInterestOnlyInstallment(null)}
             />
           </div>
         </div>

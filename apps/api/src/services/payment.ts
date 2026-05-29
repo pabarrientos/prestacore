@@ -3,6 +3,7 @@ import {
   LoanStatus,
   InstallmentStatus,
   PaymentStatus,
+  PaymentFrequency,
   Payment,
   Installment,
 } from '@prisma/client';
@@ -20,11 +21,39 @@ export interface CreatePaymentInput {
   paymentDate?: string;
 }
 
+export interface CreateInterestOnlyPaymentInput {
+  loanId: string;
+  installmentId: string;
+  amount: number;
+  reference?: string;
+  notes?: string;
+  paymentDate?: string;
+}
+
 export interface ProcessPaymentResult {
   success: boolean;
   payment?: Payment;
   error?: string;
   updatedInstallments?: Installment[];
+}
+
+function addPeriod(date: Date, frequency: PaymentFrequency, periods: number): Date {
+  const result = new Date(date);
+  switch (frequency) {
+    case PaymentFrequency.WEEKLY:
+      result.setDate(result.getDate() + periods * 7);
+      break;
+    case PaymentFrequency.BIWEEKLY:
+      result.setDate(result.getDate() + periods * 14);
+      break;
+    case PaymentFrequency.MONTHLY:
+      result.setMonth(result.getMonth() + periods);
+      break;
+    case PaymentFrequency.DAILY:
+      result.setDate(result.getDate() + periods);
+      break;
+  }
+  return result;
 }
 
 export interface CalculateBalanceResult {
@@ -88,9 +117,10 @@ export class PaymentService {
         };
       }
 
-      // Calculate total pending balance (usando amount - paidAmount)
+      // Calculate total pending balance (using amount - paidAmount)
+      // Exclude PAID and INTEREST_ONLY (closed historically)
       const pendingInstallments = loan.installments.filter(
-        (inst) => inst.status !== InstallmentStatus.PAID
+        (inst) => inst.status !== InstallmentStatus.PAID && inst.status !== InstallmentStatus.INTEREST_ONLY
       );
       const totalPending = pendingInstallments.reduce((sum, inst) => {
         const pendingForThisInst = Number(inst.amount) - Number(inst.paidAmount);
@@ -122,6 +152,10 @@ export class PaymentService {
 
           if (installment.loanId !== loanId) {
             throw new Error('La cuota no pertenece a este préstamo');
+          }
+
+          if (installment.status === InstallmentStatus.INTEREST_ONLY) {
+            throw new Error('No se puede pagar una cuota marcada como solo interés');
           }
 
           // El 'amount' es el monto ORIGINAL de la cuota (constante)
@@ -236,11 +270,13 @@ export class PaymentService {
           }
         }
 
-        // Check if loan is fully paid
+        // Check if loan is fully paid (exclude INTEREST_ONLY and CANCELADA_POR_REFINANCIACION)
         const remainingPending = await tx.installment.count({
           where: {
             loanId,
-            status: { not: InstallmentStatus.PAID },
+            status: {
+              notIn: [InstallmentStatus.PAID, InstallmentStatus.INTEREST_ONLY, InstallmentStatus.CANCELADA_POR_REFINANCIACION],
+            },
           },
         });
 
@@ -268,6 +304,186 @@ export class PaymentService {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Error al procesar el pago',
+      };
+    }
+  }
+
+  /**
+   * Process an interest-only payment.
+   * When a client can't pay the full installment, they pay only the interest component.
+   * 
+   * Flow:
+   * 1. Create a payment record (like mora — without installmentId) with tracking in notes
+   * 2. Mark the original installment as INTEREST_ONLY (balance=0, closed historically)
+   * 3. Insert a new installment with the same structure, due date shifted +1 period
+   * 4. Shift all subsequent installments' due dates +1 period
+   * 5. Recalculate capitalBalance for all affected installments
+   * 6. Renumber all installmentNumbers
+   */
+  static async processInterestOnlyPayment(
+    input: CreateInterestOnlyPaymentInput
+  ): Promise<ProcessPaymentResult> {
+    const { loanId, installmentId, amount, reference, notes, paymentDate } = input;
+
+    try {
+      if (amount <= 0) {
+        return { success: false, error: 'El monto debe ser mayor a 0' };
+      }
+
+      const loan = await prisma.loan.findUnique({
+        where: { id: loanId },
+        include: {
+          installments: {
+            orderBy: [{ dueDate: 'asc' }, { installmentNumber: 'asc' }],
+          },
+        },
+      });
+
+      if (!loan) {
+        return { success: false, error: 'Préstamo no encontrado' };
+      }
+
+      if (loan.status !== LoanStatus.ACTIVE && loan.status !== LoanStatus.DEFAULTED) {
+        return {
+          success: false,
+          error: `No se pueden registrar pagos en préstamos con estado ${loan.status}`,
+        };
+      }
+
+      const targetInstallment = loan.installments.find(
+        (inst) => inst.id === installmentId
+      );
+
+      if (!targetInstallment) {
+        return { success: false, error: 'Cuota no encontrada' };
+      }
+
+      if (targetInstallment.loanId !== loanId) {
+        return { success: false, error: 'La cuota no pertenece a este préstamo' };
+      }
+
+      if (
+        targetInstallment.status === InstallmentStatus.PAID ||
+        targetInstallment.status === InstallmentStatus.INTEREST_ONLY ||
+        targetInstallment.status === InstallmentStatus.CANCELADA_POR_REFINANCIACION
+      ) {
+        return {
+          success: false,
+          error: `No se puede aplicar pago de solo interés a una cuota con estado ${targetInstallment.status}`,
+        };
+      }
+
+      const originalInterest = Number(targetInstallment.interest);
+      const originalPrincipal = Number(targetInstallment.principal);
+      const originalAmount = Number(targetInstallment.amount);
+      const wasModified = amount !== originalInterest;
+
+      const modifiedText = wasModified
+        ? ` (Interés original: $${originalInterest.toFixed(2)}, Monto pagado: $${amount.toFixed(2)})`
+        : '';
+
+      let autoNotes = `Pago solo interés cuota #${targetInstallment.installmentNumber}${modifiedText}`;
+      const finalNotes = notes ? `${autoNotes}. ${notes}` : autoNotes;
+
+      const result = await prisma.$transaction(async (tx) => {
+        const installmentIndex = loan.installments.findIndex(
+          (inst) => inst.id === installmentId
+        );
+
+        const payment = await tx.payment.create({
+          data: {
+            clientId: loan.clientId,
+            loanId,
+            installmentId: null,
+            amount,
+            type: 'MANUAL',
+            status: PaymentStatus.COMPLETED,
+            reference,
+            notes: finalNotes,
+            paymentDate: paymentDate ? new Date(paymentDate) : undefined,
+            processedAt: new Date(),
+          },
+        });
+
+        await tx.installment.update({
+          where: { id: installmentId },
+          data: {
+            balance: 0,
+            status: InstallmentStatus.INTEREST_ONLY,
+          },
+        });
+
+        const newDueDate = addPeriod(
+          targetInstallment.dueDate,
+          loan.frequency,
+          1
+        );
+
+        const createdInstallment = await tx.installment.create({
+          data: {
+            loanId,
+            installmentNumber: targetInstallment.installmentNumber,
+            dueDate: newDueDate,
+            amount: originalAmount,
+            principal: originalPrincipal,
+            interest: originalInterest,
+            balance: originalAmount,
+            capitalBalance: 0,
+            status: InstallmentStatus.PENDING,
+          },
+        });
+
+        const subsequentInstallments = loan.installments.slice(installmentIndex + 1);
+        for (const inst of subsequentInstallments) {
+          const shiftedDueDate = addPeriod(inst.dueDate, loan.frequency, 1);
+          await tx.installment.update({
+            where: { id: inst.id },
+            data: {
+              dueDate: shiftedDueDate,
+            },
+          });
+        }
+
+        const allInstallments = await tx.installment.findMany({
+          where: { loanId },
+          orderBy: [{ dueDate: 'asc' }, { installmentNumber: 'asc' }],
+        });
+
+        let runningCapital = Number(loan.amount);
+        let installmentNum = 0;
+        for (const inst of allInstallments) {
+          installmentNum++;
+          if (inst.status !== InstallmentStatus.INTEREST_ONLY) {
+            runningCapital -= Number(inst.principal);
+          }
+          await tx.installment.update({
+            where: { id: inst.id },
+            data: {
+              capitalBalance: Math.max(0, runningCapital),
+              installmentNumber: installmentNum,
+            },
+          });
+        }
+
+        const updatedInstallments = await tx.installment.findMany({
+          where: { loanId },
+          orderBy: [{ dueDate: 'asc' }, { installmentNumber: 'asc' }],
+        });
+
+        return { payment, updatedInstallments, createdInstallment };
+      });
+
+      return {
+        success: true,
+        payment: result.payment,
+        updatedInstallments: result.updatedInstallments,
+      };
+
+    } catch (error) {
+      console.error('Interest-only payment processing error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Error al procesar el pago de solo interés',
       };
     }
   }

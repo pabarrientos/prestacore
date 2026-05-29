@@ -76,13 +76,14 @@ export class RefinancingService {
     const dailyRate = await getRate('MORA_RATE');
     const todayOnly = await getToday();
 
-    // Find the first unpaid installment (not PAID, ordered by dueDate)
+    // Find the first unpaid installment (not PAID, not INTEREST_ONLY, ordered by dueDate)
     const firstUnpaidInstallment = loan.installments.find(
-      (inst) => inst.status !== InstallmentStatus.PAID
+      (inst) => inst.status !== InstallmentStatus.PAID && inst.status !== InstallmentStatus.INTEREST_ONLY
     );
 
     // capitalPendiente: calculate same as frontend (loan.amount - sum of principal paid so far)
     // For the first unpaid installment: loan.amount - sum(principal of all previous installments)
+    // Skip INTEREST_ONLY installments — their principal was NOT paid, it was deferred to a new installment
     let capitalPendiente = 0;
     if (firstUnpaidInstallment) {
       // Find the index of the first unpaid installment
@@ -93,16 +94,17 @@ export class RefinancingService {
       // Sum of principal of all installments BEFORE the first unpaid
       const totalPrincipalPaid = loan.installments
         .slice(0, firstUnpaidIndex)
+        .filter((inst) => inst.status !== InstallmentStatus.INTEREST_ONLY)
         .reduce((sum, inst) => sum + Number(inst.principal), 0);
       
       // capitalBalance = loan amount - principal paid so far
       capitalPendiente = Number(loan.amount) - totalPrincipalPaid;
     }
 
-    // Get all overdue installments (not PAID, dueDate < today) - use date-only comparison
+    // Get all overdue installments (not PAID, not INTEREST_ONLY, dueDate < today) - use date-only comparison
     const overdueInstallments = loan.installments.filter(
       (inst) => {
-        if (inst.status === InstallmentStatus.PAID) return false;
+        if (inst.status === InstallmentStatus.PAID || inst.status === InstallmentStatus.INTEREST_ONLY) return false;
         const dueDateOnly = new Date(new Date(inst.dueDate).getFullYear(), new Date(inst.dueDate).getMonth(), new Date(inst.dueDate).getDate());
         return dueDateOnly < todayOnly;
       }

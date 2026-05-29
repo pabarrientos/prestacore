@@ -60,10 +60,12 @@ async function main() {
   });
   console.log('✅ Created client user:', clientUser.email);
 
-  // Create client profile
+  // Create client profile — use dni as unique key since userId may differ across seed runs
   const client = await prisma.client.upsert({
-    where: { userId: clientUser.id },
-    update: {},
+    where: { dni: '12345678A' },
+    update: {
+      userId: clientUser.id,
+    },
     create: {
       userId: clientUser.id,
       dni: '12345678A',

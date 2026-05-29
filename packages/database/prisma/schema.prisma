@@ -50,6 +50,7 @@ enum InstallmentStatus {
   OVERDUE   // Vencido
   PARTIAL   // Pago parcial
   CANCELADA_POR_REFINANCIACION // Cancelada por refinanciación
+  INTEREST_ONLY // Pago de solo interés (cuota cerrada, capital pendiente se movió a nueva cuota)
 }
 
 enum CollectionActionType {

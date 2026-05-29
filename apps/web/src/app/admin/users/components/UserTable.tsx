@@ -131,11 +131,11 @@ export function UserTable({
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5">
                     {/* Edit Button */}
                     <button
                       onClick={() => onEdit(user)}
-                      className="text-primary-600 hover:text-primary-900 text-sm dark:text-[#39ff14] dark:hover:text-[#32e012]"
+                      className="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50"
                     >
                       Editar
                     </button>
@@ -145,7 +145,7 @@ export function UserTable({
                       <button
                         onClick={() => onChangeRole(user)}
                         disabled={actionLoading === user.id}
-                        className="text-blue-600 hover:text-blue-900 text-sm dark:text-blue-400 dark:hover:text-blue-300 disabled:opacity-50"
+                        className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 disabled:opacity-50"
                       >
                         Cambiar Rol
                       </button>
@@ -154,7 +154,7 @@ export function UserTable({
                     {/* Change Password */}
                     <button
                       onClick={() => onChangePassword(user)}
-                      className="text-orange-600 hover:text-orange-900 text-sm dark:text-orange-400 dark:hover:text-orange-300"
+                      className="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-700 rounded hover:bg-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:hover:bg-orange-900/50"
                     >
                       Password
                     </button>
@@ -164,10 +164,10 @@ export function UserTable({
                       <button
                         onClick={() => handleToggleActive(user)}
                         disabled={actionLoading === user.id}
-                        className={`text-sm ${
+                        className={`px-2 py-1 text-xs font-medium rounded ${
                           user.isActive
-                            ? 'text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300'
-                            : 'text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300'
+                            ? 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50'
+                            : 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50'
                         } disabled:opacity-50`}
                       >
                         {actionLoading === user.id
@@ -183,7 +183,7 @@ export function UserTable({
                       <button
                         onClick={() => handleDelete(user)}
                         disabled={actionLoading === user.id}
-                        className="text-red-600 hover:text-red-900 text-sm dark:text-red-400 dark:hover:text-red-300 disabled:opacity-50"
+                        className="px-2 py-1 text-xs font-medium bg-red-100 text-red-700 rounded hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 disabled:opacity-50"
                       >
                         {actionLoading === user.id ? '...' : 'Eliminar'}
                       </button>

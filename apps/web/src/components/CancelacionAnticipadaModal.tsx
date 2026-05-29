@@ -229,7 +229,7 @@ export default function CancelacionAnticipadaModal({ loanId, onSuccess, onCancel
                       setInteresesVencidosModificado(true);
                       setInteresesVencidosManual(preview.breakdown.interesesVencidos.toString());
                     }}
-                    className="text-xs text-green-600 hover:text-green-800 mt-1 dark:text-green-500 dark:hover:text-green-400"
+                    className="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50"
                   >
                     Editar
                   </button>
