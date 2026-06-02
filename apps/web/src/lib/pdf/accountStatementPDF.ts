@@ -93,10 +93,11 @@ export function calculateMoraPagada(
     // consistent with how they appear in the PDF tables.
     // This ensures mora pagada = displayedPayment - displayedCuota,
     // not rawDBPayment - rawDBCuota which can differ by up to ROUNDING_UNIT-1.
-    const roundedTotalPaid = roundUpInstallment(totalPaidForThis, roundingUnit);
+    //const roundedTotalPaid = roundUpInstallment(totalPaidForThis, roundingUnit);
     const roundedCuota = roundUpInstallment(inst.amount, roundingUnit);
 
-    const excess = roundedTotalPaid - roundedCuota;
+    //const excess = roundedTotalPaid - roundedCuota;
+    const excess = totalPaidForThis - roundedCuota;
     if (excess > 0) {
       total += excess;
     }
@@ -113,7 +114,8 @@ export function calculateMoraPagada(
   // Round the final sum for consistency (edge case: if individual excesses
   // happen to not be multiples of roundingUnit after rounding both operands,
   // which shouldn't occur but provides a safety net).
-  return roundUpInstallment(total, roundingUnit);
+  //return roundUpInstallment(total, roundingUnit);
+  return total;
 }
 
 /**
