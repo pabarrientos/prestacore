@@ -338,7 +338,20 @@ export class CommissionService {
 
     // Calculate commission using strategy on normal installments
     let totalCommission = 0;
+    // For AFTER_CAPITAL_RECOVERY, the strategy's "capitalRecoveredSoFar" is actually
+    // "totalCollected so far". Standalone payments (abono a cuenta, installmentId=null)
+    // — which are how INTEREST_ONLY payments are recorded — are NOT represented in any
+    // cuota's amountPaid, so we must seed the running total with them. Without this,
+    // a loan with $200k capital and $212k collected (all INTEREST_ONLY + 1 PAID cuota
+    // that recovered the capital partially) shows $0 commission even though there's $12k
+    // of real profit to be commissionable.
     let capitalRecoveredSoFar = 0;
+    if (mode === CommissionMode.AFTER_CAPITAL_RECOVERY) {
+      const allPayments = loan.payments || [];
+      capitalRecoveredSoFar = allPayments
+        .filter((p) => !p.installmentId && Number(p.amount) > 0)
+        .reduce((sum, p) => sum + Number(p.amount), 0);
+    }
 
     for (const installment of normalInstallments) {
       const result = strategy.calculateInstallmentCommission(
@@ -359,13 +372,17 @@ export class CommissionService {
       capitalRecoveredSoFar = result.newCapitalRecovered;
     }
 
-    // Rule 1: add commission for INTEREST_ONLY installments (proportional on actual interest collected)
-    // This is OUTSIDE the strategy to keep the two bases (paidAmount/amount vs interestCollected) disjoint.
-    for (const inst of interestOnlyInstallments) {
-      const instCommission = Math.round(Number(inst.interestCollected) * (percentage / 100) * 100) / 100;
-      totalCommission += instCommission;
-      // NOTE: capital recovered stays as the strategy computed it — the principal of
-      // INTEREST_ONLY was deferred, not paid, so it must not increment capitalRecoveredSoFar.
+    // Rule 1 (refined): add commission for INTEREST_ONLY installments on ACTIVE loans
+    // ONLY for modes that don't gate commission on capital recovery. For AFTER_CAPITAL_RECOVERY
+    // the standalone interest-only payments are already counted via capitalRecoveredSoFar
+    // (seeded above), which is the correct input for the strategy's gananciaReal calc.
+    if (mode !== CommissionMode.AFTER_CAPITAL_RECOVERY) {
+      for (const inst of interestOnlyInstallments) {
+        const instCommission = Math.round(Number(inst.interestCollected) * (percentage / 100) * 100) / 100;
+        totalCommission += instCommission;
+        // NOTE: capital recovered stays as the strategy computed it — the principal of
+        // INTEREST_ONLY was deferred, not paid, so it must not increment capitalRecoveredSoFar.
+      }
     }
 
     // Round to 2 decimal places
