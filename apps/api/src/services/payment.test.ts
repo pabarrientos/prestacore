@@ -53,4 +53,17 @@ describe('PaymentService', () => {
       expect(result).toBeNull();
     });
   });
+
+  describe('processInterestOnlyPayment', () => {
+    it('should reject interest-only payment with amount <= 0', async () => {
+      const result = await PaymentService.processInterestOnlyPayment({
+        loanId: 'loan-1',
+        installmentId: 'inst-1',
+        amount: 0,
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('El monto debe ser mayor a 0');
+    });
+  });
 });

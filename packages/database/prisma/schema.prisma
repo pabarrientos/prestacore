@@ -208,6 +208,7 @@ model Installment {
   status          InstallmentStatus @default(PENDING)
   paidAt          DateTime?
   paidAmount      Decimal           @db.Decimal(12, 2) @default(0)
+  interestCollected Decimal         @db.Decimal(12, 2) @default(0) // Acumulado de interés cobrado vía pagos de solo-interés
   moraAmount      Decimal           @db.Decimal(12, 2) @default(0)
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt

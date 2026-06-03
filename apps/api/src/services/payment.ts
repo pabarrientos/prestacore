@@ -410,6 +410,10 @@ export class PaymentService {
           data: {
             balance: 0,
             status: InstallmentStatus.INTEREST_ONLY,
+            // Track actual interest collected for commission calculation (rule 1)
+            // Separate from paidAmount because principal is deferred, not paid — and the
+            // mora calculation must not see this as a PARTIAL payment.
+            interestCollected: { increment: amount },
           },
         });
 
