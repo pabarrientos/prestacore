@@ -295,6 +295,7 @@ export default function InstallmentsPage() {
               <option value="PAID">Pagado</option>
               <option value="OVERDUE">Vencido</option>
               <option value="PARTIAL">Parcial</option>
+              <option value="INTEREST_ONLY">Solo Interés</option>
             </select>
           </div>
         </div>
