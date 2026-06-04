@@ -726,6 +726,11 @@ router.post('/interest-only', authMiddleware, requireVendor, async (req: AuthReq
         createdAt: result.payment!.createdAt.toISOString(),
       },
     });
+
+    // Recalculate commission after interest-only payment (non-blocking)
+    CommissionService.recalculateLoan(loanId).catch(err => {
+      console.error('Commission recalculation error on interest-only payment:', err);
+    });
   } catch (error) {
     console.error('Interest-only payment error:', error);
     res.status(500).json({
