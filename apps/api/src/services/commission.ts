@@ -261,16 +261,22 @@ export class CommissionService {
 
     // For PAID/REFINANCIADO/DEFAULTED: commission based on real profit + interest-only
     if (isFinalStatus) {
-      const allPayments = loan.payments || [];
-      const totalPayments = allPayments.reduce((sum, p) => sum + Number(p.amount), 0);
-      const gananciaReal = Math.max(0, totalPayments - totalPrincipal);
-      let finalCommission = Math.round(gananciaReal * (percentage / 100) * 100) / 100;
+      // Filter out "Pago excepcional por refinanciación" — that payment is solely to
+      // reduce the new loan's capital, not vendor commission. It must not inflate the
+      // commission base on the refinanced loan.
+      const isRefiExcepcional = (notes: string | null | undefined) =>
+        (notes || '').includes('excepcional') || (notes || '').includes('reduce nuevo capital');
 
-      // Fallback ONLY for REFINANCIADO: when gananciaReal === 0, use proportional + interestOnly + mora
-      // so the vendor doesn't lose commission on real interest-only payments.
-      // DEFAULTED and PAID behave as pure AFTER_CAPITAL_RECOVERY: $0 if no real profit,
-      // 50% × profit otherwise. No fallback for those — the user defined this strictly.
-      if (loan.status === 'REFINANCIADO' && finalCommission === 0) {
+      const allPayments = (loan.payments || []).filter(
+        (p) => !isRefiExcepcional(p.notes)
+      );
+
+      // REFINANCIADO: always compute as proportional (proporcional + interestOnly + mora),
+      // independent of the original loan's commission mode and independent of gananciaReal.
+      // DEFAULTED and PAID: behave as pure AFTER_CAPITAL_RECOVERY — gananciaReal × %,
+      // no fallback. $0 if no real profit.
+      let finalCommission = 0;
+      if (loan.status === 'REFINANCIADO') {
         // Proportional on paid installments (PAID/PARTIAL/CANCELADA) using paidAmount
         const paidInstallments = loan.installments.filter(
           (inst) => inst.status !== 'PENDING' && inst.status !== 'INTEREST_ONLY' && Number(inst.paidAmount) > 0
@@ -281,7 +287,7 @@ export class CommissionService {
           proporcionalCommission += Math.round(interestCollected * (percentage / 100) * 100) / 100;
         }
 
-        // Rule 1: INTEREST_ONLY cuotas contribue via interestCollected (independent of mode)
+        // Rule 1: INTEREST_ONLY cuotas contribue via interestCollected
         let interestOnlyCommission = 0;
         for (const inst of loan.installments) {
           if (inst.status === 'INTEREST_ONLY' && Number(inst.interestCollected) > 0) {
@@ -289,7 +295,7 @@ export class CommissionService {
           }
         }
 
-        // Mora payments (exclude "reduce nuevo capital" payments)
+        // Mora payments (excluding capitalExtra/reduce nuevo capital — filtered above)
         let moraCommission = 0;
         for (const p of allPayments) {
           if (!p.installmentId && Number(p.amount) > 0 && (p.notes || '').includes('Mora')) {
@@ -298,6 +304,11 @@ export class CommissionService {
         }
 
         finalCommission = Math.round((proporcionalCommission + interestOnlyCommission + moraCommission) * 100) / 100;
+      } else {
+        // DEFAULTED / PAID: strict gananciaReal × %
+        const totalPayments = allPayments.reduce((sum, p) => sum + Number(p.amount), 0);
+        const gananciaReal = Math.max(0, totalPayments - totalPrincipal);
+        finalCommission = Math.round(gananciaReal * (percentage / 100) * 100) / 100;
       }
 
       await prisma.loan.update({
