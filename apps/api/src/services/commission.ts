@@ -266,22 +266,22 @@ export class CommissionService {
       const gananciaReal = Math.max(0, totalPayments - totalPrincipal);
       let finalCommission = Math.round(gananciaReal * (percentage / 100) * 100) / 100;
 
-      // Fallback for all 3 final statuses when gananciaReal === 0 (rule 4):
-      // use proportional on paid cuotas PLUS interestCollected on INTEREST_ONLY PLUS mora.
-      // Was previously REFINANCIADO-only; extended per rule 4 to DEFAULTED and PAID so that
-      // commission on real interest-only payments is never lost.
-      if (finalCommission === 0) {
+      // Fallback ONLY for REFINANCIADO: when gananciaReal === 0, use proportional + interestOnly + mora
+      // so the vendor doesn't lose commission on real interest-only payments.
+      // DEFAULTED and PAID behave as pure AFTER_CAPITAL_RECOVERY: $0 if no real profit,
+      // 50% × profit otherwise. No fallback for those — the user defined this strictly.
+      if (loan.status === 'REFINANCIADO' && finalCommission === 0) {
         // Proportional on paid installments (PAID/PARTIAL/CANCELADA) using paidAmount
         const paidInstallments = loan.installments.filter(
           (inst) => inst.status !== 'PENDING' && inst.status !== 'INTEREST_ONLY' && Number(inst.paidAmount) > 0
         );
-        let proportionalCommission = 0;
+        let proporcionalCommission = 0;
         for (const inst of paidInstallments) {
           const interestCollected = Number(inst.interest) * Math.min(Number(inst.paidAmount) / Number(inst.amount), 1);
-          proportionalCommission += Math.round(interestCollected * (percentage / 100) * 100) / 100;
+          proporcionalCommission += Math.round(interestCollected * (percentage / 100) * 100) / 100;
         }
 
-        // Rule 1: INTEREST_ONLY cuotas contribute via interestCollected (independent of mode)
+        // Rule 1: INTEREST_ONLY cuotas contribue via interestCollected (independent of mode)
         let interestOnlyCommission = 0;
         for (const inst of loan.installments) {
           if (inst.status === 'INTEREST_ONLY' && Number(inst.interestCollected) > 0) {
@@ -297,7 +297,7 @@ export class CommissionService {
           }
         }
 
-        finalCommission = Math.round((proportionalCommission + interestOnlyCommission + moraCommission) * 100) / 100;
+        finalCommission = Math.round((proporcionalCommission + interestOnlyCommission + moraCommission) * 100) / 100;
       }
 
       await prisma.loan.update({
