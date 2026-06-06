@@ -4,6 +4,8 @@ import type {
   BackupSchedule,
   RetentionConfig,
   RestorePreview,
+  BackupExecutionLog,
+  EnforceRetentionResult,
 } from './backup-types';
 
 // List all backups
@@ -107,4 +109,35 @@ export function triggerDownload(blob: Blob, filename: string): void {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+// Manually enforce retention policy
+export async function enforceRetention(): Promise<EnforceRetentionResult> {
+  const res = await apiFetch('/api/backups/retention/enforce', { method: 'POST' });
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error);
+  return data.data;
+}
+
+// Get execution logs from scheduler
+export async function getExecutionLogs(limit = 50): Promise<BackupExecutionLog[]> {
+  const res = await apiFetch(`/api/backups/logs?limit=${limit}`);
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error);
+  return data.data;
+}
+
+// Delete a specific execution log
+export async function deleteExecutionLog(id: string): Promise<void> {
+  const res = await apiFetch(`/api/backups/logs/${id}`, { method: 'DELETE' });
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error);
+}
+
+// Delete all execution logs
+export async function deleteAllExecutionLogs(): Promise<{ deleted: number }> {
+  const res = await apiFetch('/api/backups/logs', { method: 'DELETE' });
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error);
+  return data.data;
 }

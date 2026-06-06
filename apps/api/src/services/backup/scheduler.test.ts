@@ -31,6 +31,10 @@ vi.mock('./dump', () => ({
 }));
 
 describe('Scheduler', () => {
+  beforeEach(() => {
+    mockSchedule.mockClear();
+  });
+
   describe('parseScheduleConfig', () => {
     it('should parse daily schedule correctly', () => {
       const config = {
@@ -128,6 +132,9 @@ describe('Scheduler', () => {
     it('should trigger backup when cron fires', async () => {
       const prisma = new PrismaClient();
 
+      // Mock $queryRaw for advisory lock
+      prisma.$queryRaw = vi.fn().mockResolvedValue([{ locked: true }]) as any;
+
       // Mock a schedule setting
       await prisma.setting.upsert({
         where: { key: 'BACKUP_SCHEDULE' },
@@ -142,6 +149,18 @@ describe('Scheduler', () => {
         '0 3 * * *',
         expect.any(Function)
       );
+    });
+
+    it('should skip scheduler if advisory lock fails', async () => {
+      const prisma = new PrismaClient();
+
+      // Mock $queryRaw to return locked: false (another instance has the lock)
+      prisma.$queryRaw = vi.fn().mockResolvedValue([{ locked: false }]) as any;
+
+      await startScheduler(prisma);
+
+      // Verify that cron.schedule was NOT called
+      expect(mockSchedule).not.toHaveBeenCalled();
     });
   });
 });

@@ -3,17 +3,19 @@ import { readdir, stat } from 'fs/promises';
 import { join, extname } from 'path';
 
 const ALLOWED_EXTENSIONS = ['.dump', '.sql', '.tar'];
-const BACKUPS_DIR = process.env.BACKUPS_DIR || '/app/backups';
 
 /**
  * Reconcile backup files on disk with database records.
- * - Scans /app/backups/ for dump files
+ * - Scans BACKUPS_DIR for dump files
  * - Creates Backup records for files without DB entries
  * - Removes DB records for entries whose files no longer exist on disk
  */
 export async function reconcileBackups(prisma: PrismaClient): Promise<{ created: number; removed: number }> {
   let created = 0;
   let removed = 0;
+
+  // Read at runtime so env var changes are reflected
+  const BACKUPS_DIR = process.env.BACKUPS_DIR || '/app/backups';
 
   try {
     // 1. Scan disk for backup files

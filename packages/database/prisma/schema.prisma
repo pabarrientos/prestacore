@@ -336,6 +336,23 @@ model Backup {
 }
 
 // ============================================
+// Backup Execution Log (Scheduler audit trail)
+// ============================================
+
+model BackupExecutionLog {
+  id         String   @id @default(cuid())
+  type       String   // SCHEDULED | MANUAL | RETENTION
+  status     String   // SUCCESS | FAILED
+  message    String?  // Error message if FAILED
+  durationMs Int?     // Duration in milliseconds
+  backupId   String?  // ID of the backup created (if applicable)
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([type])
+}
+
+// ============================================
 // Seller Commission Configuration Audit
 // ============================================
 

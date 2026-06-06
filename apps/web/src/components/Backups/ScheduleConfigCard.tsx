@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getSchedule, updateSchedule } from '@/lib/backup-api';
+import { getSchedule, updateSchedule, enforceRetention } from '@/lib/backup-api';
 import type { BackupSchedule, RetentionConfig } from '@/lib/backup-types';
 
 const DAYS_OF_WEEK = [
@@ -23,6 +23,7 @@ export function ScheduleConfigCard() {
   const [retention, setRetention] = useState<RetentionConfig>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [enforcing, setEnforcing] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
 
   useEffect(() => {
@@ -52,6 +53,27 @@ export function ScheduleConfigCard() {
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleEnforceRetention = async () => {
+    setEnforcing(true);
+    setMessage({ type: '', text: '' });
+    try {
+      const result = await enforceRetention();
+      setMessage({
+        type: 'success',
+        text: result.deleted === 0
+          ? 'No hay respaldos para eliminar'
+          : `Se eliminaron ${result.deleted} respaldo(s)`,
+      });
+    } catch (e) {
+      setMessage({
+        type: 'error',
+        text: e instanceof Error ? e.message : 'Error al ejecutar retención',
+      });
+    } finally {
+      setEnforcing(false);
     }
   };
 
@@ -247,6 +269,14 @@ export function ScheduleConfigCard() {
           className="w-full px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 dark:bg-[#39ff14] dark:text-black dark:hover:bg-[#32e012]"
         >
           {saving ? 'Guardando...' : 'Guardar Configuración'}
+        </button>
+
+        <button
+          onClick={handleEnforceRetention}
+          disabled={enforcing}
+          className="w-full px-4 py-2 border border-orange-500 text-orange-600 rounded-lg hover:bg-orange-50 disabled:opacity-50 dark:border-orange-400 dark:text-orange-400 dark:hover:bg-orange-950/30"
+        >
+          {enforcing ? 'Ejecutando...' : 'Ejecutar Retención Ahora'}
         </button>
       </div>
     </div>

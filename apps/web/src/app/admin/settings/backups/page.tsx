@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/auth-context';
 import { ScheduleConfigCard } from '@/components/Backups/ScheduleConfigCard';
 import { BackupListTable } from '@/components/Backups/BackupListTable';
 import { RestoreCard } from '@/components/Backups/RestoreCard';
+import { ExecutionLogs } from '@/components/Backups/ExecutionLogs';
 
 export default function BackupsPage() {
   const { user } = useAuth();
@@ -44,6 +45,9 @@ export default function BackupsPage() {
 
       {/* Full width: backup list */}
       <BackupListTable refreshKey={refreshKey} />
+
+      {/* Full width: execution logs */}
+      <ExecutionLogs />
     </div>
   );
 }

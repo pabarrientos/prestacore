@@ -1,8 +1,55 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { stat } from 'fs/promises';
+import { PrismaClient } from '@prisma/client';
 
 const execAsync = promisify(exec);
+
+/**
+ * Timeout for restore operations. Backups stuck in RESTORING state
+ * for longer than this are considered stale and marked as FAILED.
+ */
+export const RESTORE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+
+/**
+ * Clean up backups stuck in RESTORING state for too long.
+ * This can happen if the server crashes during a restore.
+ * Called at server startup and before each new backup.
+ */
+export async function cleanupStaleRestores(prisma: PrismaClient): Promise<{ cleaned: number }> {
+  const cutoff = new Date(Date.now() - RESTORE_TIMEOUT_MS);
+
+  const staleBackups = await prisma.backup.findMany({
+    where: {
+      status: 'RESTORING',
+      createdAt: { lt: cutoff },
+    },
+  });
+
+  if (staleBackups.length === 0) return { cleaned: 0 };
+
+  let cleaned = 0;
+  for (const backup of staleBackups) {
+    try {
+      await prisma.backup.update({
+        where: { id: backup.id },
+        data: {
+          status: 'FAILED',
+          error: 'Restore timed out (server may have restarted during restore)',
+        },
+      });
+      cleaned++;
+    } catch (err) {
+      console.error(`Failed to clean up stale restore ${backup.id}:`, err);
+    }
+  }
+
+  if (cleaned > 0) {
+    console.log(`Cleaned up ${cleaned} stale RESTORING backup(s)`);
+  }
+
+  return { cleaned };
+}
 
 // RestorePreview interface - duplicated from @prestamos/shared to avoid import issues
 interface RestorePreview {

@@ -6,6 +6,15 @@ interface RetentionConfig {
   maxAgeDays?: number;
 }
 
+// Default retention policy — applied when no setting exists or is malformed
+export const DEFAULT_MAX_COUNT = 30;
+export const DEFAULT_MAX_AGE_DAYS = 90;
+
+export interface RetentionResult {
+  deleted: number;
+  ids: string[];
+}
+
 export class RetentionEngine {
   private prisma: PrismaClient;
 
@@ -18,13 +27,13 @@ export class RetentionEngine {
    * either maxCount OR maxAgeDays limits.
    * Runs after each backup creation.
    */
-  async enforceRetention(): Promise<void> {
+  async enforceRetention(): Promise<RetentionResult> {
     const config = await this.getRetentionConfig();
     const backups = await this.prisma.backup.findMany({
       orderBy: { createdAt: 'desc' },
     });
 
-    if (backups.length === 0) return;
+    if (backups.length === 0) return { deleted: 0, ids: [] };
 
     // Collect IDs to delete
     const toDeleteIds = new Set<string>();
@@ -49,13 +58,22 @@ export class RetentionEngine {
     }
 
     // Delete expired backups
+    const deletedIds: string[] = [];
     for (const id of toDeleteIds) {
       await this.deleteBackup(id);
+      deletedIds.push(id);
     }
+
+    if (deletedIds.length > 0) {
+      console.log(`Retention: deleted ${deletedIds.length} backup(s)`);
+    }
+
+    return { deleted: deletedIds.length, ids: deletedIds };
   }
 
   /**
-   * Get retention configuration from settings
+   * Get retention configuration from settings.
+   * Returns defaults if no setting exists or is malformed.
    */
   async getRetentionConfig(): Promise<RetentionConfig> {
     const setting = await this.prisma.setting.findUnique({
@@ -63,17 +81,19 @@ export class RetentionEngine {
     });
 
     if (!setting) {
-      return { maxCount: undefined, maxAgeDays: undefined };
+      console.log(`Retention: no config found, using defaults (maxCount=${DEFAULT_MAX_COUNT}, maxAgeDays=${DEFAULT_MAX_AGE_DAYS})`);
+      return { maxCount: DEFAULT_MAX_COUNT, maxAgeDays: DEFAULT_MAX_AGE_DAYS };
     }
 
     try {
       const config = JSON.parse(setting.value) as RetentionConfig;
       return {
-        maxCount: config.maxCount,
-        maxAgeDays: config.maxAgeDays,
+        maxCount: config.maxCount ?? DEFAULT_MAX_COUNT,
+        maxAgeDays: config.maxAgeDays ?? DEFAULT_MAX_AGE_DAYS,
       };
     } catch {
-      return { maxCount: undefined, maxAgeDays: undefined };
+      console.log(`Retention: malformed config, using defaults (maxCount=${DEFAULT_MAX_COUNT}, maxAgeDays=${DEFAULT_MAX_AGE_DAYS})`);
+      return { maxCount: DEFAULT_MAX_COUNT, maxAgeDays: DEFAULT_MAX_AGE_DAYS };
     }
   }
 

@@ -35,3 +35,18 @@ export interface RestorePreview {
   totalTables: number;
   fileSizeBytes: number;
 }
+
+export interface BackupExecutionLog {
+  id: string;
+  type: 'SCHEDULED' | 'MANUAL' | 'RETENTION';
+  status: 'SUCCESS' | 'FAILED';
+  message?: string;
+  durationMs?: number;
+  backupId?: string;
+  createdAt: string;
+}
+
+export interface EnforceRetentionResult {
+  deleted: number;
+  ids: string[];
+}

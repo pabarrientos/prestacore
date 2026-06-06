@@ -15,6 +15,9 @@ import collectionActionByIdRoutes from './routes/collection-actions-by-id';
 import commissionRoutes from './routes/commissions';
 import backupRoutes from './routes/backups';
 import { seedDefaultAmortizationSystem } from './services/settings';
+import { startScheduler } from './services/backup/scheduler';
+import { cleanupStaleRestores } from './services/backup/restore';
+import { PrismaClient } from '@prisma/client';
 
 config();
 
@@ -56,6 +59,19 @@ if (process.env.NODE_ENV !== 'test') {
   seedDefaultAmortizationSystem().catch(err => {
     console.error('Failed to seed default amortization system:', err);
   });
+
+  // Startup tasks for backup system (non-blocking)
+  const startupPrisma = new PrismaClient();
+  Promise.all([
+    // Clean up any restores that were interrupted by a previous crash
+    cleanupStaleRestores(startupPrisma).catch(err => {
+      console.error('Failed to clean up stale restores:', err);
+    }),
+    // Start the backup scheduler (reads config from DB)
+    startScheduler(startupPrisma).catch(err => {
+      console.error('Failed to start backup scheduler:', err);
+    }),
+  ]);
 
   app.listen(PORT, () => {
     console.log(`🚀 API server running on port ${PORT}`);
