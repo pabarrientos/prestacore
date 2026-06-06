@@ -61,3 +61,6 @@ openspec/
 
 # storage
 storage/
+
+# codegraph
+.codegraph/
