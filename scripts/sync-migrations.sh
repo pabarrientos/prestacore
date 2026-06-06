@@ -25,140 +25,149 @@ check_migration_registered() {
     " | tr -d ' '
 }
 
-# Función para verificar si una tabla existe físicamente
-check_table_exists() {
-    local table_name=$1
+# Función para listar todas las tablas del esquema public
+list_all_tables() {
     docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -t -c "
-        SELECT COUNT(*) FROM information_schema.tables
-        WHERE table_schema = 'public'
-        AND table_name = '$table_name';
+        SELECT tablename FROM pg_tables
+        WHERE schemaname = 'public'
+        AND tablename != '_prisma_migrations'
+        ORDER BY tablename;
     " | tr -d ' '
 }
 
-# Función para verificar si una columna existe físicamente
-check_column_exists() {
+# Función para contar registros en una tabla
+count_rows() {
     local table_name=$1
-    local column_name=$2
     docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -t -c "
-        SELECT COUNT(*) FROM information_schema.columns
-        WHERE table_schema = 'public'
-        AND table_name = '$table_name'
-        AND column_name = '$column_name';
+        SELECT COUNT(*) FROM \"$table_name\";
     " | tr -d ' '
 }
 
-# Mapeo de migración → qué verificar (tabla y/o columna)
-# Formato: migration_name:TABLA:tablename o migration_name:COLUMNA:tablename:columnname
-declare -A MIGRATIONS_TO_CHECK=(
-    ["20260602215806_add_interest_collected_to_installment"]="COLUMNA Installment interestCollected"
-    ["20260605215145_add_backup_execution_log"]="TABLA BackupExecutionLog"
-)
+# Cargar mapeo de migración → tabla(s) que crea
+# Formato: migration_name:tabla1,tabla2,...
+declare -A MIGRATION_TABLES=()
 
-declare -A MIGRATION_ACTIONS=()
-ANY_ISSUES=false
-
-echo ""
-echo "=== Estado actual ==="
-
-for migration in "${!MIGRATIONS_TO_CHECK[@]}"; do
-    read -r type param1 param2 <<< "${MIGRATIONS_TO_CHECK[$migration]}"
-
-    migration_registered=$(check_migration_registered "$migration")
-
-    if [ "$type" = "TABLA" ]; then
-        table=$param1
-        table_exists=$(check_table_exists "$table")
-
-        if [ "$migration_registered" -eq 0 ] && [ "$table_exists" -gt 0 ]; then
-            echo "⚠️  $migration: tabla '$table' existe pero migración NO registrada"
-            MIGRATION_ACTIONS[$migration]="APPROVE"
-            ANY_ISSUES=true
-        elif [ "$migration_registered" -gt 0 ] && [ "$table_exists" -eq 0 ]; then
-            echo "❌ $migration: migración registrada pero tabla '$table' NO existe"
-            MIGRATION_ACTIONS[$migration]="APPLY_SQL"
-            ANY_ISSUES=true
-        elif [ "$migration_registered" -gt 0 ] && [ "$table_exists" -gt 0 ]; then
-            echo "✅ $migration: tabla '$table' (sincronizada)"
-        else
-            echo "ℹ️  $migration: tabla '$table' (pendiente de aplicar)"
-        fi
-
-    elif [ "$type" = "COLUMNA" ]; then
-        table=$param1
-        column=$param2
-        column_exists=$(check_column_exists "$table" "$column")
-
-        if [ "$migration_registered" -eq 0 ] && [ "$column_exists" -gt 0 ]; then
-            echo "⚠️  $migration: columna '$table.$column' existe pero migración NO registrada"
-            MIGRATION_ACTIONS[$migration]="APPROVE"
-            ANY_ISSUES=true
-        elif [ "$migration_registered" -gt 0 ] && [ "$column_exists" -eq 0 ]; then
-            echo "❌ $migration: migración registrada pero columna '$table.$column' NO existe"
-            MIGRATION_ACTIONS[$migration]="APPLY_SQL"
-            ANY_ISSUES=true
-        elif [ "$migration_registered" -gt 0 ] && [ "$column_exists" -gt 0 ]; then
-            echo "✅ $migration: columna '$table.$column' (sincronizada)"
-        else
-            echo "ℹ️  $migration: columna '$table.$column' (pendiente de aplicar)"
+# Parsear todas las migraciones para extraer qué tablas crean
+for migration_dir in packages/database/prisma/migrations/*/; do
+    migration_name=$(basename "$migration_dir")
+    sql_file="${migration_dir}migration.sql"
+    if [ -f "$sql_file" ]; then
+        # Extraer nombres de tablas de CREATE TABLE
+        tables=$(grep -o 'CREATE TABLE "[^"]*"' "$sql_file" 2>/dev/null | \
+                 sed 's/CREATE TABLE "\(.*\)"/\1/' | tr '\n' ',' | sed 's/,$//')
+        if [ -n "$tables" ]; then
+            MIGRATION_TABLES[$migration_name]=$tables
         fi
     fi
 done
 
-if [ "$ANY_ISSUES" = false ]; then
+echo ""
+echo "=== Tablas físicas vs migraciones registradas ==="
+
+ANY_DRIFT=false
+declare -A TABLES_TO_DROP=()
+
+# Para cada tabla física, verificar si está cubierta por alguna migración registrada
+while IFS= read -r table; do
+    [ -z "$table" ] && continue
+
+    # Buscar qué migración crea esta tabla
+    migration=""
+    for mig in "${!MIGRATION_TABLES[@]}"; do
+        IFS=',' read -ra tbls <<< "${MIGRATION_TABLES[$mig]}"
+        for t in "${tbls[@]}"; do
+            if [ "$t" = "$table" ]; then
+                migration=$mig
+                break 2
+            fi
+        done
+    done
+
+    if [ -z "$migration" ]; then
+        # No se encontró migración que cree esta tabla (podría ser del init)
+        continue
+    fi
+
+    registered=$(check_migration_registered "$migration")
+    rows=$(count_rows "$table")
+
+    if [ "$registered" -gt 0 ]; then
+        echo "✅ $table (migración: $migration) - sincronizada"
+    else
+        echo "⚠️  $table ($rows registros) - tabla existe pero migración NO registrada"
+        TABLES_TO_DROP[$table]=$rows
+        ANY_DRIFT=true
+    fi
+done < <(list_all_tables)
+
+if [ "$ANY_DRIFT" = false ]; then
     echo ""
-    echo "✅ Todas las migraciones están sincronizadas"
-    echo ""
-    echo "Podés ejecutar: pnpm --filter @prestamos/database run migrate deploy"
+    echo "✅ Todas las tablas están sincronizadas con sus migraciones"
     exit 0
 fi
 
 echo ""
-echo "🔧 Aplicando correcciones..."
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🔧 Resolución de tablas desincronizadas"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "Estas tablas existen físicamente pero Prisma no sabe que"
+echo "fueron creadas (no están en _prisma_migrations)."
+echo ""
+echo "Para cada tabla, tenés dos opciones:"
+echo "  [B] Borrar la tabla  → migrate deploy la recrea desde cero"
+echo "                         ⚠️  ¡Se pierden los datos de esa tabla!"
+echo "  [M] Marcar migración → preserva los datos, registra la migración"
+echo "                         (seguro si la estructura coincide)"
+echo ""
+echo "Responde B (borrar) o M (marcar) para cada tabla:"
+echo ""
 
-for migration in "${!MIGRATION_ACTIONS[@]}"; do
-    action=${MIGRATION_ACTIONS[$migration]}
+for table in "${!TABLES_TO_DROP[@]}"; do
+    rows=${TABLES_TO_DROP[$table]}
 
-    case $action in
-        APPROVE)
-            echo ""
-            echo "📝 Marcando $migration como ya aplicada..."
-            echo "   (la tabla/columna ya existe físicamente)"
-            npx prisma migrate resolve --applied "$migration" 2>/dev/null || \
-            docker exec -e DATABASE_URL="postgresql://$DB_USER:$DB_PASSWORD@$DB_HOST:5432/$DB_NAME" \
-                prestamos-api-dev sh -c "cd /app && npx prisma migrate resolve --applied $migration" 2>/dev/null || true
-            echo "   ✅ Marcada como aplicada"
-            ;;
-        APPLY_SQL)
-            echo ""
-            echo "❌ ERROR: $migration"
-            echo "   La migración está registrada pero la tabla/columna NO existe en la base de datos"
-            echo ""
-            echo "   Esto es un estado INCONSISTENTE. La migración se marcó como aplicada"
-            echo "   pero nunca se ejecutó realmente."
-            echo ""
-            echo "   Solución:"
-            echo "   1. Revisar el SQL de la migración en: packages/database/prisma/migrations/$migration/migration.sql"
-            echo "   2. Ejecutar el SQL manualmente:"
-            echo "      docker exec $DB_CONTAINER psql -U $DB_USER -d $DB_NAME -f /tmp/sync-migration.sql"
-            echo "   3. Volver a ejecutar este script"
-            echo ""
-
-            # Intentar aplicar el SQL directamente
-            migration_file="packages/database/prisma/migrations/$migration/migration.sql"
-            if [ -f "$migration_file" ]; then
-                echo "   ¿Querés que intente aplicar la migración ahora? (s/n)"
-                read -r answer
-                if [ "$answer" = "s" ]; then
-                    echo "   Ejecutando $migration_file..."
-                    docker exec -i "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" < "$migration_file"
-                    echo "   ✅ Migración aplicada"
-                fi
+    # Encontrar la migración que crea esta tabla
+    for mig in "${!MIGRATION_TABLES[@]}"; do
+        IFS=',' read -ra tbls <<< "${MIGRATION_TABLES[$mig]}"
+        for t in "${tbls[@]}"; do
+            if [ "$t" = "$table" ]; then
+                table_migration=$mig
+                break 2
             fi
-            ;;
-    esac
+        done
+    done
+
+    echo ""
+    echo "┌─────────────────────────────────────────────"
+    echo "│ Tabla: $table"
+    echo "│ Registros: $rows"
+    echo "│ Migración: $table_migration"
+    echo "└─────────────────────────────────────────────"
+
+    while true; do
+        read -r -p "¿Borrar (B) o Marcar (M)? [b/m]: " answer
+        case "$answer" in
+            [Bb])
+                echo "   🗑️  Eliminando tabla $table..."
+                docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -c "DROP TABLE IF EXISTS \"$table\" CASCADE;" > /dev/null 2>&1
+                echo "   ✅ Tabla $table eliminada"
+                break
+                ;;
+            [Mm])
+                echo "   📝 Marcando migración $table_migration como aplicada..."
+                npx prisma migrate resolve --applied "$table_migration" > /dev/null 2>&1 || true
+                echo "   ✅ Migración marcada"
+                break
+                ;;
+            *)
+                echo "   ❌ Responde B o M"
+                ;;
+        esac
+    done
 done
 
 echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "✨ Sincronización completada"
 echo ""
-echo "Ahora podés ejecutar: pnpm --filter @prestamos/database run migrate deploy"
+echo "Ahora podés ejecutar: pnpm -w db:migrate:deploy"
