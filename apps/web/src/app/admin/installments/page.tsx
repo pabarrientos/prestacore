@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { apiFetch } from '@/lib/api';
 import { getTodayString } from '@/lib/datetime';
+import { Pagination } from '@/components/Pagination';
 import PaymentForm from '@/components/PaymentForm';
 import CollectionActionsModal from '@/components/CollectionActionsModal';
 
@@ -43,13 +44,9 @@ interface ApiResponse {
     installments: Installment[];
     totalMonto: number;
     totalMora: number;
-    filtros: {
-      fechaInicio: string;
-      fechaFin: string;
-      vendedorId: string | null;
-      estado: string | null;
-      cliente: string | null;
-    };
+    total: number;
+    page: number;
+    totalPages: number;
   };
 }
 
@@ -105,12 +102,9 @@ function getStatusLabel(status: string): string {
 function isOverdue(dueDate: string, status: string): boolean {
   if (status === 'PAID') return false;
   if (status === 'INTEREST_ONLY') return false;
-  // Use date-only comparison for days overdue calculation
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  // Extract YYYY-MM-DD from dueDate
   const dueDatePart = dueDate.includes('T') ? dueDate.split('T')[0] : dueDate.split(' ')[0];
-  // Parse dates safely - use YYYY-MM-DD format for reliable parsing
   const todayMs = new Date(todayStr + 'T00:00:00').getTime();
   const dueMs = new Date(dueDatePart + 'T00:00:00').getTime();
   const diffDays = Math.floor((todayMs - dueMs) / (86400 * 1000));
@@ -131,6 +125,8 @@ export default function InstallmentsPage() {
   const [totalMonto, setTotalMonto] = useState(0);
   const [totalMora, setTotalMora] = useState(0);
   const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   // Filter states
   const [fechaInicio, setFechaInicio] = useState('');
@@ -138,6 +134,8 @@ export default function InstallmentsPage() {
   const [selectedVendor, setSelectedVendor] = useState('');
   const [selectedEstado, setSelectedEstado] = useState('');
   const [selectedCliente, setSelectedCliente] = useState('');
+  const [clienteQuery, setClienteQuery] = useState('');
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Payment modal state
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -150,6 +148,32 @@ export default function InstallmentsPage() {
 
   // Refresh trigger to re-fetch installments after mutations
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // Debounced search for cliente
+  const handleClienteChange = useCallback((value: string) => {
+    setSelectedCliente(value);
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+    debounceTimer.current = setTimeout(() => {
+      setClienteQuery(value);
+      setPage(1);
+    }, 400);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+    };
+  }, []);
+
+  // Reset page when non-debounced filters change
+  const handleFilterChange = useCallback((setter: (v: string) => void) => (value: string) => {
+    setter(value);
+    setPage(1);
+  }, []);
 
   // Load initial date (today) and fetch data
   useEffect(() => {
@@ -180,6 +204,8 @@ export default function InstallmentsPage() {
     const params = new URLSearchParams();
     params.append('fechaInicio', fechaInicio);
     params.append('fechaFin', fechaFin);
+    params.append('page', String(page));
+    params.append('limit', '20');
 
     if (selectedVendor) {
       params.append('vendedorId', selectedVendor);
@@ -187,8 +213,8 @@ export default function InstallmentsPage() {
     if (selectedEstado) {
       params.append('estado', selectedEstado);
     }
-    if (selectedCliente) {
-      params.append('cliente', selectedCliente);
+    if (clienteQuery) {
+      params.append('cliente', clienteQuery);
     }
 
     apiFetch(`/api/installments?${params.toString()}`)
@@ -198,11 +224,12 @@ export default function InstallmentsPage() {
           setInstallments(data.data.installments);
           setTotalMonto(data.data.totalMonto);
           setTotalMora(data.data.totalMora);
+          setTotalPages(data.data.totalPages || 1);
         }
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [token, fechaInicio, fechaFin, selectedVendor, selectedEstado, selectedCliente, refreshTrigger]);
+  }, [token, fechaInicio, fechaFin, selectedVendor, selectedEstado, clienteQuery, page, refreshTrigger]);
 
   const handleFechaChange = (field: 'inicio' | 'fin', value: string) => {
     if (field === 'inicio') {
@@ -210,6 +237,7 @@ export default function InstallmentsPage() {
     } else {
       setFechaFin(value);
     }
+    setPage(1);
   };
 
   return (
@@ -253,7 +281,14 @@ export default function InstallmentsPage() {
             <input
               type="text"
               value={selectedCliente}
-              onChange={(e) => setSelectedCliente(e.target.value)}
+              onChange={(e) => handleClienteChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  if (debounceTimer.current) clearTimeout(debounceTimer.current);
+                  setClienteQuery(selectedCliente);
+                  setPage(1);
+                }
+              }}
               placeholder="Buscar cliente..."
               className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-[#2a2a2a] dark:border-[#444444] dark:text-white/[.87] focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             />
@@ -267,7 +302,7 @@ export default function InstallmentsPage() {
               </label>
               <select
                 value={selectedVendor}
-                onChange={(e) => setSelectedVendor(e.target.value)}
+                onChange={(e) => handleFilterChange(setSelectedVendor)(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-[#2a2a2a] dark:border-[#444444] dark:text-white/[.87] focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               >
                 <option value="">Todos</option>
@@ -287,7 +322,7 @@ export default function InstallmentsPage() {
             </label>
             <select
               value={selectedEstado}
-              onChange={(e) => setSelectedEstado(e.target.value)}
+              onChange={(e) => handleFilterChange(setSelectedEstado)(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-[#2a2a2a] dark:border-[#444444] dark:text-white/[.87] focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             >
               <option value="">Todos</option>
@@ -318,12 +353,14 @@ export default function InstallmentsPage() {
           </div>
           <div className="text-right sm:text-right">
             <p className="text-sm text-gray-500 dark:text-white/60">
-              {installments.length} cuota{installments.length !== 1 ? 's' : ''} encontrada
-              {installments.length !== 1 ? 's' : ''}
+              {installments.length} cuota{installments.length !== 1 ? 's' : ''} en esta página
             </p>
           </div>
         </div>
       </div>
+
+      {/* Pagination above table */}
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
 
       {/* Installments Table */}
       <div className="bg-white rounded-lg shadow overflow-hidden dark:bg-[#1e1e1e]">
@@ -397,10 +434,9 @@ export default function InstallmentsPage() {
                   const dueMs = new Date(dueDatePart + 'T00:00:00').getTime();
                   const diffDays = Math.floor((todayMs - dueMs) / (86400 * 1000));
                   const daysOverdue = !isNaN(diffDays) ? Math.max(0, diffDays) : 0;
-                  
-                  // Only PENDING can become OVERDUE dynamically based on due date
+
                   const dynamicStatus = (inst.status === 'PENDING' && daysOverdue > 0) ? 'OVERDUE' : inst.status;
-                  
+
                   return (
                   <tr key={inst.id} className={`hover:bg-gray-50 dark:hover:bg-[#2a2a2a] ${getInstallmentRowClass(dynamicStatus, inst.dueDate)}`}>
                     <td className="px-4 py-3">
@@ -501,6 +537,9 @@ export default function InstallmentsPage() {
         )}
       </div>
 
+      {/* Pagination below table */}
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+
       {/* Payment Modal */}
       {showPaymentModal && selectedLoanId && (
         <>
@@ -525,7 +564,6 @@ export default function InstallmentsPage() {
                   preselectedInstallmentId={selectedInstallmentId}
                   onSuccess={() => {
                     setShowPaymentModal(false);
-                    // Refresh entire page with current filters to show updated statuses
                     setRefreshTrigger(prev => prev + 1);
                   }}
                   onCancel={() => setShowPaymentModal(false)}
@@ -561,7 +599,6 @@ export default function InstallmentsPage() {
                   loanId={selectedCollectionLoanId}
                   onSuccess={() => {
                     setShowCollectionModal(false);
-                    // Refresh entire page with current filters to show updated statuses
                     setRefreshTrigger(prev => prev + 1);
                   }}
                   onCancel={() => setShowCollectionModal(false)}

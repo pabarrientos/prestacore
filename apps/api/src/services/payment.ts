@@ -127,7 +127,7 @@ export class PaymentService {
         return sum + Math.max(0, pendingForThisInst);
       }, 0);
 
-      if (amount > totalPending) {
+      if (Number(amount) > Number(totalPending.toFixed(2))) {
         return {
           success: false,
           error: `El monto debe ser mayor a 0 y menor o igual al saldo pendiente (${totalPending.toFixed(2)})`,
@@ -382,7 +382,8 @@ export class PaymentService {
         ? ` (Interés original: $${originalInterest.toFixed(2)}, Monto pagado: $${amount.toFixed(2)})`
         : '';
 
-      let autoNotes = `Pago solo interés cuota #${targetInstallment.installmentNumber}${modifiedText}`;
+      // Include installment ID in notes as a stable identifier (installmentNumber and dueDate can change after renumbering/shifts)
+      let autoNotes = `Pago solo interés cuota #${targetInstallment.installmentNumber} (id: ${targetInstallment.id})${modifiedText}`;
       const finalNotes = notes ? `${autoNotes}. ${notes}` : autoNotes;
 
       const result = await prisma.$transaction(async (tx) => {
@@ -488,6 +489,227 @@ export class PaymentService {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Error al procesar el pago de solo interés',
+      };
+    }
+  }
+
+  /**
+   * Reverse an interest-only payment — inverse of processInterestOnlyPayment.
+   *
+   * Undo the side-effects of a solo-interés payment:
+   *   1. Delete the "new" installment that was created with due date shifted +1 period
+   *   2. Restore the INTEREST_ONLY installment to PENDING/OVERDUE (re-open it)
+   *   3. Shift all later installments' due dates back -1 period
+   *   4. Recalculate capitalBalance and installmentNumber for every installment
+   *
+   * When a loan has multiple interest-only payments, uses the payment's notes
+   * (pattern: "Pago solo interés cuota #N") to identify which INTEREST_ONLY
+   * installment to reverse.
+   *
+   * Refuses if the new installment already has payments attached — caller must
+   * delete those payments first.
+   */
+  static async reverseInterestOnlyPayment(opts: {
+    paymentId: string;
+    paymentAmount: number;
+    loanId: string;
+    notes: string | null;
+  }): Promise<{ success: boolean; error?: string }> {
+    const { paymentAmount, loanId, notes } = opts;
+
+    try {
+      // 1. Find the loan with all installments
+      const loan = await prisma.loan.findUnique({
+        where: { id: loanId },
+        include: {
+          installments: {
+            orderBy: [{ dueDate: 'asc' }, { installmentNumber: 'asc' }],
+          },
+        },
+      });
+
+      if (!loan) {
+        return { success: false, error: 'Préstamo no encontrado' };
+      }
+
+      // 2. Extract stable identifier from payment notes to find the INTEREST_ONLY installment to reverse.
+      //    Prefer ID (completely stable). Fall back to installmentNumber (legacy payments).
+      //    Patterns:
+      //      - New: "Pago solo interés cuota #N (id: cuid) ..."
+      //      - Legacy: "Pago solo interés cuota #N ..."
+      let targetInstallmentId: string | null = null;
+      let targetInstallmentNumber: number | null = null;
+
+      if (notes) {
+        // Try to extract ID first
+        const idMatch = notes.match(/id: ([a-z0-9]+)/i);
+        if (idMatch) {
+          targetInstallmentId = idMatch[1];
+        } else {
+          // Fall back to installmentNumber for legacy payments
+          const match = notes.match(/cuota #(\d+)/);
+          if (match) {
+            targetInstallmentNumber = parseInt(match[1], 10);
+          }
+        }
+      }
+
+      // 3. Find the INTEREST_ONLY installment to reverse
+      const interestOnlyInst = loan.installments.find((inst) => {
+        if (inst.status !== InstallmentStatus.INTEREST_ONLY) return false;
+
+        if (targetInstallmentId) {
+          return inst.id === targetInstallmentId;
+        }
+
+        if (targetInstallmentNumber !== null) {
+          return inst.installmentNumber === targetInstallmentNumber;
+        }
+
+        return true; // No identifier in notes, use any INTEREST_ONLY
+      });
+
+      if (!interestOnlyInst) {
+        return {
+          success: false,
+          error: 'No se encontró la cuota de solo interés para revertir',
+        };
+      }
+
+      // 4. Identify the "new" installment created by the interest-only payment:
+      //    It was created with dueDate = interestOnlyInst.dueDate + 1 period (exact match
+      //    using the same addPeriod call used in processInterestOnlyPayment). This is the
+      //    only reliable discriminator — in fixed-amount systems (French, Flat Rate) every
+      //    installment shares the same amount/principal/interest, so matching on those alone
+      //    is ambiguous.
+      const expectedNewDueDate = addPeriod(interestOnlyInst.dueDate, loan.frequency, 1);
+      const EXPECTED_DATE_TOLERANCE_MS = 60_000; // 1 minute — covers DST / millis rounding
+
+      const newInstallment = loan.installments.find(
+        (inst) =>
+          inst.id !== interestOnlyInst.id &&
+          Math.abs(new Date(inst.dueDate).getTime() - expectedNewDueDate.getTime()) <
+            EXPECTED_DATE_TOLERANCE_MS &&
+          Number(inst.amount) === Number(interestOnlyInst.amount) &&
+          Number(inst.principal) === Number(interestOnlyInst.principal) &&
+          Number(inst.interest) === Number(interestOnlyInst.interest),
+      );
+
+      if (!newInstallment) {
+        return {
+          success: false,
+          error: 'No se encontró la cuota generada por el pago de solo interés',
+        };
+      }
+
+      // 5. Safety: refuse if the new installment already has payments OR is INTEREST_ONLY
+      //    (indicating it was used for another interest-only payment)
+      const newPaymentsCount = await prisma.payment.count({
+        where: { installmentId: newInstallment.id },
+      });
+
+      if (newPaymentsCount > 0) {
+        return {
+          success: false,
+          error:
+            'No se puede eliminar el pago de solo interés porque la cuota generada ya tiene pagos registrados. Debe eliminar primero esos pagos.',
+        };
+      }
+
+      if (newInstallment.status === InstallmentStatus.INTEREST_ONLY) {
+        return {
+          success: false,
+          error:
+            'No se puede eliminar el pago de solo interés porque la cuota generada ya fue usada para otro pago de solo interés. Debe eliminar primero ese pago.',
+        };
+      }
+
+      // 6. Reverse in a transaction
+      await prisma.$transaction(async (tx) => {
+        // 6a. Delete the new installment
+        await tx.installment.delete({ where: { id: newInstallment.id } });
+
+        // 6b. Restore the INTEREST_ONLY installment
+        const prevCollected = Number(interestOnlyInst.interestCollected);
+        const newCollected = Math.max(0, prevCollected - paymentAmount);
+
+        if (newCollected === 0) {
+          // Fully reverting — reopen the installment
+          const todayOnly = await (await import('./datetime')).getToday();
+          const dueDate = new Date(interestOnlyInst.dueDate);
+          const dueDateOnly = new Date(
+            dueDate.getFullYear(),
+            dueDate.getMonth(),
+            dueDate.getDate(),
+          );
+          const isOverdue = dueDateOnly < todayOnly;
+
+          await tx.installment.update({
+            where: { id: interestOnlyInst.id },
+            data: {
+              balance: interestOnlyInst.amount,
+              paidAmount: 0,
+              status: isOverdue ? InstallmentStatus.OVERDUE : InstallmentStatus.PENDING,
+              interestCollected: 0,
+              paidAt: null,
+            },
+          });
+        } else {
+          // Only decrement interestCollected — keep the INTEREST_ONLY state
+          // (this branch handles theoretical multi-payment scenarios)
+          await tx.installment.update({
+            where: { id: interestOnlyInst.id },
+            data: {
+              interestCollected: newCollected,
+            },
+          });
+        }
+
+        // 6c. Shift due dates of all later installments back -1 period
+        const subsequentInstallments = loan.installments.filter(
+          (inst) =>
+            inst.id !== newInstallment.id &&
+            inst.dueDate > interestOnlyInst.dueDate,
+        );
+
+        for (const inst of subsequentInstallments) {
+          const shiftedDueDate = addPeriod(inst.dueDate, loan.frequency, -1);
+          await tx.installment.update({
+            where: { id: inst.id },
+            data: { dueDate: shiftedDueDate },
+          });
+        }
+
+        // 6d. Renumber all installments and recalculate capitalBalance
+        const updatedAll = await tx.installment.findMany({
+          where: { loanId },
+          orderBy: [{ dueDate: 'asc' }, { installmentNumber: 'asc' }],
+        });
+
+        let runningCapital = Number(loan.amount);
+        let instNum = 0;
+        for (const inst of updatedAll) {
+          instNum++;
+          if (inst.status !== InstallmentStatus.INTEREST_ONLY) {
+            runningCapital -= Number(inst.principal);
+          }
+          await tx.installment.update({
+            where: { id: inst.id },
+            data: {
+              capitalBalance: Math.max(0, runningCapital),
+              installmentNumber: instNum,
+            },
+          });
+        }
+      });
+
+      return { success: true };
+    } catch (error) {
+      console.error('Interest-only payment reversal error:', error);
+      return {
+        success: false,
+        error:
+          error instanceof Error ? error.message : 'Error al revertir el pago de solo interés',
       };
     }
   }

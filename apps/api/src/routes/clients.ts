@@ -80,22 +80,45 @@ router.get('/search', authMiddleware, requireVendor, async (req: AuthRequest, re
   }
 });
 
-// GET /api/clients - List all clients
-router.get('/', authMiddleware, requireVendor, async (_req: AuthRequest, res: Response): Promise<void> => {
+// GET /api/clients - List clients with pagination and search
+router.get('/', authMiddleware, requireVendor, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const clients = await prisma.client.findMany({
-      include: {
-        user: {
-          select: {
-            firstName: true,
-            lastName: true,
-            email: true,
-            phone: true,
+    const { page = '1', limit = '20', q } = req.query;
+    const pageNum = parseInt(page as string, 10);
+    const limitNum = parseInt(limit as string, 10);
+
+    const where: any = {};
+
+    // Text search across DNI, firstName, lastName, email
+    if (q && typeof q === 'string' && q.trim()) {
+      const searchTerm = q.trim();
+      where.OR = [
+        { dni: { contains: searchTerm, mode: 'insensitive' } },
+        { user: { firstName: { contains: searchTerm, mode: 'insensitive' } } },
+        { user: { lastName: { contains: searchTerm, mode: 'insensitive' } } },
+        { user: { email: { contains: searchTerm, mode: 'insensitive' } } },
+      ];
+    }
+
+    const [clients, total] = await Promise.all([
+      prisma.client.findMany({
+        where,
+        include: {
+          user: {
+            select: {
+              firstName: true,
+              lastName: true,
+              email: true,
+              phone: true,
+            },
           },
         },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+        orderBy: { createdAt: 'desc' },
+        skip: (pageNum - 1) * limitNum,
+        take: limitNum,
+      }),
+      prisma.client.count({ where }),
+    ]);
 
     const formattedClients = clients.map(c => ({
       id: c.id,
@@ -111,7 +134,13 @@ router.get('/', authMiddleware, requireVendor, async (_req: AuthRequest, res: Re
 
     res.json({
       success: true,
-      data: formattedClients,
+      data: {
+        data: formattedClients,
+        total,
+        page: pageNum,
+        limit: limitNum,
+        totalPages: Math.ceil(total / limitNum),
+      },
     });
   } catch (error) {
     console.error('List clients error:', error);

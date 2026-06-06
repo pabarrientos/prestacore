@@ -67,9 +67,13 @@ router.get('/:loanId', authMiddleware, requireVendor, async (req: AuthRequest, r
 // GET /api/collection-actions - Get all collection actions with filters (for agenda)
 router.get('/', authMiddleware, requireVendor, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { createdBy, createdFrom, createdTo, followUpFrom, followUpTo, type, loanId } = req.query;
+    const { createdBy, createdFrom, createdTo, followUpFrom, followUpTo, type, loanId, q, page = '1', limit = '20' } = req.query;
     const userRole = req.user?.role;
     const userId = req.user?.userId;
+
+    // Pagination
+    const pageNum = parseInt(page as string, 10);
+    const limitNum = parseInt(limit as string, 10);
 
     // Build where clause
     const where: any = {};
@@ -115,64 +119,90 @@ router.get('/', authMiddleware, requireVendor, async (req: AuthRequest, res: Res
       where.createdBy = createdBy as string;
     }
 
-    if (createdFrom || createdTo) {
-      where.createdAt = {};
-      if (createdFrom) {
-        where.createdAt.gte = new Date(createdFrom as string);
-      }
-      if (createdTo) {
-        const toDate = new Date(createdTo as string);
-        toDate.setHours(23, 59, 59, 999);
-        where.createdAt.lte = toDate;
-      }
+    // Build date filter objects
+    const hasCreatedDate = !!(createdFrom || createdTo);
+    const hasFollowUpDate = !!(followUpFrom || followUpTo);
+
+    const createdFilter: any = {};
+    if (createdFrom) createdFilter.gte = new Date(createdFrom as string);
+    if (createdTo) {
+      const toDate = new Date(createdTo as string);
+      toDate.setHours(23, 59, 59, 999);
+      createdFilter.lte = toDate;
     }
 
-    if (followUpFrom || followUpTo) {
-      where.followUpDate = {};
-      if (followUpFrom) {
-        where.followUpDate.gte = new Date(followUpFrom as string);
-      }
-      if (followUpTo) {
-        const toDate = new Date(followUpTo as string);
-        toDate.setHours(23, 59, 59, 999);
-        where.followUpDate.lte = toDate;
-      }
+    const followUpFilter: any = {};
+    if (followUpFrom) followUpFilter.gte = new Date(followUpFrom as string);
+    if (followUpTo) {
+      const toDate = new Date(followUpTo as string);
+      toDate.setHours(23, 59, 59, 999);
+      followUpFilter.lte = toDate;
+    }
+
+    // Date filters are OR: show actions that match EITHER creation date range OR follow-up date range
+    if (hasCreatedDate && hasFollowUpDate) {
+      where.OR = [
+        { createdAt: createdFilter },
+        { followUpDate: followUpFilter },
+      ];
+    } else if (hasCreatedDate) {
+      where.createdAt = createdFilter;
+    } else if (hasFollowUpDate) {
+      where.followUpDate = followUpFilter;
     }
 
     if (type) {
       where.type = type as string;
     }
 
-    // Get collection actions with loan and client data
-    const actions = await prisma.collectionAction.findMany({
-      where,
-      include: {
-        loan: {
-          select: {
-            id: true,
-            amount: true,
-            status: true,
-          },
+    // Text search across client name
+    if (q && typeof q === 'string' && q.trim()) {
+      const searchTerm = q.trim();
+      where.client = {
+        user: {
+          OR: [
+            { firstName: { contains: searchTerm, mode: 'insensitive' } },
+            { lastName: { contains: searchTerm, mode: 'insensitive' } },
+          ],
         },
-        client: {
-          select: {
-            id: true,
-            dni: true,
-            user: {
-              select: {
-                firstName: true,
-                lastName: true,
-                phone: true,
+      };
+    }
+
+    // Get collection actions with pagination
+    const [actions, total] = await Promise.all([
+      prisma.collectionAction.findMany({
+        where,
+        include: {
+          loan: {
+            select: {
+              id: true,
+              amount: true,
+              status: true,
+            },
+          },
+          client: {
+            select: {
+              id: true,
+              dni: true,
+              user: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                  phone: true,
+                },
               },
             },
           },
         },
-      },
-      orderBy: [
-        { followUpDate: 'asc' }, // Pending follow-ups first
-        { createdAt: 'desc' },
-      ],
-    });
+        orderBy: [
+          { followUpDate: 'asc' }, // Pending follow-ups first
+          { createdAt: 'desc' },
+        ],
+        skip: (pageNum - 1) * limitNum,
+        take: limitNum,
+      }),
+      prisma.collectionAction.count({ where }),
+    ]);
 
     // Get configured types for labels
     const configuredTypes = await getCollectionActionTypes();
@@ -180,25 +210,31 @@ router.get('/', authMiddleware, requireVendor, async (req: AuthRequest, res: Res
 
     res.json({
       success: true,
-      data: actions.map(action => ({
-        id: action.id,
-        type: action.type,
-        typeLabel: typesMap.get(action.type) || action.type,
-        description: action.description,
-        result: action.result,
-        nextAction: action.nextAction,
-        nextActionLabel: action.nextAction ? typesMap.get(action.nextAction) || action.nextAction : null,
-        followUpDate: action.followUpDate?.toISOString() || null,
-        createdAt: action.createdAt.toISOString(),
-        createdBy: action.createdBy,
-        loan: action.loan,
-        client: action.client ? {
-          id: action.client.id,
-          name: `${action.client.user.firstName} ${action.client.user.lastName}`,
-          phone: action.client.user.phone,
-          dni: action.client.dni,
-        } : null,
-      })),
+      data: {
+        data: actions.map(action => ({
+          id: action.id,
+          type: action.type,
+          typeLabel: typesMap.get(action.type) || action.type,
+          description: action.description,
+          result: action.result,
+          nextAction: action.nextAction,
+          nextActionLabel: action.nextAction ? typesMap.get(action.nextAction) || action.nextAction : null,
+          followUpDate: action.followUpDate?.toISOString() || null,
+          createdAt: action.createdAt.toISOString(),
+          createdBy: action.createdBy,
+          loan: action.loan,
+          client: action.client ? {
+            id: action.client.id,
+            name: `${action.client.user.firstName} ${action.client.user.lastName}`,
+            phone: action.client.user.phone,
+            dni: action.client.dni,
+          } : null,
+        })),
+        total,
+        page: pageNum,
+        limit: limitNum,
+        totalPages: Math.ceil(total / limitNum),
+      },
     });
   } catch (error) {
     console.error('Get all collection actions error:', error);

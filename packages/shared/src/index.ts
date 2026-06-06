@@ -34,6 +34,7 @@ export enum LoanStatus {
   PAID = 'PAID',
   DEFAULTED = 'DEFAULTED',
   CANCELLED = 'CANCELLED',
+  REFINANCIADO = 'REFINANCIADO',
 }
 
 export enum PaymentFrequency {

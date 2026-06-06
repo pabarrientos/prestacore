@@ -105,6 +105,7 @@ const statusColors: Record<string, string> = {
   PAID: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-400',
   DEFAULTED: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-400',
   CANCELLED: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
+  REFINANCIADO: 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-400',
 };
 
 // Helper function to format date without timezone issues
@@ -896,6 +897,11 @@ export default function LoanDetailPage() {
                     <td className="px-4 py-3 text-sm dark:text-white/[.87]">{payment.notes || '-'}</td>
                     {user?.role === 'ADMIN' && (
                       <td className="px-4 py-3">
+                        {(loan.status === 'REFINANCIADO' || loan.status === 'DEFAULTED') ? (
+                          <span className="text-xs text-gray-400 dark:text-white/38 italic">
+                            {loan.status === 'REFINANCIADO' ? 'Refinanciado' : 'Incobrable'}
+                          </span>
+                        ) : (
                         <div className="flex gap-1.5">
                         <button
                           onClick={() => handleEditPayment(payment)}
@@ -910,6 +916,7 @@ export default function LoanDetailPage() {
                           Eliminar
                         </button>
                         </div>
+                        )}
                       </td>
                     )}
                   </tr>

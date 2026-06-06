@@ -130,7 +130,7 @@ router.get('/loan/:loanId', authMiddleware, requireVendor, async (req: AuthReque
 // GET /api/payments/by-date - Get payments by date range with filters
 router.get('/by-date', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { fechaInicio, fechaFin, vendedorId, estado, cliente } = req.query;
+    const { fechaInicio, fechaFin, vendedorId, estado, cliente, page = '1', limit = '20' } = req.query;
     const user = req.user;
 
     if (!user) {
@@ -179,102 +179,102 @@ router.get('/by-date', authMiddleware, async (req: AuthRequest, res: Response): 
       endDate = startDate;
     }
 
+    // Pagination
+    const pageNum = parseInt(page as string, 10);
+    const limitNum = parseInt(limit as string, 10);
+    const offset = (pageNum - 1) * limitNum;
+
     // RBAC: Vendedor only sees their own loans - handled in raw query below
 
-    // Fetch payments with related data - use raw SQL for date filtering
-    // Build WHERE clause with filters
+    // Build common WHERE clause (used by data, count, and sum queries)
     const clienteFilter = cliente ? `AND (LOWER(u."firstName") LIKE '%${String(cliente).toLowerCase()}%' OR LOWER(u."lastName") LIKE '%${String(cliente).toLowerCase()}%')` : '';
 
-    let payments;
-    if (startDate === endDate) {
-        // Single day query - use ::date cast for proper comparison
-        // Also cast paymentDate to date in SELECT to avoid timezone conversion issues
-        payments = await prisma.$queryRawUnsafe<any[]>(`
-          SELECT p.id, p."clientId", p."loanId", p."installmentId", p.amount, p.type, 
-                 p.status, p.reference, p.notes, p."paymentDate", p."createdAt", p."updatedAt",
-                 p."processedAt",
-                 u."firstName" as "clientFirstName", u."lastName" as "clientLastName",
-                 l."id" as "loanId", l."amount" as "loanAmount", l."assignedVendorId",
-                 i."installmentNumber",
-                 p."paymentDate"::text as "paymentDateLocal",
-                 v."firstName" as "vendorFirstName", v."lastName" as "vendorLastName"
-          FROM "Payment" p
-          JOIN "Client" c ON p."clientId" = c."id"
-          JOIN "User" u ON c."userId" = u."id"
-          JOIN "Loan" l ON p."loanId" = l."id"
-          LEFT JOIN "Installment" i ON p."installmentId" = i."id"
-          LEFT JOIN "User" v ON l."assignedVendorId" = v."id"
-          WHERE p."paymentDate"::date = $1::date
-            ${user.role === 'VENDEDOR' ? `AND l."assignedVendorId" = '${user.userId}'` : ''}
-            ${vendedorId && user.role === 'ADMIN' ? `AND l."assignedVendorId" = '${vendedorId}'` : ''}
-            ${estado ? `AND p.status = '${estado}'` : ''}
-            ${clienteFilter}
-          ORDER BY p."paymentDate" DESC, p."loanId" DESC
-        `, startDate);
-      } else {
-        // Date range query
-        payments = await prisma.$queryRawUnsafe<any[]>(`
-          SELECT p.id, p."clientId", p."loanId", p."installmentId", p.amount, p.type, 
-                 p.status, p.reference, p.notes, p."paymentDate", p."createdAt", p."updatedAt",
-                 p."processedAt",
-                 u."firstName" as "clientFirstName", u."lastName" as "clientLastName",
-                 l."id" as "loanId", l."amount" as "loanAmount", l."assignedVendorId",
-                 i."installmentNumber",
-                 p."paymentDate"::text as "paymentDateLocal",
-                 v."firstName" as "vendorFirstName", v."lastName" as "vendorLastName"
-          FROM "Payment" p
-          JOIN "Client" c ON p."clientId" = c."id"
-          JOIN "User" u ON c."userId" = u."id"
-          JOIN "Loan" l ON p."loanId" = l."id"
-          LEFT JOIN "Installment" i ON p."installmentId" = i."id"
-          LEFT JOIN "User" v ON l."assignedVendorId" = v."id"
-          WHERE p."paymentDate"::date >= $1::date AND p."paymentDate"::date <= $2::date
-            ${user.role === 'VENDEDOR' ? `AND l."assignedVendorId" = '${user.userId}'` : ''}
-            ${vendedorId && user.role === 'ADMIN' ? `AND l."assignedVendorId" = '${vendedorId}'` : ''}
-            ${estado ? `AND p.status = '${estado}'` : ''}
-            ${clienteFilter}
-          ORDER BY p."paymentDate" DESC, p."loanId" DESC
-        `, startDate, endDate);
-      }
+    const rbacFilter = user.role === 'VENDEDOR' ? `AND l."assignedVendorId" = '${user.userId}'` : '';
+    const vendorFilter = vendedorId && user.role === 'ADMIN' ? `AND l."assignedVendorId" = '${vendedorId}'` : '';
+    const estadoFilter = estado ? `AND p.status = '${estado}'` : '';
 
-      // Calculate total amount
-      const totalMonto = payments.reduce((sum: number, p: any) => sum + Number(p.amount), 0);
+    const fromClause = `
+      FROM "Payment" p
+      JOIN "Client" c ON p."clientId" = c."id"
+      JOIN "User" u ON c."userId" = u."id"
+      JOIN "Loan" l ON p."loanId" = l."id"
+      LEFT JOIN "Installment" i ON p."installmentId" = i."id"
+      LEFT JOIN "User" v ON l."assignedVendorId" = v."id"
+    `;
 
-      // Format response - use paymentDateLocal which is already formatted as YYYY-MM-DD from DB
-      const formattedPayments = payments.map((p: any) => {
-        // paymentDateLocal is already in YYYY-MM-DD format from DB
-        const fechaLocal = p.paymentDateLocal || '';
-        
-        return {
-          id: p.id,
-          fecha: fechaLocal,
-          cliente: (p.clientFirstName || '') + ' ' + (p.clientLastName || ''),
-          prestamoId: p.loanId,
-          cuota: p.installmentNumber || null,
-          monto: Number(p.amount),
-          estado: p.status,
-          referencia: p.reference,
-          notas: p.notes,
-          fechaPago: p.paymentDate || p.createdAt,
-          vendedor: p.vendorFirstName && p.vendorLastName 
-            ? `${p.vendorFirstName} ${p.vendorLastName}` 
-            : null,
-        };
-      });
+    const whereClause = startDate === endDate
+      ? `WHERE p."paymentDate"::date = $1::date`
+      : `WHERE p."paymentDate"::date >= $1::date AND p."paymentDate"::date <= $2::date`;
 
-      res.json({
-        success: true,
-        data: {
-          payments: formattedPayments,
-          totalMonto,
-          filtros: {
-            fechaInicio: startDate,
-            fechaFin: endDate,
-            vendedorId: vendedorId || null,
-            estado: estado || null,
-          },
-        },
-      });
+    const filtersClause = `${rbacFilter} ${vendorFilter} ${estadoFilter} ${clienteFilter}`;
+    const params = startDate === endDate ? [startDate] : [startDate, endDate];
+
+    // Run data, count, and sum queries in parallel
+    const [payments, countResult, sumResult] = await Promise.all([
+      prisma.$queryRawUnsafe<any[]>(`
+        SELECT p.id, p."clientId", p."loanId", p."installmentId", p.amount, p.type,
+               p.status, p.reference, p.notes, p."paymentDate", p."createdAt", p."updatedAt",
+               p."processedAt",
+               u."firstName" as "clientFirstName", u."lastName" as "clientLastName",
+               l."id" as "loanId", l."amount" as "loanAmount", l."assignedVendorId",
+               i."installmentNumber",
+               p."paymentDate"::text as "paymentDateLocal",
+               v."firstName" as "vendorFirstName", v."lastName" as "vendorLastName"
+        ${fromClause}
+        ${whereClause}
+          ${filtersClause}
+        ORDER BY p."paymentDate" DESC, p."loanId" DESC
+        LIMIT ${limitNum} OFFSET ${offset}
+      `, ...params),
+      prisma.$queryRawUnsafe<any[]>(`
+        SELECT COUNT(*) as count
+        ${fromClause}
+        ${whereClause}
+          ${filtersClause}
+      `, ...params),
+      prisma.$queryRawUnsafe<any[]>(`
+        SELECT COALESCE(SUM(p.amount), 0) as "totalMonto"
+        ${fromClause}
+        ${whereClause}
+          ${filtersClause}
+      `, ...params),
+    ]);
+
+    const total = parseInt(countResult[0]?.count || '0', 10);
+    const totalMonto = Number(sumResult[0]?.totalMonto || 0);
+
+    // Format response
+    const formattedPayments = payments.map((p: any) => {
+      const fechaLocal = p.paymentDateLocal || '';
+
+      return {
+        id: p.id,
+        fecha: fechaLocal,
+        cliente: (p.clientFirstName || '') + ' ' + (p.clientLastName || ''),
+        prestamoId: p.loanId,
+        cuota: p.installmentNumber || null,
+        monto: Number(p.amount),
+        estado: p.status,
+        referencia: p.reference,
+        notas: p.notes,
+        fechaPago: p.paymentDate || p.createdAt,
+        vendedor: p.vendorFirstName && p.vendorLastName
+          ? `${p.vendorFirstName} ${p.vendorLastName}`
+          : null,
+      };
+    });
+
+    res.json({
+      success: true,
+      data: {
+        payments: formattedPayments,
+        totalMonto,
+        total,
+        page: pageNum,
+        limit: limitNum,
+        totalPages: Math.ceil(total / limitNum),
+      },
+    });
     } catch (error) {
       console.error('Get payments by date error:', error);
       res.status(500).json({
@@ -352,11 +352,17 @@ router.put('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: R
       return;
     }
 
-    // Can't edit if loan is not ACTIVE
+    // Can't edit if loan is not ACTIVE (blocks REFINANCIADO, DEFAULTED/incobrable, PAID, PENDING, CANCELLED)
     if (payment.loan.status !== LoanStatus.ACTIVE) {
+      let errorMsg = 'No se puede editar pagos de préstamos que no están activos';
+      if (payment.loan.status === LoanStatus.REFINANCIADO) {
+        errorMsg = 'No se puede editar pagos de préstamos refinanciados';
+      } else if (payment.loan.status === LoanStatus.DEFAULTED) {
+        errorMsg = 'No se puede editar pagos de préstamos marcados como incobrables';
+      }
       res.status(400).json({
         success: false,
-        error: 'No se puede editar pagos de préstamos que no están activos',
+        error: errorMsg,
       });
       return;
     }
@@ -831,11 +837,27 @@ router.delete('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res
       return;
     }
 
-    // Can't delete if loan is CANCELLED
+    // Can't delete if loan is CANCELLED, REFINANCIADO, or DEFAULTED (incobrable)
     if (payment.loan.status === LoanStatus.CANCELLED) {
       res.status(400).json({
         success: false,
         error: 'No se puede eliminar pagos de préstamos cancelados',
+      });
+      return;
+    }
+
+    if (payment.loan.status === LoanStatus.REFINANCIADO) {
+      res.status(400).json({
+        success: false,
+        error: 'No se puede eliminar pagos de préstamos refinanciados',
+      });
+      return;
+    }
+
+    if (payment.loan.status === LoanStatus.DEFAULTED) {
+      res.status(400).json({
+        success: false,
+        error: 'No se puede eliminar pagos de préstamos marcados como incobrables',
       });
       return;
     }
@@ -881,9 +903,28 @@ router.delete('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res
         });
       }
     } else {
-      // Free payment (abono a cuenta) - no associated to any installment
-      // When deleted, should NOT affect installment status because it's not clear which installment it belongs to
-      // Only delete the payment record, keep installment states unchanged
+      // Payment has no associated installmentId — two possible cases:
+      //   a) Free payment (abono a cuenta): no installment to revert, just delete the record.
+      //   b) Interest-only payment: needs full reversal of the INTEREST_ONLY installment
+      //      and the "new" installment that was created when it was recorded.
+      const isInterestOnly = payment.notes?.includes('Pago solo interés') ?? false;
+
+      if (isInterestOnly) {
+        const reverseResult = await PaymentService.reverseInterestOnlyPayment({
+          paymentId: id,
+          paymentAmount,
+          loanId,
+          notes: payment.notes,
+        });
+
+        if (!reverseResult.success) {
+          res.status(400).json({
+            success: false,
+            error: reverseResult.error,
+          });
+          return;
+        }
+      }
     }
 
     // Delete the payment

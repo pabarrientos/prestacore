@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { apiFetch } from '@/lib/api';
 import { Pagination } from '@/components/Pagination';
@@ -84,8 +84,41 @@ export default function LoansPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
   const [textFilter, setTextFilter] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [error, setError] = useState('');
   const [deleting, setDeleting] = useState<string | null>(null);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Debounced search: fires 400ms after user stops typing
+  const handleSearchChange = useCallback((value: string) => {
+    setTextFilter(value);
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+    debounceTimer.current = setTimeout(() => {
+      setSearchQuery(value);
+      setPage(1);
+    }, 400);
+  }, []);
+
+  // Clear search immediately
+  const handleClearSearch = useCallback(() => {
+    setTextFilter('');
+    setSearchQuery('');
+    setPage(1);
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+  }, []);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+    };
+  }, []);
 
   const handleDelete = async (id: string) => {
     if (!confirm('¿Está seguro de que desea eliminar este préstamo? Esta acción no se puede deshacer.')) {
@@ -122,6 +155,9 @@ export default function LoansPage() {
       if (statusFilter) {
         queryParams += `&status=${statusFilter}`;
       }
+      if (searchQuery) {
+        queryParams += `&q=${encodeURIComponent(searchQuery)}`;
+      }
       apiFetch(`/api/loans?${queryParams}`)
         .then(res => res.json())
         .then(data => {
@@ -139,17 +175,9 @@ export default function LoansPage() {
         })
         .finally(() => setLoading(false));
     }
-  }, [token, page, statusFilter]);
+  }, [token, page, statusFilter, searchQuery]);
 
-  // Client-side text filter for client/vendor name (no API q param)
-  const filteredLoans = loans.filter((loan) => {
-    const searchTerm = textFilter.toLowerCase();
-    const clientName = `${loan.client.user.firstName} ${loan.client.user.lastName}`.toLowerCase();
-    const vendorName = loan.assignedVendor
-      ? `${loan.assignedVendor.firstName} ${loan.assignedVendor.lastName}`.toLowerCase()
-      : '';
-    return clientName.includes(searchTerm) || vendorName.includes(searchTerm);
-  });
+  // Server-side filtering replaces client-side text filter
 
   const handleStatusChange = (newStatus: string) => {
     setStatusFilter(newStatus);
@@ -207,19 +235,39 @@ export default function LoansPage() {
             <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
         </select>
-        <input
-          type="text"
-          placeholder="Buscar por nombre de cliente o vendedor..."
-          value={textFilter}
-          onChange={(e) => setTextFilter(e.target.value)}
-          className="px-4 py-2 border rounded-lg flex-1 min-h-[44px] dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14]"
-        />
+        <div className="relative flex-1">
+          <input
+            type="text"
+            placeholder="Buscar por nombre de cliente o vendedor..."
+            value={textFilter}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                if (debounceTimer.current) clearTimeout(debounceTimer.current);
+                setSearchQuery(textFilter);
+                setPage(1);
+              }
+            }}
+            className="w-full px-4 py-2 pr-10 border rounded-lg min-h-[44px] dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14]"
+          />
+          {textFilter && (
+            <button
+              onClick={handleClearSearch}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              aria-label="Limpiar búsqueda"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Total count */}
       {!error && (
         <p className="mb-4 text-sm text-gray-600 dark:text-white/60">
-          Mostrando {filteredLoans.length} de {total} préstamos
+          Mostrando {loans.length} de {total} préstamos
         </p>
       )}
 
@@ -259,7 +307,7 @@ export default function LoansPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200 dark:bg-[#1e1e1e] dark:divide-gray-700">
-              {filteredLoans.map((loan) => (
+              {loans.map((loan) => (
                 <tr key={loan.id} className="dark:hover:bg-white/10">
                   <td className="px-6 py-4 whitespace-nowrap dark:text-white/[.87]">
                     {loan.client.user.firstName} {loan.client.user.lastName}
@@ -323,7 +371,7 @@ export default function LoansPage() {
           </table>
         </div>
 
-        {filteredLoans.length === 0 && !error && (
+        {loans.length === 0 && !error && (
           <p className="p-4 text-center text-gray-500 dark:text-white/60">No hay préstamos</p>
         )}
       </div>
