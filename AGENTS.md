@@ -105,22 +105,22 @@ docker compose up web -d       # Solo Web
 docker compose stop api        # Detener un servicio
 
 # Desarrollo local
-pnpm dev                       # Iniciar todos los servicios localmente
+pnpm -w dev                    # Iniciar todos los servicios localmente
 pnpm --filter @prestamos/api dev   # Solo API
 pnpm --filter @prestamos/web dev   # Solo Web
 
 # Base de datos
-pnpm db:migrate      # Ejecutar migraciones
-pnpm db:seed         # Seed de datos
-pnpm db:studio       # Prisma Studio
+pnpm -w db:migrate      # Ejecutar migraciones
+pnpm -w db:seed         # Seed de datos
+pnpm -w db:studio       # Prisma Studio
 
 # Testing
-pnpm test            # Todos los tests
-pnpm test:e2e        # Solo E2E
+pnpm -w test            # Todos los tests
+pnpm test:e2e           # Solo E2E
 
 # Build
-pnpm build           # Build de producción
-pnpm start           # Start de producción (local)
+pnpm -w build           # Build de producción
+pnpm -w start           # Start de producción (local)
 ```
 
 > **Nota**: `storage/postgres` se crea automáticamente al levantar postgres con Docker.
@@ -184,3 +184,38 @@ Si el sistema se usa en una zona horaria distinta, hay que cambiar **3 cosas**:
 3. **Escribir tests**: Para nuevas funcionalidades, crear tests unitarios
 4. **Documentar decisiones**: Usar comentarios para decisiones no obvias
 5. **Validar tipos**: No usar `any`, siempre tipar correctamente
+
+<!-- CODEGRAPH_START -->
+## CodeGraph
+
+This project has a CodeGraph MCP server (`codegraph_*` tools) configured. CodeGraph is a tree-sitter-parsed knowledge graph of every symbol, edge, and file. Reads are sub-millisecond and return structural information grep cannot.
+
+### When to prefer codegraph over native search
+
+Use codegraph for **structural** questions — what calls what, what would break, where is X defined, what is X's signature. Use native grep/read only for **literal text** queries (string contents, comments, log messages) or after you already have a specific file open.
+
+| Question | Tool |
+|---|---|
+| "Where is X defined?" / "Find symbol named X" | `codegraph_search` |
+| "What calls function Y?" | `codegraph_callers` |
+| "What does Y call?" | `codegraph_callees` |
+| "What would break if I changed Z?" | `codegraph_impact` |
+| "Show me Y's signature / source / docstring" | `codegraph_node` |
+| "Give me focused context for a task/area" | `codegraph_context` |
+| "See several related symbols' source at once" | `codegraph_explore` |
+| "What files exist under path/" | `codegraph_files` |
+| "Is the index healthy?" | `codegraph_status` |
+
+### Rules of thumb
+
+- **Answer directly — don't delegate exploration.** For "how does X work" / architecture / trace questions, answer with 2-3 codegraph calls: `codegraph_context` first, then ONE `codegraph_explore` for the source of the symbols it surfaces. Codegraph IS the pre-built index, so spawning a separate file-reading sub-task/agent — or running a grep + read loop — repeats work codegraph already did and costs more for the same answer.
+- **Trust codegraph results.** They come from a full AST parse. Do NOT re-verify them with grep — that's slower, less accurate, and wastes context.
+- **Don't grep first** when looking up a symbol by name. `codegraph_search` is faster and returns kind + location + signature in one call.
+- **Don't chain `codegraph_search` + `codegraph_node`** when you just want context — `codegraph_context` is one call.
+- **Don't loop `codegraph_node` over many symbols** — one `codegraph_explore` call returns several symbols' source grouped in a single capped call, while each separate node/Read call re-reads the whole context and costs far more.
+- **Index lag**: the file watcher debounces ~500ms behind writes; don't re-query immediately after editing a file in the same turn.
+
+### If `.codegraph/` doesn't exist
+
+The MCP server returns "not initialized." Ask the user: *"I notice this project doesn't have CodeGraph initialized. Want me to run `codegraph init -i` to build the index?"*
+<!-- CODEGRAPH_END -->
