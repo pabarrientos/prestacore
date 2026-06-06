@@ -5,11 +5,12 @@ import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { requireAdmin } from '../middleware/rbac';
 import multer from 'multer';
 import path from 'path';
-import { createBackup } from '../services/backup/dump';
+import { createBackup, calculateChecksum } from '../services/backup/dump';
 import { previewRestore, validateBackupFile } from '../services/backup/restore';
 import { executeRestore } from '../services/backup/dump';
 import { reconcileBackups } from '../services/backup/reconcile';
 import { getScheduleConfig, updateScheduleConfig } from '../services/backup/scheduler';
+import { RetentionEngine } from '../services/backup/retention';
 import { LocalStorage } from '../services/storage/LocalStorage';
 import fs from 'fs/promises';
 
@@ -71,14 +72,43 @@ router.get('/', authMiddleware, requireAdmin, async (_req, res: Response): Promi
 
 // POST /api/backups - Create a manual backup
 router.post('/', authMiddleware, requireAdmin, async (_req, res: Response): Promise<void> => {
+  const start = Date.now();
   try {
     const result = await createBackup(prisma, 'MANUAL');
+
+    // Log successful execution
+    try {
+      await prisma.backupExecutionLog.create({
+        data: {
+          type: 'MANUAL',
+          status: 'SUCCESS',
+          durationMs: Date.now() - start,
+          backupId: result.id,
+        },
+      });
+    } catch (logErr) {
+      console.error('Failed to log manual backup:', logErr);
+    }
 
     res.status(201).json({
       success: true,
       data: result,
     });
   } catch (error: any) {
+    // Log failed execution
+    try {
+      await prisma.backupExecutionLog.create({
+        data: {
+          type: 'MANUAL',
+          status: 'FAILED',
+          message: error.message || 'Unknown error',
+          durationMs: Date.now() - start,
+        },
+      });
+    } catch (logErr) {
+      console.error('Failed to log manual backup failure:', logErr);
+    }
+
     console.error('Create backup error:', error);
     res.status(500).json({
       success: false,
@@ -138,6 +168,23 @@ router.patch('/schedule', authMiddleware, requireAdmin, async (req: AuthRequest,
           description: 'Backup retention policy (maxCount and/or maxAgeDays)',
         },
       });
+
+      // Automatically enforce retention after config change
+      const retentionEngine = new RetentionEngine(prisma);
+      const result = await retentionEngine.enforceRetention();
+
+      // Log the enforcement
+      try {
+        await prisma.backupExecutionLog.create({
+          data: {
+            type: 'RETENTION',
+            status: 'SUCCESS',
+            message: `Deleted ${result.deleted} backup(s) due to retention policy change`,
+          },
+        });
+      } catch (logErr) {
+        console.error('Failed to log retention enforcement:', logErr);
+      }
     }
 
     res.json({
@@ -154,6 +201,111 @@ router.patch('/schedule', authMiddleware, requireAdmin, async (req: AuthRequest,
       return;
     }
     console.error('Update schedule error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+    });
+  }
+});
+
+// POST /api/backups/retention/enforce - Manually trigger retention policy
+router.post('/retention/enforce', authMiddleware, requireAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const retentionEngine = new RetentionEngine(prisma);
+    const result = await retentionEngine.enforceRetention();
+
+    // Log the enforcement
+    try {
+      await prisma.backupExecutionLog.create({
+        data: {
+          type: 'RETENTION',
+          status: 'SUCCESS',
+          message: `Manually enforced: deleted ${result.deleted} backup(s)`,
+        },
+      });
+    } catch (logErr) {
+      console.error('Failed to log retention enforcement:', logErr);
+    }
+
+    res.json({
+      success: true,
+      data: {
+        deleted: result.deleted,
+        ids: result.ids,
+      },
+    });
+  } catch (error) {
+    console.error('Enforce retention error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+    });
+  }
+});
+
+// GET /api/backups/logs - Get execution logs from scheduler
+router.get('/logs', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 50;
+
+    const logs = await prisma.backupExecutionLog.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: Math.min(limit, 200), // Cap at 200 to avoid excessive data
+    });
+
+    res.json({
+      success: true,
+      data: logs,
+    });
+  } catch (error) {
+    console.error('Get execution logs error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+    });
+  }
+});
+
+// DELETE /api/backups/logs/:id - Delete a specific execution log
+router.delete('/logs/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const log = await prisma.backupExecutionLog.findUnique({ where: { id } });
+    if (!log) {
+      res.status(404).json({
+        success: false,
+        error: 'Log entry not found',
+      });
+      return;
+    }
+
+    await prisma.backupExecutionLog.delete({ where: { id } });
+
+    res.json({
+      success: true,
+      data: { id },
+    });
+  } catch (error) {
+    console.error('Delete execution log error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+    });
+  }
+});
+
+// DELETE /api/backups/logs - Delete all execution logs
+router.delete('/logs', authMiddleware, requireAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const result = await prisma.backupExecutionLog.deleteMany();
+
+    res.json({
+      success: true,
+      data: { deleted: result.count },
+    });
+  } catch (error) {
+    console.error('Delete all execution logs error:', error);
     res.status(500).json({
       success: false,
       error: 'Internal server error',
@@ -276,6 +428,9 @@ router.post('/upload', authMiddleware, requireAdmin, upload.single('file'), asyn
     // Get file stats
     const stats = await fs.stat(destPath);
 
+    // Calculate SHA-256 checksum
+    const checksum = await calculateChecksum(destPath);
+
     // Create backup record
     const backup = await prisma.backup.create({
       data: {
@@ -284,6 +439,7 @@ router.post('/upload', authMiddleware, requireAdmin, upload.single('file'), asyn
         sizeBytes: stats.size,
         type: 'UPLOADED',
         status: 'COMPLETED',
+        checksum,
       },
     });
 

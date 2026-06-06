@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { RetentionEngine } from './retention';
+import { RetentionEngine, DEFAULT_MAX_COUNT, DEFAULT_MAX_AGE_DAYS } from './retention';
 
 // BackupRecord interface - duplicated from @prestamos/shared to avoid import issues
 interface BackupRecord {
@@ -185,17 +185,17 @@ describe('RetentionEngine', () => {
       expect(config).toEqual({ maxCount: 10, maxAgeDays: 60 });
     });
 
-    it('should return default config when no setting exists', async () => {
+    it('should return defaults when no setting exists', async () => {
       mockSettingFindUnique.mockResolvedValue(null);
 
       const { PrismaClient } = await import('@prisma/client');
       const engine = new RetentionEngine(new PrismaClient() as any);
       const config = await engine.getRetentionConfig();
 
-      expect(config).toEqual({ maxCount: undefined, maxAgeDays: undefined });
+      expect(config).toEqual({ maxCount: DEFAULT_MAX_COUNT, maxAgeDays: DEFAULT_MAX_AGE_DAYS });
     });
 
-    it('should handle malformed JSON gracefully', async () => {
+    it('should return defaults when JSON is malformed', async () => {
       mockSettingFindUnique.mockResolvedValue({
         key: 'BACKUP_RETENTION',
         value: 'not valid json',
@@ -205,7 +205,57 @@ describe('RetentionEngine', () => {
       const engine = new RetentionEngine(new PrismaClient() as any);
       const config = await engine.getRetentionConfig();
 
-      expect(config).toEqual({ maxCount: undefined, maxAgeDays: undefined });
+      expect(config).toEqual({ maxCount: DEFAULT_MAX_COUNT, maxAgeDays: DEFAULT_MAX_AGE_DAYS });
+    });
+
+    it('should fill in defaults for missing fields', async () => {
+      mockSettingFindUnique.mockResolvedValue({
+        key: 'BACKUP_RETENTION',
+        value: JSON.stringify({ maxCount: 5 }), // maxAgeDays missing
+      });
+
+      const { PrismaClient } = await import('@prisma/client');
+      const engine = new RetentionEngine(new PrismaClient() as any);
+      const config = await engine.getRetentionConfig();
+
+      expect(config).toEqual({ maxCount: 5, maxAgeDays: DEFAULT_MAX_AGE_DAYS });
+    });
+  });
+
+  describe('enforceRetention - OR semantics', () => {
+    it('should delete backups exceeding EITHER limit (age-only OR count-only)', async () => {
+      // Current date is 2026-05-23, maxCount=5, maxAgeDays=30
+      // 6 backups total → 1 exceeds count (id '6', oldest)
+      // 1 exceeds age only (id '5', 35 days old but within top 5)
+      // Both should be deleted (OR semantics)
+      const mockBackups: BackupRecord[] = [
+        { id: '1', filename: 'b1.dump', sizeBytes: 1000, type: 'MANUAL', status: 'COMPLETED', createdAt: '2026-05-22T00:00:00Z' },
+        { id: '2', filename: 'b2.dump', sizeBytes: 1000, type: 'MANUAL', status: 'COMPLETED', createdAt: '2026-05-20T00:00:00Z' },
+        { id: '3', filename: 'b3.dump', sizeBytes: 1000, type: 'MANUAL', status: 'COMPLETED', createdAt: '2026-05-18T00:00:00Z' },
+        { id: '4', filename: 'b4.dump', sizeBytes: 1000, type: 'MANUAL', status: 'COMPLETED', createdAt: '2026-05-16T00:00:00Z' },
+        { id: '5', filename: 'b5.dump', sizeBytes: 1000, type: 'MANUAL', status: 'COMPLETED', createdAt: '2026-04-18T00:00:00Z' }, // 35 days old - exceeds age
+        { id: '6', filename: 'b6.dump', sizeBytes: 1000, type: 'MANUAL', status: 'COMPLETED', createdAt: '2026-04-10T00:00:00Z' }, // 43 days old - exceeds both
+      ];
+
+      mockFindMany.mockResolvedValue(mockBackups);
+      mockSettingFindUnique.mockResolvedValue({
+        key: 'BACKUP_RETENTION',
+        value: JSON.stringify({ maxCount: 5, maxAgeDays: 30 }),
+      });
+      mockFindUnique.mockImplementation(({ where }: { where: { id: string } }) =>
+        Promise.resolve({ filepath: `/app/backups/${where.id}.dump` })
+      );
+      mockDelete.mockResolvedValue(undefined);
+
+      const { PrismaClient } = await import('@prisma/client');
+      const engine = new RetentionEngine(new PrismaClient() as any);
+      const result = await engine.enforceRetention();
+
+      // id '5' deleted by age, id '6' deleted by BOTH age and count
+      expect(result.deleted).toBe(2);
+      expect(result.ids).toContain('5');
+      expect(result.ids).toContain('6');
+      expect(mockDelete).toHaveBeenCalledTimes(2);
     });
   });
 });

@@ -297,8 +297,15 @@ export class RefinancingService {
         });
 
         // Step 2: Mark all installments as CANCELADA_POR_REFINANCIACION (no payments created per installment)
+        // EXCEPT INTEREST_ONLY — those preserve their status as a historical record of
+        // an interest-only payment. Their principal was deferred, not consolidated.
+        // The frontend capitalBalance reduce relies on INTEREST_ONLY to skip the principal
+        // subtraction; overwriting the status here would cause double subtraction and
+        // a negative running total in the loan detail cronograma.
         for (const inst of oldLoan.installments) {
-          // Mark installment as cancelled
+          if (inst.status === InstallmentStatus.INTEREST_ONLY) {
+            continue;
+          }
           await tx.installment.update({
             where: { id: inst.id },
             data: {

@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { apiFetch } from '@/lib/api';
 import { getTodayString } from '@/lib/datetime';
+import { Pagination } from '@/components/Pagination';
 
 interface Payment {
   id: string;
@@ -31,12 +32,9 @@ interface ApiResponse {
   data: {
     payments: Payment[];
     totalMonto: number;
-    filtros: {
-      fechaInicio: string;
-      fechaFin: string;
-      vendedorId: string | null;
-      estado: string | null;
-    };
+    total: number;
+    page: number;
+    totalPages: number;
   };
 }
 
@@ -69,17 +67,47 @@ export default function PagosPage() {
   const [loading, setLoading] = useState(true);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [totalMonto, setTotalMonto] = useState(0);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
-  
+
   // Filter states
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
   const [selectedVendor, setSelectedVendor] = useState('');
   const [selectedEstado, setSelectedEstado] = useState('');
   const [selectedCliente, setSelectedCliente] = useState('');
+  const [clienteQuery, setClienteQuery] = useState('');
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load initial date (today) and fetch data
+  // Debounced search for cliente
+  const handleClienteChange = useCallback((value: string) => {
+    setSelectedCliente(value);
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+    debounceTimer.current = setTimeout(() => {
+      setClienteQuery(value);
+      setPage(1);
+    }, 400);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+    };
+  }, []);
+
+  // Reset page when non-debounced filters change
+  const handleFilterChange = useCallback((setter: (v: string) => void) => (value: string) => {
+    setter(value);
+    setPage(1);
+  }, []);
+
+  // Load initial date (today)
   useEffect(() => {
     const today = getTodayString();
     setFechaInicio(today);
@@ -108,15 +136,17 @@ export default function PagosPage() {
     const params = new URLSearchParams();
     params.append('fechaInicio', fechaInicio);
     params.append('fechaFin', fechaFin);
-    
+    params.append('page', String(page));
+    params.append('limit', '20');
+
     if (selectedVendor) {
       params.append('vendedorId', selectedVendor);
     }
     if (selectedEstado) {
       params.append('estado', selectedEstado);
     }
-    if (selectedCliente) {
-      params.append('cliente', selectedCliente);
+    if (clienteQuery) {
+      params.append('cliente', clienteQuery);
     }
 
     apiFetch(`/api/payments/by-date?${params.toString()}`)
@@ -125,11 +155,12 @@ export default function PagosPage() {
         if (data.success) {
           setPayments(data.data.payments);
           setTotalMonto(data.data.totalMonto);
+          setTotalPages(data.data.totalPages || 1);
         }
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [token, fechaInicio, fechaFin, selectedVendor, selectedEstado, selectedCliente]);
+  }, [token, fechaInicio, fechaFin, selectedVendor, selectedEstado, clienteQuery, page]);
 
   const handleFechaChange = (field: 'inicio' | 'fin', value: string) => {
     if (field === 'inicio') {
@@ -137,6 +168,7 @@ export default function PagosPage() {
     } else {
       setFechaFin(value);
     }
+    setPage(1);
   };
 
   return (
@@ -180,7 +212,14 @@ export default function PagosPage() {
             <input
               type="text"
               value={selectedCliente}
-              onChange={(e) => setSelectedCliente(e.target.value)}
+              onChange={(e) => handleClienteChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  if (debounceTimer.current) clearTimeout(debounceTimer.current);
+                  setClienteQuery(selectedCliente);
+                  setPage(1);
+                }
+              }}
               placeholder="Buscar cliente..."
               className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-[#2a2a2a] dark:border-[#444444] dark:text-white/[.87] focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             />
@@ -194,7 +233,7 @@ export default function PagosPage() {
               </label>
               <select
                 value={selectedVendor}
-                onChange={(e) => setSelectedVendor(e.target.value)}
+                onChange={(e) => handleFilterChange(setSelectedVendor)(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-[#2a2a2a] dark:border-[#444444] dark:text-white/[.87] focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               >
                 <option value="">Todos</option>
@@ -214,7 +253,7 @@ export default function PagosPage() {
             </label>
             <select
               value={selectedEstado}
-              onChange={(e) => setSelectedEstado(e.target.value)}
+              onChange={(e) => handleFilterChange(setSelectedEstado)(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-[#2a2a2a] dark:border-[#444444] dark:text-white/[.87] focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             >
               <option value="">Todos</option>
@@ -238,11 +277,14 @@ export default function PagosPage() {
           </div>
           <div className="text-right">
             <p className="text-sm text-gray-500 dark:text-white/60">
-              {payments.length} pago{payments.length !== 1 ? 's' : ''} encontrado{payments.length !== 1 ? 's' : ''}
+              {payments.length} pago{payments.length !== 1 ? 's' : ''} en esta página
             </p>
           </div>
         </div>
       </div>
+
+      {/* Pagination above table */}
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
 
       {/* Payments Table */}
       <div className="bg-white rounded-lg shadow overflow-hidden dark:bg-[#1e1e1e]">
@@ -297,8 +339,8 @@ export default function PagosPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200 dark:bg-[#1e1e1e] dark:divide-gray-700">
                 {payments.map((payment) => (
-                  <tr 
-                    key={payment.id} 
+                  <tr
+                    key={payment.id}
                     className="hover:bg-gray-50 dark:hover:bg-[#2a2a2a] cursor-pointer"
                     onClick={() => setSelectedPayment(payment)}
                   >
@@ -342,9 +384,9 @@ export default function PagosPage() {
           <div className="fixed inset-0 z-50" onClick={() => setSelectedPayment(null)}>
             <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
               <div className="fixed inset-0 bg-black/50 dark:bg-black/70"></div>
-              
+
               <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-              
+
               <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full dark:bg-[#1e1e1e]" onClick={(e) => e.stopPropagation()}>
                 <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4 dark:bg-[#1e1e1e]">
                   <div className="sm:flex sm:items-start">
@@ -408,6 +450,9 @@ export default function PagosPage() {
           </div>
         )}
       </div>
+
+      {/* Pagination below table */}
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
     </div>
   );
 }

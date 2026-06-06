@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import { PrismaClient } from '@prisma/client';
 import { LocalStorage } from '../storage/LocalStorage';
 import { RetentionEngine } from './retention';
+import { cleanupStaleRestores } from './restore';
 
 const execFileAsync = promisify(execFile);
 const DUMP_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
@@ -16,33 +17,69 @@ export interface BackupResult {
   checksum: string;
 }
 
-/**
- * Parse DATABASE_URL to extract connection parameters for pg_dump
- */
-function parseDatabaseUrl(url: string): {
+export interface ParsedDatabaseUrl {
   host: string;
   port: string;
   user: string;
   password: string;
   dbname: string;
-} {
-  const parsed = new URL(url);
-  return {
-    host: parsed.hostname || 'localhost',
-    port: parsed.port || '5432',
-    user: parsed.username || 'postgres',
-    password: parsed.password || '',
-    dbname: parsed.pathname?.slice(1) || 'postgres',
-  };
+  sslArgs: string[]; // Extra pg_dump/pg_restore args for SSL
+}
+
+/**
+ * Parse DATABASE_URL to extract connection parameters for pg_dump/pg_restore.
+ * Handles URL-encoded passwords, special characters, and SSL query params.
+ */
+export function parseDatabaseUrl(url: string): ParsedDatabaseUrl {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error('DATABASE_URL is not a valid URL');
+  }
+
+  const host = parsed.hostname || 'localhost';
+  const port = parsed.port || '5432';
+  const user = decodeURIComponent(parsed.username || 'postgres');
+  const password = decodeURIComponent(parsed.password || '');
+  const dbname = decodeURIComponent(parsed.pathname?.slice(1) || 'postgres');
+
+  if (!host) {
+    throw new Error('DATABASE_URL is missing a host');
+  }
+  if (!dbname) {
+    throw new Error('DATABASE_URL is missing a database name');
+  }
+
+  // Extract SSL-related query params and convert to pg_dump/pg_restore flags
+  const sslArgs: string[] = [];
+  const sslMode = parsed.searchParams.get('sslmode');
+  if (sslMode) {
+    sslArgs.push('--sslmode', sslMode);
+  }
+  const sslCert = parsed.searchParams.get('sslcert');
+  if (sslCert) {
+    sslArgs.push('--sslcert', sslCert);
+  }
+  const sslKey = parsed.searchParams.get('sslkey');
+  if (sslKey) {
+    sslArgs.push('--sslkey', sslKey);
+  }
+  const sslRootCert = parsed.searchParams.get('sslrootcert');
+  if (sslRootCert) {
+    sslArgs.push('--sslrootcert', sslRootCert);
+  }
+
+  return { host, port, user, password, dbname, sslArgs };
 }
 
 /**
  * Calculate SHA-256 checksum of a file
  */
-async function calculateChecksum(filepath: string): Promise<string> {
+export async function calculateChecksum(filepath: string): Promise<string> {
   const hash = crypto.createHash('sha256');
   const { createReadStream } = await import('fs');
-  
+
   return new Promise((resolve, reject) => {
     const stream = createReadStream(filepath);
     stream.on('data', (data) => hash.update(data));
@@ -58,6 +95,17 @@ export async function createBackup(
   prisma: PrismaClient,
   type: 'MANUAL' | 'SCHEDULED' | 'UPLOADED' = 'MANUAL'
 ): Promise<BackupResult> {
+  // Clean up any stale RESTORING records before creating a new backup
+  try {
+    const { cleaned } = await cleanupStaleRestores(prisma);
+    if (cleaned > 0) {
+      console.log(`Cleaned up ${cleaned} stale RESTORING backup(s) before creating new backup`);
+    }
+  } catch (err) {
+    console.error('Failed to clean up stale restores:', err);
+    // Non-fatal — continue with backup creation
+  }
+
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const filename = `backup-${timestamp}.dump`;
   const storage = new LocalStorage();
@@ -79,6 +127,7 @@ export async function createBackup(
     '-d', dbParams.dbname,
     '-Fc', // Custom PostgreSQL format (compressed)
     '-f', filepath,
+    ...dbParams.sslArgs,
   ];
 
   // Set PGPASSWORD environment variable
@@ -136,7 +185,9 @@ export async function createBackup(
 }
 
 /**
- * Spawn pg_restore to restore a backup
+ * Spawn pg_restore to restore a backup.
+ * Disconnects Prisma before restore to release all DB connections,
+ * then reconnects after restore completes.
  */
 export async function executeRestore(
   prisma: PrismaClient,
@@ -173,17 +224,28 @@ export async function executeRestore(
     '-d', dbParams.dbname,
     '--clean',      // Drop existing objects before creating
     '--if-exists',  // Don't error if object doesn't exist
+    ...dbParams.sslArgs,
     backup.filepath,
   ];
 
   // Set PGPASSWORD environment variable
   const env = { ...process.env, PGPASSWORD: dbParams.password };
 
+  // Disconnect Prisma to release all DB connections before restore.
+  // pg_restore --clean drops and recreates tables, which fails if
+  // there are active connections. Prisma will auto-reconnect on next query.
+  console.log('[restore] Disconnecting Prisma to release DB connections...');
+  await prisma.$disconnect();
+
   try {
     await execFileAsync('pg_restore', pgRestoreArgs, {
       timeout: DUMP_TIMEOUT_MS,
       env,
     });
+
+    // Reconnect Prisma after successful restore
+    console.log('[restore] pg_restore completed, reconnecting Prisma...');
+    await prisma.$connect();
 
     // Update status to COMPLETED (record may have been dropped/recreated by restore)
     try {
@@ -196,6 +258,14 @@ export async function executeRestore(
       console.log('Backup record was recreated during restore — status update skipped');
     }
   } catch (error: any) {
+    // Reconnect Prisma even on failure
+    console.log('[restore] Reconnecting Prisma after failed restore...');
+    try {
+      await prisma.$connect();
+    } catch (reconnectErr) {
+      console.error('[restore] Failed to reconnect Prisma:', reconnectErr);
+    }
+
     // Try to update status to FAILED, but the backup record may have been
     // dropped by pg_restore --clean if the restore partially completed
     try {

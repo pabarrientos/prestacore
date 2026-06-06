@@ -61,11 +61,35 @@ export function buildCronExpression(params: { hour: number; dayOfWeek?: number; 
 }
 
 /**
+ * Try to acquire an advisory lock to prevent multiple instances from
+ * running the scheduler simultaneously. The lock is session-scoped
+ * and auto-released if the process/connection dies.
+ */
+async function tryAcquireSchedulerLock(prisma: PrismaClient): Promise<boolean> {
+  try {
+    const result = await prisma.$queryRaw<Array<{ locked: boolean }>>`
+      SELECT pg_try_advisory_lock(hashtext('backup-scheduler')) AS locked
+    `;
+    return result[0]?.locked ?? false;
+  } catch (err) {
+    console.error('Failed to acquire advisory lock:', err);
+    return false;
+  }
+}
+
+/**
  * Start the backup scheduler
  */
 export async function startScheduler(prisma: PrismaClient): Promise<void> {
   // Stop existing scheduler if running
   stopScheduler();
+
+  // Try to acquire advisory lock (prevents duplicate schedulers in multi-instance setups)
+  const acquired = await tryAcquireSchedulerLock(prisma);
+  if (!acquired) {
+    console.log('Backup scheduler: another instance already holds the lock, skipping');
+    return;
+  }
 
   // Get schedule from settings
   const setting = await prisma.setting.findUnique({
@@ -104,13 +128,39 @@ export async function startScheduler(prisma: PrismaClient): Promise<void> {
 
   // Schedule the task
   scheduledTask = cron.schedule(cronExpr, async () => {
+    const start = Date.now();
+    console.log('[scheduler] Scheduled backup triggered');
     try {
       // Import here to avoid circular dependency
       const { createBackup } = await import('./dump');
-      console.log('Scheduled backup triggered');
-      await createBackup(prisma, 'SCHEDULED');
-    } catch (error) {
-      console.error('Scheduled backup failed:', error);
+      const result = await createBackup(prisma, 'SCHEDULED');
+
+      // Log successful execution
+      await prisma.backupExecutionLog.create({
+        data: {
+          type: 'SCHEDULED',
+          status: 'SUCCESS',
+          durationMs: Date.now() - start,
+          backupId: result.id,
+        },
+      });
+      console.log(`[scheduler] Backup completed: ${result.filename}`);
+    } catch (error: any) {
+      console.error('[scheduler] Scheduled backup failed:', error);
+
+      // Log failed execution
+      try {
+        await prisma.backupExecutionLog.create({
+          data: {
+            type: 'SCHEDULED',
+            status: 'FAILED',
+            message: error.message || 'Unknown error',
+            durationMs: Date.now() - start,
+          },
+        });
+      } catch (logErr) {
+        console.error('[scheduler] Failed to log execution:', logErr);
+      }
     }
   });
 

@@ -8,10 +8,10 @@ import { getToday } from '../services/datetime';
 const router: ReturnType<typeof Router> = Router();
 const prisma = new PrismaClient();
 
-// GET /api/installments - Get installments with filters
+// GET /api/installments - Get installments with filters and pagination
 router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { fechaInicio, fechaFin, cliente, vendedorId, estado } = req.query;
+    const { fechaInicio, fechaFin, cliente, vendedorId, estado, page = '1', limit = '20' } = req.query;
     const user = req.user;
 
     if (!user) {
@@ -21,6 +21,11 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise
       });
       return;
     }
+
+    // Pagination
+    const pageNum = parseInt(page as string, 10);
+    const limitNum = parseInt(limit as string, 10);
+    const offset = (pageNum - 1) * limitNum;
 
     // Validate date params
     let startDate: string;
@@ -73,9 +78,6 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise
           : '';
 
     // Status filter with dynamic OVERDUE calculation
-    // OVERDUE: includes stored OVERDUE + PENDING installments where dueDate < today (dynamically calculated)
-    // PENDING: only PENDING installments with dueDate >= today (excludes dynamically-calculated-overdue ones)
-    // Create today string for OVERDUE comparison
     const todayYear = today.getFullYear();
     const todayMonth = String(today.getMonth() + 1).padStart(2, '0');
     const todayDay = String(today.getDate()).padStart(2, '0');
@@ -93,88 +95,90 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise
       }
     }
 
-    // Only ACTIVE loans (exclude PENDING, PAID, DEFAULTED, REFINANCIADO)
+    // Only ACTIVE loans
     const loanStatusFilter = `AND l.status = 'ACTIVE'`;
 
-    // Fetch installments with related data
-    let installments;
-    if (startDate === endDate) {
-      // Single day query - use ::date cast for proper comparison
-      installments = await prisma.$queryRawUnsafe<any[]>(`
-        SELECT
-          i.id,
-          i."loanId",
-          i."installmentNumber",
-          i."dueDate",
-          i.amount,
-          i.balance,
-          i.status,
-          i."paidAmount",
-          i."moraAmount",
-          l."amount" as "loanAmount",
-          l."assignedVendorId",
-          c.id as "clientId",
-          u."firstName" as "clientFirstName",
-          u."lastName" as "clientLastName",
-          u.phone,
-          i."dueDate"::text as "dueDateLocal",
-          v."firstName" as "vendorFirstName",
-          v."lastName" as "vendorLastName"
-        FROM "Installment" i
-        JOIN "Loan" l ON i."loanId" = l.id
-        JOIN "Client" c ON l."clientId" = c.id
-        JOIN "User" u ON c."userId" = u.id
-        LEFT JOIN "User" v ON l."assignedVendorId" = v.id
-        WHERE i."dueDate"::date = $1::date
-          ${loanStatusFilter}
-          ${vendorFilter}
-          ${statusFilter}
-          ${clienteFilter}
-        ORDER BY u."lastName" ASC, u."firstName" ASC, i."dueDate" ASC, i."installmentNumber" ASC
-      `, startDate);
-    } else {
-      // Date range query
-      installments = await prisma.$queryRawUnsafe<any[]>(`
-        SELECT
-          i.id,
-          i."loanId",
-          i."installmentNumber",
-          i."dueDate",
-          i.amount,
-          i.balance,
-          i.status,
-          i."paidAmount",
-          i."moraAmount",
-          l."amount" as "loanAmount",
-          l."assignedVendorId",
-          c.id as "clientId",
-          u."firstName" as "clientFirstName",
-          u."lastName" as "clientLastName",
-          u.phone,
-          i."dueDate"::text as "dueDateLocal",
-          v."firstName" as "vendorFirstName",
-          v."lastName" as "vendorLastName"
-        FROM "Installment" i
-        JOIN "Loan" l ON i."loanId" = l.id
-        JOIN "Client" c ON l."clientId" = c.id
-        JOIN "User" u ON c."userId" = u.id
-        LEFT JOIN "User" v ON l."assignedVendorId" = v.id
-        WHERE i."dueDate"::date >= $1::date AND i."dueDate"::date <= $2::date
-          ${loanStatusFilter}
-          ${vendorFilter}
-          ${statusFilter}
-          ${clienteFilter}
-        ORDER BY u."lastName" ASC, u."firstName" ASC, i."dueDate" ASC, i."installmentNumber" ASC
-      `, startDate, endDate);
-    }
+    // Common FROM + WHERE clauses
+    const fromClause = `
+      FROM "Installment" i
+      JOIN "Loan" l ON i."loanId" = l.id
+      JOIN "Client" c ON l."clientId" = c.id
+      JOIN "User" u ON c."userId" = u.id
+      LEFT JOIN "User" v ON l."assignedVendorId" = v.id
+    `;
 
-    // Calculate mora for each installment
+    const dateWhere = startDate === endDate
+      ? `WHERE i."dueDate"::date = $1::date`
+      : `WHERE i."dueDate"::date >= $1::date AND i."dueDate"::date <= $2::date`;
+
+    const filtersClause = `${loanStatusFilter} ${vendorFilter} ${statusFilter} ${clienteFilter}`;
+    const params = startDate === endDate ? [startDate] : [startDate, endDate];
+
+    // Get MORA_RATE for totalMora calculation in SQL
     const dailyRate = await getRate('MORA_RATE');
+
+    // Run data, count, and totals queries in parallel
+    const [installments, countResult, totalsResult] = await Promise.all([
+      // Paginated data
+      prisma.$queryRawUnsafe<any[]>(`
+        SELECT
+          i.id,
+          i."loanId",
+          i."installmentNumber",
+          i."dueDate",
+          i.amount,
+          i.balance,
+          i.status,
+          i."paidAmount",
+          i."moraAmount",
+          l."amount" as "loanAmount",
+          l."assignedVendorId",
+          c.id as "clientId",
+          u."firstName" as "clientFirstName",
+          u."lastName" as "clientLastName",
+          u.phone,
+          i."dueDate"::text as "dueDateLocal",
+          v."firstName" as "vendorFirstName",
+          v."lastName" as "vendorLastName"
+        ${fromClause}
+        ${dateWhere}
+          ${filtersClause}
+        ORDER BY u."lastName" ASC, u."firstName" ASC, i."dueDate" ASC, i."installmentNumber" ASC
+        LIMIT ${limitNum} OFFSET ${offset}
+      `, ...params),
+      // Count
+      prisma.$queryRawUnsafe<any[]>(`
+        SELECT COUNT(*) as count
+        ${fromClause}
+        ${dateWhere}
+          ${filtersClause}
+      `, ...params),
+      // Totals (totalMonto + totalMora across all filtered results)
+      prisma.$queryRawUnsafe<any[]>(`
+        SELECT
+          COALESCE(SUM(i.balance), 0) as "totalMonto",
+          COALESCE(SUM(
+            CASE
+              WHEN GREATEST(0, '${todayStr}'::date - i."dueDate"::date) > 0
+              THEN i.balance * ${dailyRate} * GREATEST(0, '${todayStr}'::date - i."dueDate"::date)
+              ELSE 0
+            END
+          ), 0) as "totalMora"
+        ${fromClause}
+        ${dateWhere}
+          ${filtersClause}
+      `, ...params),
+    ]);
+
+    const total = parseInt(countResult[0]?.count || '0', 10);
+    const totalMonto = Number(totalsResult[0]?.totalMonto || 0);
+    const totalMora = Number(totalsResult[0]?.totalMora || 0);
+
+    // Calculate mora for each installment in the current page
     const now = await getToday();
 
     const formattedInstallments = await Promise.all(
       installments.map(async (inst: any) => {
-        // Calculate days overdue and mora
         const dueDate = new Date(inst.dueDate);
         const daysOverdue = await MoraService.calculateDaysOverdue(dueDate, now);
         const moraAmount =
@@ -196,7 +200,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise
           paidAmount: Number(inst.paidAmount),
           moraAmount: Math.round(moraAmount * 100) / 100,
           daysOverdue,
-          // Only override PENDING to OVERDUE dynamically (keep PARTIAL, PAID, etc. as-is)
+          // Only override PENDING to OVERDUE dynamically
           status: (daysOverdue > 0 && inst.status === 'PENDING') ? 'OVERDUE' : inst.status,
           loan: {
             id: inst.loanId,
@@ -214,22 +218,16 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise
       })
     );
 
-    // Calculate totals
-    const totalMonto = formattedInstallments.reduce(
-      (sum: number, inst: any) => sum + Number(inst.balance),
-      0
-    );
-    const totalMora = formattedInstallments.reduce(
-      (sum: number, inst: any) => sum + Number(inst.moraAmount),
-      0
-    );
-
     res.json({
       success: true,
       data: {
         installments: formattedInstallments,
         totalMonto: Math.round(totalMonto * 100) / 100,
         totalMora: Math.round(totalMora * 100) / 100,
+        total,
+        page: pageNum,
+        limit: limitNum,
+        totalPages: Math.ceil(total / limitNum),
         filtros: {
           fechaInicio: startDate,
           fechaFin: endDate,

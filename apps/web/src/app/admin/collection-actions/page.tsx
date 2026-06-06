@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { apiFetch } from '@/lib/api';
+import { Pagination } from '@/components/Pagination';
 
 interface CollectionActionType {
   code: string;
@@ -69,11 +70,57 @@ export default function CollectionActionsPage() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
+  // Search
+  const [textFilter, setTextFilter] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleSearchChange = useCallback((value: string) => {
+    setTextFilter(value);
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => {
+      setSearchQuery(value);
+      setPage(1);
+    }, 400);
+  }, []);
+
+  const handleClearSearch = useCallback(() => {
+    setTextFilter('');
+    setSearchQuery('');
+    setPage(1);
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    };
+  }, []);
+
+  // Default date ranges to current week (Monday to Sunday)
+  const getCurrentWeek = () => {
+    const toLocal = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    return { from: toLocal(monday), to: toLocal(sunday) };
+  };
+
+  const currentWeek = getCurrentWeek();
+
   // Filter states
-  const [createdFrom, setCreatedFrom] = useState('');
-  const [createdTo, setCreatedTo] = useState('');
-  const [followUpFrom, setFollowUpFrom] = useState('');
-  const [followUpTo, setFollowUpTo] = useState('');
+  const [createdFrom, setCreatedFrom] = useState(currentWeek.from);
+  const [createdTo, setCreatedTo] = useState(currentWeek.to);
+  const [followUpFrom, setFollowUpFrom] = useState(currentWeek.from);
+  const [followUpTo, setFollowUpTo] = useState(currentWeek.to);
   const [selectedVendor, setSelectedVendor] = useState('');
   const [selectedType, setSelectedType] = useState('');
 
@@ -114,19 +161,23 @@ export default function CollectionActionsPage() {
     if (followUpTo) params.append('followUpTo', followUpTo);
     if (selectedVendor) params.append('createdBy', selectedVendor);
     if (selectedType) params.append('type', selectedType);
+    if (searchQuery) params.append('q', searchQuery);
+    params.append('page', String(page));
+    params.append('limit', '20');
 
     apiFetch(`/api/collection-actions?${params.toString()}`)
       .then(res => res.json())
       .then(data => {
         if (data.success) {
-          setActions(data.data);
+          setActions(data.data.data || []);
+          setTotalPages(data.data.totalPages || 1);
         }
       })
       .catch(err => {
         console.error('Error loading collection actions:', err);
       })
       .finally(() => setLoading(false));
-  }, [token, createdFrom, createdTo, followUpFrom, followUpTo, selectedVendor, selectedType]);
+  }, [token, createdFrom, createdTo, followUpFrom, followUpTo, selectedVendor, selectedType, searchQuery, page]);
 
   const handleFilter = (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,13 +185,21 @@ export default function CollectionActionsPage() {
   };
 
   const clearFilters = () => {
-    setCreatedFrom('');
-    setCreatedTo('');
-    setFollowUpFrom('');
-    setFollowUpTo('');
+    // Reset to current week defaults instead of empty
+    const wk = getCurrentWeek();
+    setCreatedFrom(wk.from);
+    setCreatedTo(wk.to);
+    setFollowUpFrom(wk.from);
+    setFollowUpTo(wk.to);
     setSelectedVendor('');
     setSelectedType('');
+    handleClearSearch();
   };
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [createdFrom, createdTo, followUpFrom, followUpTo, selectedVendor, selectedType]);
 
   return (
     <div>
@@ -240,6 +299,40 @@ export default function CollectionActionsPage() {
             </select>
           </div>
 
+          {/* Client Search */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-[#d3d3d3] mb-1">
+              Buscar Cliente
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Nombre o apellido..."
+                value={textFilter}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+                    setSearchQuery(textFilter);
+                    setPage(1);
+                  }
+                }}
+                className="w-full px-3 py-2 pr-8 min-h-[44px] border border-gray-300 dark:border-gray-600 dark:bg-[#2a2a2a] dark:text-white/[.87] rounded-lg"
+              />
+              {textFilter && (
+                <button
+                  onClick={handleClearSearch}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  aria-label="Limpiar búsqueda"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* Clear Filters */}
           <div className="flex items-end">
             <button
@@ -252,6 +345,9 @@ export default function CollectionActionsPage() {
           </div>
         </form>
       </div>
+
+      {/* Pagination arriba */}
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
 
       {/* Actions Table */}
       <div className="bg-white dark:bg-[#1e1e1e] rounded-lg shadow overflow-hidden">
@@ -371,6 +467,9 @@ export default function CollectionActionsPage() {
           </div>
         )}
       </div>
+
+      {/* Pagination abajo */}
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
     </div>
   );
 }

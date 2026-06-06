@@ -322,6 +322,64 @@ router.put('/config/:vendorId', authMiddleware, requireAdmin, async (req: AuthRe
   }
 });
 
+// GET /api/commissions/vendors-summary - Get all vendors' commission summary in one query
+router.get('/vendors-summary', authMiddleware, requireAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    // Single query: LEFT JOIN users with their non-PENDING loans and aggregate
+    const rows = await prisma.$queryRawUnsafe<any[]>(`
+      SELECT
+        u.id,
+        u.email,
+        u."firstName",
+        u."lastName",
+        u.role,
+        u."commissionPercentage",
+        u."commissionMode",
+        COALESCE(SUM(l."commissionGenerated"), 0) as "totalGenerated",
+        COALESCE(SUM(l."commissionLiquidated"), 0) as "totalLiquidated",
+        COALESCE(SUM(l."commissionProjected"), 0) as "totalProjected",
+        COUNT(l.id)::int as "loansCount"
+      FROM "User" u
+      LEFT JOIN "Loan" l ON l."assignedVendorId" = u.id
+        AND l."commissionPercentage" IS NOT NULL
+        AND l.status != 'PENDING'
+      WHERE u.role = 'VENDEDOR'
+      GROUP BY u.id
+      ORDER BY u."lastName" ASC, u."firstName" ASC
+    `);
+
+    const vendors = rows.map((row: any) => ({
+      vendor: {
+        id: row.id,
+        email: row.email,
+        firstName: row.firstName,
+        lastName: row.lastName,
+        role: row.role,
+        commissionPercentage: row.commissionPercentage ? Number(row.commissionPercentage) : null,
+        commissionMode: row.commissionMode,
+      },
+      summary: {
+        totalGenerated: Math.round(Number(row.totalGenerated) * 100) / 100,
+        totalLiquidated: Math.round(Number(row.totalLiquidated) * 100) / 100,
+        totalProjected: Math.round(Number(row.totalProjected) * 100) / 100,
+        pending: Math.round((Number(row.totalGenerated) - Number(row.totalLiquidated)) * 100) / 100,
+        loansCount: row.loansCount,
+      },
+    }));
+
+    res.json({
+      success: true,
+      data: vendors,
+    });
+  } catch (error) {
+    console.error('Error getting vendors commission summary:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al obtener el resumen de comisiones',
+    });
+  }
+});
+
 // GET /api/commissions/vendor/:vendorId - Get vendor commission summary (ADMIN or self VENDEDOR)
 router.get('/vendor/:vendorId', authMiddleware, rbacMiddleware([Role.ADMIN, Role.VENDEDOR]), async (req: AuthRequest, res: Response): Promise<void> => {
   try {

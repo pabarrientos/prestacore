@@ -24,14 +24,6 @@ interface VendorSummary {
   };
 }
 
-interface User {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: string;
-}
-
 export default function CommissionsPage() {
   const { user, token } = useAuth();
   const [vendors, setVendors] = useState<VendorSummary[]>([]);
@@ -41,34 +33,12 @@ export default function CommissionsPage() {
   useEffect(() => {
     if (!token || user?.role !== 'ADMIN') return;
 
-    // Fetch all vendors (users with role VENDEDOR)
-    apiFetch('/api/users')
+    // Single call to get all vendors' commission summaries
+    apiFetch('/api/commissions/vendors-summary')
       .then(res => res.json())
       .then(data => {
         if (data.success) {
-          const vendorUsers = data.data.filter((u: User) => u.role === 'VENDEDOR');
-          
-          // Fetch commission summary for each vendor
-          Promise.all(
-            vendorUsers.map((vendor: User) =>
-              apiFetch(`/api/commissions/vendor/${vendor.id}`)
-                .then(res => res.json())
-                .then(data => data.success ? data.data : null)
-                .catch(() => null)
-            )
-          ).then(summaries => {
-            const withSummaries = vendorUsers.map((vendor: User, i: number) => ({
-              vendor,
-              summary: summaries[i]?.summary || {
-                totalGenerated: 0,
-                totalLiquidated: 0,
-                totalProjected: 0,
-                pending: 0,
-                loansCount: 0,
-              },
-            }));
-            setVendors(withSummaries);
-          });
+          setVendors(data.data);
         }
       })
       .catch(err => {

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import PaymentForm from '@/components/PaymentForm';
 import CollectionActionsModal from '@/components/CollectionActionsModal';
 import { apiFetch } from '@/lib/api';
+import { Pagination } from '@/components/Pagination';
 
 interface OverdueInstallment {
   id: string;
@@ -64,6 +65,10 @@ export default function OverduePage() {
   const [showCollectionModal, setShowCollectionModal] = useState(false);
   const [selectedCollectionLoanId, setSelectedCollectionLoanId] = useState('');
 
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const limit = 20;
+
   useEffect(() => {
     loadOverdueData();
   }, []);
@@ -92,8 +97,13 @@ export default function OverduePage() {
       .finally(() => setLoading(false));
   };
 
+  // Client-side pagination
+  const totalPages = Math.ceil(installments.length / limit);
+  const paginatedInstallments = installments.slice((page - 1) * limit, page * limit);
+
   const handleFilter = (e: React.FormEvent) => {
     e.preventDefault();
+    setPage(1);
     loadOverdueData();
   };
 
@@ -217,6 +227,9 @@ export default function OverduePage() {
         </form>
       </div>
 
+      {/* Pagination arriba */}
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+
       {/* Overdue Table */}
       <div className="bg-white dark:bg-[#1e1e1e] rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
@@ -256,14 +269,14 @@ export default function OverduePage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {installments.length === 0 ? (
+              {paginatedInstallments.length === 0 ? (
                 <tr>
                   <td colSpan={10} className="px-4 py-8 text-center text-gray-500 dark:text-white/38">
                     No hay cuotas vencidas
                   </td>
                 </tr>
               ) : (
-                installments.map((inst) => (
+                paginatedInstallments.map((inst) => (
                   <tr key={inst.id} className="hover:bg-gray-50 dark:hover:bg-[#2a2a2a]">
                     <td className="px-4 py-3">
                       <div>
@@ -351,6 +364,9 @@ export default function OverduePage() {
           </table>
         </div>
       </div>
+
+      {/* Pagination abajo */}
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
 
       {/* Payment Modal */}
       {showPaymentModal && selectedLoanId && (

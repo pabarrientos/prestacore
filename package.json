@@ -15,6 +15,7 @@
     "test:e2e": "pnpm --filter @prestamos/web run test:e2e",
     "db:generate": "pnpm --filter @prestamos/database run generate",
     "db:migrate": "pnpm --filter @prestamos/database run migrate",
+    "db:migrate:deploy": "pnpm --filter @prestamos/database run migrate:deploy",
     "db:seed": "pnpm --filter @prestamos/database run seed",
     "db:studio": "pnpm --filter @prestamos/database run studio"
   },

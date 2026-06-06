@@ -203,7 +203,9 @@ router.patch('/me', authMiddleware, async (req: AuthRequest, res: Response): Pro
 // GET /api/users - List all users (admin only)
 router.get('/', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { role, isActive, search } = req.query;
+    const { role, isActive, search, page = '1', limit = '20' } = req.query;
+    const pageNum = parseInt(page as string, 10);
+    const limitNum = parseInt(limit as string, 10);
 
     const where: Record<string, unknown> = {};
 
@@ -223,24 +225,35 @@ router.get('/', authMiddleware, requireAdmin, async (req: AuthRequest, res: Resp
       ];
     }
 
-    const users = await prisma.user.findMany({
-      where,
-      select: {
-        id: true,
-        email: true,
-        role: true,
-        firstName: true,
-        lastName: true,
-        phone: true,
-        isActive: true,
-        createdAt: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          firstName: true,
+          lastName: true,
+          phone: true,
+          isActive: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (pageNum - 1) * limitNum,
+        take: limitNum,
+      }),
+      prisma.user.count({ where }),
+    ]);
 
     res.json({
       success: true,
-      data: users,
+      data: {
+        data: users,
+        total,
+        page: pageNum,
+        limit: limitNum,
+        totalPages: Math.ceil(total / limitNum),
+      },
     });
   } catch (error) {
     console.error('Error fetching users:', error);

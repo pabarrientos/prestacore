@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { apiFetch } from '@/lib/api';
+import { Pagination } from '@/components/Pagination';
 import { UserTable } from './components/UserTable';
 import { UserModal } from './components/UserModal';
 
@@ -41,7 +42,30 @@ export default function UsersPage() {
   // Filters
   const [roleFilter, setRoleFilter] = useState<string>('');
   const [activeFilter, setActiveFilter] = useState<string>('');
-  const [searchFilter, setSearchFilter] = useState<string>('');
+  const [searchText, setSearchText] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
+  // Debounce
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchText(value);
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => {
+      setSearchQuery(value);
+      setPage(1);
+    }, 400);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    };
+  }, []);
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -54,24 +78,45 @@ export default function UsersPage() {
     const params = new URLSearchParams();
     if (roleFilter) params.append('role', roleFilter);
     if (activeFilter) params.append('isActive', activeFilter);
-    if (searchFilter) params.append('search', searchFilter);
+    if (searchQuery) params.append('search', searchQuery);
+    params.append('page', String(page));
+    params.append('limit', '20');
 
     try {
       const res = await apiFetch(`/api/users?${params.toString()}`);
       const data = await res.json();
       if (data.success) {
-        setUsers(data.data);
+        setUsers(data.data.data || []);
+        setTotalPages(data.data.totalPages || 1);
       }
     } catch (err) {
       console.error('Error fetching users:', err);
     } finally {
       setLoading(false);
     }
-  }, [token, roleFilter, activeFilter, searchFilter]);
+  }, [token, roleFilter, activeFilter, searchQuery, page]);
 
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
+
+  // Reset page when role or active filter changes
+  const handleRoleChange = useCallback((value: string) => {
+    setRoleFilter(value);
+    setPage(1);
+  }, []);
+
+  const handleActiveChange = useCallback((value: string) => {
+    setActiveFilter(value);
+    setPage(1);
+  }, []);
+
+  const handleClearSearch = useCallback(() => {
+    setSearchText('');
+    setSearchQuery('');
+    setPage(1);
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+  }, []);
 
   // Handlers
   const handleCreate = () => {
@@ -237,10 +282,10 @@ export default function UsersPage() {
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
-        <div className="w-full sm:w-40">
+        <div className="w-full sm:w-44">
           <select
             value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
+            onChange={(e) => handleRoleChange(e.target.value)}
             className="w-full px-3 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14] min-h-[44px]"
           >
             <option value="">Todos los roles</option>
@@ -249,10 +294,10 @@ export default function UsersPage() {
             <option value="CLIENTE">Cliente</option>
           </select>
         </div>
-        <div className="w-full sm:w-40">
+        <div className="w-full sm:w-44">
           <select
             value={activeFilter}
-            onChange={(e) => setActiveFilter(e.target.value)}
+            onChange={(e) => handleActiveChange(e.target.value)}
             className="w-full px-3 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14] min-h-[44px]"
           >
             <option value="">Todos los estados</option>
@@ -260,16 +305,37 @@ export default function UsersPage() {
             <option value="false">Inactivo</option>
           </select>
         </div>
-        <div className="flex-1">
+        <div className="flex-1 relative">
           <input
             type="text"
             placeholder="Buscar por email, nombre o apellido..."
-            value={searchFilter}
-            onChange={(e) => setSearchFilter(e.target.value)}
-            className="w-full px-3 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14] min-h-[44px]"
+            value={searchText}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                if (debounceTimer.current) clearTimeout(debounceTimer.current);
+                setSearchQuery(searchText);
+                setPage(1);
+              }
+            }}
+            className="w-full px-3 py-2 pr-10 border rounded-lg dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14] min-h-[44px]"
           />
+          {searchText && (
+            <button
+              onClick={handleClearSearch}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              aria-label="Limpiar búsqueda"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Pagination arriba */}
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
 
       {/* Table */}
       <UserTable
@@ -282,6 +348,9 @@ export default function UsersPage() {
         loading={loading}
         currentUserId={currentUser.id}
       />
+
+      {/* Pagination abajo */}
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
 
       {/* Modal */}
       <UserModal

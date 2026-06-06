@@ -325,7 +325,7 @@ router.post('/simulate', async (req: AuthRequest, res: Response): Promise<void> 
 // GET /api/loans - List loans (filtered by role)
 router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { status, clientId, page = '1', limit = '20' } = req.query;
+    const { status, clientId, q, page = '1', limit = '20' } = req.query;
     const pageNum = parseInt(page as string, 10);
     const limitNum = parseInt(limit as string, 10);
 
@@ -352,6 +352,37 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise
     }
     if (clientId && req.user!.role !== Role.CLIENTE) {
       where.clientId = clientId;
+    }
+
+    // Text search across client and vendor names
+    if (q && typeof q === 'string' && q.trim()) {
+      const searchTerm = q.trim();
+      where.OR = [
+        {
+          client: {
+            user: {
+              firstName: { contains: searchTerm, mode: 'insensitive' },
+            },
+          },
+        },
+        {
+          client: {
+            user: {
+              lastName: { contains: searchTerm, mode: 'insensitive' },
+            },
+          },
+        },
+        {
+          assignedVendor: {
+            firstName: { contains: searchTerm, mode: 'insensitive' },
+          },
+        },
+        {
+          assignedVendor: {
+            lastName: { contains: searchTerm, mode: 'insensitive' },
+          },
+        },
+      ];
     }
 
     const [loans, total] = await Promise.all([
