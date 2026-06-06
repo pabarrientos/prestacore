@@ -38,7 +38,7 @@ const scheduleSchema = z.object({
   enabled: z.boolean(),
   frequency: z.enum(['daily', 'weekly', 'monthly']),
   hour: z.number().int().min(0).max(23),
-  minute: z.number().int().min(0).max(59).optional(),
+  minute: z.number().int().min(0).max(59).default(0),
   dayOfWeek: z.number().int().min(0).max(6).optional(),
   dayOfMonth: z.number().int().min(1).max(31).optional(),
   retention: z.object({
