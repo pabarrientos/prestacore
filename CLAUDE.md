@@ -209,3 +209,15 @@ Key variables (configured in `.env`, `docker-compose.yml`, or `docker-compose.ov
 - **Prisma**: Use `$transaction` for multi-step writes. Run `pnpm db:generate` after any schema change.
 - **Database data directory**: `storage/postgres` (auto-created by Docker). Delete to reset DB.
 - **Docker + Prisma**: When the API runs in Docker, the container has its own `node_modules` (isolated via anonymous volumes in `docker-compose.override.yml`). After schema changes, run `docker compose restart api` — the container's startup command already runs `prisma generate` automatically.
+
+### Restoring Production Backups in Dev (or after adding new migrations)
+
+When you add a new migration in dev (`prisma migrate dev` creates the table AND registers it in `_prisma_migrations`), then later restore a production backup that does NOT have that table yet:
+
+- The restore **removes** the new table (it wasn't in the backup)
+- But the migration **files** remain in `packages/database/prisma/migrations/`
+- Production **does not have the table either**, so `migrate deploy` works fine — no conflicts
+
+The sync script (`./scripts/sync-migrations.sh`) is only needed for the rare case where a table exists physically but its migration isn't registered in `_prisma_migrations` (e.g., after an incomplete migration or partial restore).
+
+**Normal flow after restoring a backup:** just run `pnpm -w db:migrate:deploy` — it applies pending migrations that don't exist yet. No manual resolution needed.

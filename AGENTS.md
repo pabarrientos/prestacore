@@ -110,9 +110,13 @@ pnpm --filter @prestamos/api dev   # Solo API
 pnpm --filter @prestamos/web dev   # Solo Web
 
 # Base de datos
-pnpm -w db:migrate      # Ejecutar migraciones
-pnpm -w db:seed         # Seed de datos
-pnpm -w db:studio       # Prisma Studio
+pnpm -w db:migrate           # Ejecutar migraciones (desarrollo)
+pnpm -w db:migrate:deploy    # Ejecutar migraciones (producción, seguro)
+pnpm -w db:seed              # Seed de datos
+pnpm -w db:studio            # Prisma Studio
+
+# Sincronizar migraciones después de restaurar backup
+./scripts/sync-migrations.sh  # Detecta y resuelve tablas desincronizadas
 
 # Testing
 pnpm -w test            # Todos los tests
@@ -140,6 +144,7 @@ pnpm -w start           # Start de producción (local)
 2. **Usar migrations para cambios en schema**: No editar schema directamente en producción
 3. **Tests antes de PR**: Ejecutar `pnpm test` antes de subir cambios
 4. **Conventional Commits**: Usar formato `feat:`, `fix:`, `docs:`, etc.
+5. **Restaurar backup de producción en dev**: Después de restaurar, ejecutar `pnpm -w db:migrate:deploy`. Si el backup es de producción (sin las migraciones nuevas), el deploy las aplica limpiamente porque las tablas nuevas NO existen en el backup — no hay conflicto. El script `./scripts/sync-migrations.sh` solo es necesario si una tabla YA existe físicamente pero su migración no está registrada (caso raro, ej. migración fallida a medio aplicar).
 
 ## 🕐 Timezone
 
