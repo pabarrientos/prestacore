@@ -21,6 +21,7 @@ export interface BackupSchedule {
   enabled: boolean;
   frequency: 'daily' | 'weekly' | 'monthly';
   hour: number;
+  minute: number;
   dayOfWeek?: number;
   dayOfMonth?: number;
 }

@@ -19,6 +19,7 @@ export function ScheduleConfigCard() {
     enabled: false,
     frequency: 'daily',
     hour: 3,
+    minute: 0,
   });
   const [retention, setRetention] = useState<RetentionConfig>({});
   const [loading, setLoading] = useState(true);
@@ -148,24 +149,44 @@ export function ScheduleConfigCard() {
           </select>
         </div>
 
-        {/* Hour */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
-            Hora (0-23)
-          </label>
-          <input
-            type="number"
-            min={0}
-            max={23}
-            value={schedule.hour}
-            onChange={(e) =>
-              setSchedule((prev) => ({
-                ...prev,
-                hour: parseInt(e.target.value, 10) || 0,
-              }))
-            }
-            className="w-full px-4 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-[#333] dark:text-white/87"
-          />
+        {/* Hour + Minute */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
+              Hora (0-23)
+            </label>
+            <input
+              type="number"
+              min={0}
+              max={23}
+              value={schedule.hour}
+              onChange={(e) =>
+                setSchedule((prev) => ({
+                  ...prev,
+                  hour: parseInt(e.target.value, 10) || 0,
+                }))
+              }
+              className="w-full px-4 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-[#333] dark:text-white/87"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
+              Minuto (0-59)
+            </label>
+            <input
+              type="number"
+              min={0}
+              max={59}
+              value={schedule.minute ?? 0}
+              onChange={(e) =>
+                setSchedule((prev) => ({
+                  ...prev,
+                  minute: parseInt(e.target.value, 10) || 0,
+                }))
+              }
+              className="w-full px-4 py-2 border rounded-lg dark:bg-[#2a2a2a] dark:border-[#333] dark:text-white/87"
+            />
+          </div>
         </div>
 
         {/* Day of week (weekly) */}

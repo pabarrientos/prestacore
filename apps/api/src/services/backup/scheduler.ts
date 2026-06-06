@@ -6,6 +6,7 @@ interface BackupSchedule {
   enabled: boolean;
   frequency: 'daily' | 'weekly' | 'monthly';
   hour: number;
+  minute: number;
   dayOfWeek?: number;
   dayOfMonth?: number;
 }
@@ -17,11 +18,13 @@ let scheduledTask: ScheduledTask | null = null;
  */
 export function parseScheduleConfig(config: BackupSchedule): {
   hour: number;
+  minute: number;
   dayOfMonth?: number;
   dayOfWeek?: number;
 } {
   return {
     hour: config.hour,
+    minute: config.minute ?? 0,
     dayOfMonth: config.dayOfMonth,
     dayOfWeek: config.dayOfWeek,
   };
@@ -30,12 +33,17 @@ export function parseScheduleConfig(config: BackupSchedule): {
 /**
  * Build a cron expression from schedule parameters
  */
-export function buildCronExpression(params: { hour: number; dayOfWeek?: number; dayOfMonth?: number }): string {
-  const { hour, dayOfWeek, dayOfMonth } = params;
+export function buildCronExpression(params: { hour: number; minute: number; dayOfWeek?: number; dayOfMonth?: number }): string {
+  const { hour, minute, dayOfWeek, dayOfMonth } = params;
 
   // Validate hour (0-23)
   if (hour < 0 || hour > 23) {
     throw new Error('Hour must be between 0 and 23');
+  }
+
+  // Validate minute (0-59)
+  if (minute < 0 || minute > 59) {
+    throw new Error('Minute must be between 0 and 59');
   }
 
   // Validate dayOfWeek (0-6)
@@ -50,30 +58,13 @@ export function buildCronExpression(params: { hour: number; dayOfWeek?: number; 
 
   if (dayOfWeek !== undefined) {
     // Weekly: minute hour * * dayOfWeek
-    return `0 ${hour} * * ${dayOfWeek}`;
+    return `${minute} ${hour} * * ${dayOfWeek}`;
   } else if (dayOfMonth !== undefined) {
     // Monthly: minute hour dayOfMonth * *
-    return `0 ${hour} ${dayOfMonth} * *`;
+    return `${minute} ${hour} ${dayOfMonth} * *`;
   } else {
     // Daily: minute hour * * *
-    return `0 ${hour} * * *`;
-  }
-}
-
-/**
- * Try to acquire an advisory lock to prevent multiple instances from
- * running the scheduler simultaneously. The lock is session-scoped
- * and auto-released if the process/connection dies.
- */
-async function tryAcquireSchedulerLock(prisma: PrismaClient): Promise<boolean> {
-  try {
-    const result = await prisma.$queryRaw<Array<{ locked: boolean }>>`
-      SELECT pg_try_advisory_lock(hashtext('backup-scheduler')) AS locked
-    `;
-    return result[0]?.locked ?? false;
-  } catch (err) {
-    console.error('Failed to acquire advisory lock:', err);
-    return false;
+    return `${minute} ${hour} * * *`;
   }
 }
 
@@ -83,13 +74,6 @@ async function tryAcquireSchedulerLock(prisma: PrismaClient): Promise<boolean> {
 export async function startScheduler(prisma: PrismaClient): Promise<void> {
   // Stop existing scheduler if running
   stopScheduler();
-
-  // Try to acquire advisory lock (prevents duplicate schedulers in multi-instance setups)
-  const acquired = await tryAcquireSchedulerLock(prisma);
-  if (!acquired) {
-    console.log('Backup scheduler: another instance already holds the lock, skipping');
-    return;
-  }
 
   // Get schedule from settings
   const setting = await prisma.setting.findUnique({
@@ -117,6 +101,7 @@ export async function startScheduler(prisma: PrismaClient): Promise<void> {
   // Build cron expression
   const cronExpr = buildCronExpression({
     hour: schedule.hour,
+    minute: schedule.minute ?? 0,
     dayOfWeek: schedule.dayOfWeek,
     dayOfMonth: schedule.dayOfMonth,
   });

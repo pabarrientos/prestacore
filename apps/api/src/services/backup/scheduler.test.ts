@@ -46,6 +46,7 @@ describe('Scheduler', () => {
       const result = parseScheduleConfig(config);
 
       expect(result.hour).toBe(3);
+      expect(result.minute).toBe(0); // default when not provided
       expect(result.dayOfMonth).toBeUndefined();
       expect(result.dayOfWeek).toBeUndefined();
     });
@@ -83,27 +84,32 @@ describe('Scheduler', () => {
 
   describe('buildCronExpression', () => {
     it('should build cron for daily schedule', () => {
-      const cron = buildCronExpression({ hour: 3 });
+      const cron = buildCronExpression({ hour: 3, minute: 0 });
       expect(cron).toBe('0 3 * * *'); // minute hour day month dayOfWeek
     });
 
+    it('should build cron for daily schedule with custom minute', () => {
+      const cron = buildCronExpression({ hour: 14, minute: 30 });
+      expect(cron).toBe('30 14 * * *');
+    });
+
     it('should build cron for weekly schedule', () => {
-      const cron = buildCronExpression({ hour: 2, dayOfWeek: 1 });
+      const cron = buildCronExpression({ hour: 2, minute: 0, dayOfWeek: 1 });
       expect(cron).toBe('0 2 * * 1'); // minute hour day month dayOfWeek
     });
 
     it('should build cron for monthly schedule', () => {
-      const cron = buildCronExpression({ hour: 1, dayOfMonth: 15 });
+      const cron = buildCronExpression({ hour: 1, minute: 0, dayOfMonth: 15 });
       expect(cron).toBe('0 1 15 * *'); // minute hour dayOfMonth month dayOfWeek
     });
 
     it('should handle 0 hour (midnight)', () => {
-      const cron = buildCronExpression({ hour: 0 });
+      const cron = buildCronExpression({ hour: 0, minute: 0 });
       expect(cron).toBe('0 0 * * *');
     });
 
     it('should handle 23 hour (11 PM)', () => {
-      const cron = buildCronExpression({ hour: 23 });
+      const cron = buildCronExpression({ hour: 23, minute: 0 });
       expect(cron).toBe('0 23 * * *');
     });
   });
@@ -111,19 +117,25 @@ describe('Scheduler', () => {
   describe('invalid configurations', () => {
     it('should reject invalid hour value', () => {
       expect(() => {
-        buildCronExpression({ hour: 25 });
+        buildCronExpression({ hour: 25, minute: 0 });
+      }).toThrow();
+    });
+
+    it('should reject invalid minute value', () => {
+      expect(() => {
+        buildCronExpression({ hour: 3, minute: 60 });
       }).toThrow();
     });
 
     it('should reject invalid dayOfWeek value', () => {
       expect(() => {
-        buildCronExpression({ hour: 3, dayOfWeek: 7 });
+        buildCronExpression({ hour: 3, minute: 0, dayOfWeek: 7 });
       }).toThrow();
     });
 
     it('should reject invalid dayOfMonth value', () => {
       expect(() => {
-        buildCronExpression({ hour: 3, dayOfMonth: 32 });
+        buildCronExpression({ hour: 3, minute: 0, dayOfMonth: 32 });
       }).toThrow();
     });
   });
@@ -131,9 +143,6 @@ describe('Scheduler', () => {
   describe('startScheduler', () => {
     it('should trigger backup when cron fires', async () => {
       const prisma = new PrismaClient();
-
-      // Mock $queryRaw for advisory lock
-      prisma.$queryRaw = vi.fn().mockResolvedValue([{ locked: true }]) as any;
 
       // Mock a schedule setting
       await prisma.setting.upsert({
@@ -149,18 +158,6 @@ describe('Scheduler', () => {
         '0 3 * * *',
         expect.any(Function)
       );
-    });
-
-    it('should skip scheduler if advisory lock fails', async () => {
-      const prisma = new PrismaClient();
-
-      // Mock $queryRaw to return locked: false (another instance has the lock)
-      prisma.$queryRaw = vi.fn().mockResolvedValue([{ locked: false }]) as any;
-
-      await startScheduler(prisma);
-
-      // Verify that cron.schedule was NOT called
-      expect(mockSchedule).not.toHaveBeenCalled();
     });
   });
 });
