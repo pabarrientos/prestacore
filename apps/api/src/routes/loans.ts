@@ -1240,6 +1240,7 @@ const executeRefinancingSchema = z.object({
   cantidadCuotas: z.number().int().min(1).max(60),
   nuevaFrecuencia: z.enum(['WEEKLY', 'BIWEEKLY', 'MONTHLY', 'DAILY']),
   fechaInicio: z.string(),
+  fechaRefinanciacion: z.string().optional(),
   pagoInicial: z.number().min(0).optional(),
   interesesVencidosManual: z.number().min(0).optional(),
   amortizationSystem: amortizationSystemSchema,
@@ -1249,10 +1250,13 @@ const executeRefinancingSchema = z.object({
 router.get('/:id/preview-refinancing', async (req, res): Promise<void> => {
   try {
     const { id } = req.params;
-    const { nuevaTasaInteres, cantidadCuotas, nuevaFrecuencia, pagoInicial, interesesVencidosManual, fechaInicio, amortizationSystem } = req.query;
+    const { nuevaTasaInteres, cantidadCuotas, nuevaFrecuencia, pagoInicial, interesesVencidosManual, fechaInicio, fechaRefinanciacion, amortizationSystem } = req.query;
 
-    // Calculate debt breakdown
-    const calculation = await RefinancingService.calculateNewCapital(id);
+    // Parse refinancing date for debt calculation (optional, defaults to today in backend)
+    const refDate = fechaRefinanciacion ? new Date(`${fechaRefinanciacion}T00:00:00`) : undefined;
+
+    // Calculate debt breakdown using refinancing date as reference
+    const calculation = await RefinancingService.calculateNewCapital(id, refDate);
 
     if (!calculation) {
       res.status(404).json({
@@ -1354,10 +1358,13 @@ router.post('/:id/execute-refinancing', authMiddleware, requireAdmin, async (req
     const { id: loanId } = req.params;
     const body = executeRefinancingSchema.parse(req.body);
 
-    const { nuevaTasaInteres, cantidadCuotas, nuevaFrecuencia, fechaInicio, pagoInicial, interesesVencidosManual, amortizationSystem } = body;
+    const { nuevaTasaInteres, cantidadCuotas, nuevaFrecuencia, fechaInicio, fechaRefinanciacion, pagoInicial, interesesVencidosManual, amortizationSystem } = body;
 
     // Parse the first due date
     const startDate = fechaInicio ? new Date(fechaInicio) : await getNow();
+
+    // Parse refinancing date for debt calculation (optional, defaults to today in backend)
+    const referenceDate = fechaRefinanciacion ? new Date(`${fechaRefinanciacion}T00:00:00`) : undefined;
 
     // Validate loan exists is eligible for refinancing
     const validation = await RefinancingService.validateRefinancingEligibility(loanId);
@@ -1376,6 +1383,7 @@ router.post('/:id/execute-refinancing', authMiddleware, requireAdmin, async (req
       newTermMonths: cantidadCuotas,
       newFrequency: nuevaFrecuencia as PaymentFrequency,
       startDate,
+      referenceDate,
       notes: pagoInicial ? `Pago inicial: ${pagoInicial}` : undefined,
       capitalExtra: pagoInicial || undefined,
       interesesVencidosManual,

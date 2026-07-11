@@ -31,6 +31,7 @@ export interface CreateRefinancingInput {
   newTermMonths: number;         // New term in months
   newFrequency: PaymentFrequency; // New payment frequency
   startDate?: Date;              // Optional start date for new loan
+  referenceDate?: Date;          // Optional date of refinancing (for debt calculation)
   notes?: string;                // Optional notes
   capitalExtra?: number;        // Extra payment from customer to reduce new loan amount
   interesesVencidosManual?: number; // Manual override for interesesVencidos
@@ -58,7 +59,7 @@ export class RefinancingService {
    * - pagosAtrasados: sum of balances of OVERDUE installments (excluding mora)
    * - nuevoCapital: will be calculated in execute with pagoInicial
    */
-  static async calculateNewCapital(loanId: string): Promise<CalculateNewCapitalResult | null> {
+  static async calculateNewCapital(loanId: string, referenceDate?: Date): Promise<CalculateNewCapitalResult | null> {
     const loan = await prisma.loan.findUnique({
       where: { id: loanId },
       include: {
@@ -72,9 +73,11 @@ export class RefinancingService {
       return null;
     }
 
-    // Get the daily mora rate from settings and today's date (date-only)
+    // Get the daily mora rate from settings and reference date (date-only)
     const dailyRate = await getRate('MORA_RATE');
-    const todayOnly = await getToday();
+    const todayOnly = referenceDate
+      ? new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate())
+      : await getToday();
 
     // Find the first unpaid installment (not PAID, not INTEREST_ONLY, ordered by dueDate)
     const firstUnpaidInstallment = loan.installments.find(
@@ -101,12 +104,15 @@ export class RefinancingService {
       capitalPendiente = Number(loan.amount) - totalPrincipalPaid;
     }
 
-    // Get all overdue installments (not PAID, not INTEREST_ONLY, dueDate < today) - use date-only comparison
+    // Get all overdue installments (not PAID, not INTEREST_ONLY, dueDate <= referenceDate)
+    // Use UTC methods for date-only comparison — pg driver returns naive timestamps as UTC
+    const todayOnlyUTC = Date.UTC(todayOnly.getUTCFullYear(), todayOnly.getUTCMonth(), todayOnly.getUTCDate());
     const overdueInstallments = loan.installments.filter(
       (inst) => {
         if (inst.status === InstallmentStatus.PAID || inst.status === InstallmentStatus.INTEREST_ONLY) return false;
-        const dueDateOnly = new Date(new Date(inst.dueDate).getFullYear(), new Date(inst.dueDate).getMonth(), new Date(inst.dueDate).getDate());
-        return dueDateOnly < todayOnly;
+        const dueDateObj = new Date(inst.dueDate);
+        const dueDateOnly = Date.UTC(dueDateObj.getUTCFullYear(), dueDateObj.getUTCMonth(), dueDateObj.getUTCDate());
+        return dueDateOnly <= todayOnlyUTC;
       }
     );
 
@@ -229,7 +235,7 @@ export class RefinancingService {
    * 5. Link: new.prestamo_origen_id = old.id, old.prestamo_refinanciado_id = new.id
    */
   static async executeRefinancing(input: CreateRefinancingInput): Promise<ExecuteRefinancingResult> {
-    const { loanId, newInterestRate, newTermMonths, newFrequency, startDate, notes, capitalExtra, interesesVencidosManual, amortizationSystem } = input;
+    const { loanId, newInterestRate, newTermMonths, newFrequency, startDate, referenceDate, notes, capitalExtra, interesesVencidosManual, amortizationSystem } = input;
 
     try {
       // Validate eligibility first
@@ -239,7 +245,7 @@ export class RefinancingService {
       }
 
       // Calculate new capital
-      const calculation = await this.calculateNewCapital(loanId);
+      const calculation = await this.calculateNewCapital(loanId, referenceDate);
       if (!calculation) {
         return { success: false, error: 'Error al calcular el nuevo capital' };
       }
@@ -462,7 +468,7 @@ export class RefinancingService {
   /**
    * Get refinancing details (preview before executing)
    */
-  static async getRefinancingPreview(loanId: string): Promise<{
+  static async getRefinancingPreview(loanId: string, referenceDate?: Date): Promise<{
     loanId: string;
     loanStatus: LoanStatus;
     eligible: boolean;
@@ -482,7 +488,7 @@ export class RefinancingService {
     }
 
     const validation = await this.validateRefinancingEligibility(loanId);
-    const calculation = await this.calculateNewCapital(loanId);
+    const calculation = await this.calculateNewCapital(loanId, referenceDate);
 
     return {
       loanId: loan.id,

@@ -78,7 +78,8 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
   const [cantidadCuotas, setCantidadCuotas] = useState<string>('12');
   const [tasaManual, setTasaManual] = useState<boolean>(false);
   const [nuevaTasaInteres, setNuevaTasaInteres] = useState<string>('');
-  const [fechaInicio, setFechaInicio] = useState<string>(''); // Se carga en useEffect con timezone
+  const [fechaInicio, setFechaInicio] = useState<string>(''); // First payment date for new loan
+  const [fechaRefinanciacion, setFechaRefinanciacion] = useState<string>(''); // Refinancing date for debt calculation
   const [pagoInicial, setPagoInicial] = useState<string>('0');
   const [nuevoSistema, setNuevoSistema] = useState<string>('FRENCH');
   
@@ -177,8 +178,9 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
       })
       .finally(() => setLoading(false));
 
-    // Cargar fecha de inicio
+    // Cargar fechas
     setFechaInicio(getTodayString());
+    setFechaRefinanciacion(getTodayString());
   }, [loanId]);
 
   // Update rate when frequency changes (if not manually set)
@@ -188,6 +190,32 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
       setNuevaTasaInteres(periodRate.toFixed(2));
     }
   }, [nuevaFrecuencia, tasaManual, rates]);
+
+  // Fetch debt breakdown when refinancing date changes (auto-recalculate)
+  const fetchDebtBreakdown = async (fecha?: string) => {
+    try {
+      const params = new URLSearchParams();
+      if (fecha) params.set('fechaRefinanciacion', fecha);
+      const res = await apiFetch(
+        `/api/loans/${loanId}/preview-refinancing?${params.toString()}`,
+        { headers: { 'Content-Type': 'application/json' } }
+      );
+      const data = await res.json();
+      if (data.success) {
+        setPreview(prev => prev ? { ...prev, breakdown: data.data.breakdown } : data.data);
+        // Reset manual override when date changes
+        setInteresesVencidosModificado(false);
+        setInteresesVencidosManual('');
+      }
+    } catch (err) {
+      console.error('Error fetching breakdown:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (loading || !fechaRefinanciacion) return;
+    fetchDebtBreakdown(fechaRefinanciacion);
+  }, [fechaRefinanciacion]);
 
   // Recalculate nuevoCapital when pagoInicial changes or interesesVencidos is modified
   useEffect(() => {
@@ -244,6 +272,7 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
         nuevaFrecuencia,
         pagoInicial: pagoInicial || '0',
         fechaInicio,
+        fechaRefinanciacion,
         amortizationSystem: nuevoSistema,
       });
       
@@ -298,6 +327,7 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
           cantidadCuotas: parseInt(cantidadCuotas, 10),
           nuevaFrecuencia,
           fechaInicio,
+          fechaRefinanciacion,
           pagoInicial: parseFloat(pagoInicial) || undefined,
           interesesVencidosManual: interesesVencidosModificado ? currentInteresesVencidos : undefined,
           amortizationSystem: nuevoSistema,
@@ -407,6 +437,20 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
             {successMessage}
           </div>
         )}
+
+        {/* Refinancing Date - Controls debt calculation */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
+            Fecha de Refinanciación *
+          </label>
+          <input
+            type="date"
+            value={fechaRefinanciacion}
+            onChange={(e) => setFechaRefinanciacion(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14]"
+          />
+          <p className="text-xs text-gray-500 mt-1 dark:text-white/60">Fecha de corte para calcular deuda (mora y cuotas vencidas)</p>
+        </div>
 
         {/* Debt Breakdown Section */}
         <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 dark:bg-orange-950/50 dark:border-orange-900">
@@ -593,7 +637,7 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
-                Fecha de Inicio *
+                Fecha de Inicio del Nuevo Préstamo *
               </label>
               <input
                 type="date"
@@ -601,6 +645,7 @@ export default function RefinancingModal({ loanId, onSuccess, onCancel }: Refina
                 onChange={(e) => setFechaInicio(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14]"
               />
+              <p className="text-xs text-gray-500 mt-1 dark:text-white/60">Primera cuota del nuevo cronograma</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
