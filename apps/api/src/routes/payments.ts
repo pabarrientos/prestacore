@@ -10,6 +10,15 @@ import { PrismaClient, InstallmentStatus, LoanStatus } from '@prisma/client';
 const router: ReturnType<typeof Router> = Router();
 const prisma = new PrismaClient();
 
+/**
+ * Round a number to 2 decimal places to match Decimal(12,2) DB precision.
+ * Prevents floating-point comparison bugs where accumulated partial payments
+ * yield values like 999.999... instead of 1000.00.
+ */
+function roundMoney(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
 // Validation schema for payment creation
 const createPaymentSchema = z.object({
   loanId: z.string().cuid('Invalid loan ID'),
@@ -389,8 +398,10 @@ router.put('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: R
         const newBalance = Math.max(0, originalAmount - newPaidAmount);
         
         // Determine new status
+        // Use roundMoney() to match Decimal(12,2) DB precision and avoid
+        // floating-point issues (e.g. 333.33+333.33+333.34 = 999.999... < 1000)
         let newStatus: InstallmentStatus;
-        if (newPaidAmount >= originalAmount) {
+        if (roundMoney(newPaidAmount) >= roundMoney(originalAmount)) {
           newStatus = InstallmentStatus.PAID;
         } else if (newPaidAmount > 0) {
           newStatus = InstallmentStatus.PARTIAL;
@@ -430,7 +441,7 @@ router.put('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: R
             const newBalance = originalAmount - newPaidAmount;
             
             let newStatus: InstallmentStatus;
-            if (newPaidAmount >= originalAmount) {
+            if (roundMoney(newPaidAmount) >= roundMoney(originalAmount)) {
               newStatus = InstallmentStatus.PAID;
             } else if (newPaidAmount > 0) {
               newStatus = InstallmentStatus.PARTIAL;
@@ -460,7 +471,7 @@ router.put('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: R
               const newBalance = Math.max(0, originalAmount - newPaidAmount);
               
               let newStatus: InstallmentStatus;
-              if (newPaidAmount >= originalAmount) {
+              if (roundMoney(newPaidAmount) >= roundMoney(originalAmount)) {
                 newStatus = InstallmentStatus.PAID;
               } else if (newPaidAmount > 0) {
                 newStatus = InstallmentStatus.PARTIAL;
@@ -879,7 +890,7 @@ router.delete('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res
         const newBalance = Math.max(0, originalAmount - newPaidAmount);
 
         let newStatus: InstallmentStatus;
-        if (newPaidAmount >= originalAmount) {
+        if (roundMoney(newPaidAmount) >= roundMoney(originalAmount)) {
           newStatus = InstallmentStatus.PAID;
         } else if (newPaidAmount > 0) {
           newStatus = InstallmentStatus.PARTIAL;
@@ -966,6 +977,43 @@ router.delete('/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res
     });
   } catch (error) {
     console.error('Delete payment error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+    });
+  }
+});
+
+// POST /api/payments/repair-statuses - Fix installment statuses inconsistent with balance (ADMIN only)
+// Repairs cases where floating-point precision caused status=PARTIAL but balance=0 (should be PAID)
+router.post('/repair-statuses', authMiddleware, requireAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    // 1. Fix installments where balance is 0 but status is still PARTIAL
+    const fixedPartialToPaid = await prisma.$executeRaw`
+      UPDATE "Installment"
+      SET status = 'PAID', "paidAt" = NOW()
+      WHERE round("balance"::numeric, 2) = 0
+        AND status = 'PARTIAL'
+    `;
+
+    // 2. Fix installments where balance > 0 but status is PAID (should be PARTIAL)
+    const fixedPaidToPartial = await prisma.$executeRaw`
+      UPDATE "Installment"
+      SET status = 'PARTIAL', "paidAt" = NULL
+      WHERE round("balance"::numeric, 2) > 0
+        AND status = 'PAID'
+        AND "paidAmount" > 0
+    `;
+
+    res.json({
+      success: true,
+      data: {
+        fixedPartialToPaid: Number(fixedPartialToPaid),
+        fixedPaidToPartial: Number(fixedPaidToPartial),
+      },
+    });
+  } catch (error) {
+    console.error('Repair installment statuses error:', error);
     res.status(500).json({
       success: false,
       error: 'Internal server error',

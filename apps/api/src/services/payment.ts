@@ -12,6 +12,16 @@ import { getRate } from './settings';
 
 const prisma = new PrismaClient();
 
+/**
+ * Round a number to 2 decimal places to match Decimal(12,2) DB precision.
+ * Prevents floating-point comparison bugs where 333.33 + 333.33 + 333.34
+ * yields 999.9999999999998 instead of 1000.00, causing status to stay PARTIAL
+ * even though the balance is effectively 0.
+ */
+function roundMoney(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
 export interface CreatePaymentInput {
   loanId: string;
   installmentId?: string;
@@ -169,8 +179,10 @@ export class PaymentService {
           const newBalance = Math.max(0, originalAmount - newPaidAmount);
 
           // Determinar nuevo status basado en cuánto se ha pagado
+          // Use roundMoney() to match Decimal(12,2) DB precision and avoid
+          // floating-point issues (e.g. 333.33+333.33+333.34 = 999.999... < 1000)
           let newStatus: InstallmentStatus;
-          if (newPaidAmount >= originalAmount) {
+          if (roundMoney(newPaidAmount) >= roundMoney(originalAmount)) {
             newStatus = InstallmentStatus.PAID;
           } else if (newPaidAmount > 0) {
             newStatus = InstallmentStatus.PARTIAL;
@@ -249,7 +261,7 @@ export class PaymentService {
             const newBalance = Math.max(0, originalAmount - newPaidAmount);
 
             let newStatus = inst.status;
-            if (newPaidAmount >= originalAmount) {
+            if (roundMoney(newPaidAmount) >= roundMoney(originalAmount)) {
               newStatus = InstallmentStatus.PAID;
             } else if (newPaidAmount > 0) {
               newStatus = InstallmentStatus.PARTIAL;
