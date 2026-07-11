@@ -36,15 +36,21 @@ function formatDateToDDMMYYYY(dateString: string): string {
     return dateString;
   }
 
+  // YYYY-MM-DD format - parse directly (no timezone issues)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+    const [year, month, day] = dateString.split('-');
+    return `${day}/${month}/${year}`;
+  }
+
   // Try parsing as ISO date or other formats
   const date = new Date(dateString);
   if (isNaN(date.getTime())) {
     return dateString; // Return original if can't parse
   }
 
-  const day = String(date.getDate()).padStart(2, '0');
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const year = date.getFullYear();
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const year = date.getUTCFullYear();
   return `${day}/${month}/${year}`;
 }
 

@@ -128,6 +128,10 @@ export default function SolicitarPage() {
         if (dateStr.includes('T') || dateStr.includes('Z')) {
           return new Date(dateStr).toISOString();
         }
+        // YYYY-MM-DD format — send as UTC midnight
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+          return dateStr + 'T00:00:00.000Z';
+        }
         // Spanish format: DD/MM/YYYY
         const [day, month, year] = dateStr.split('/');
         const date = new Date(Number(year), Number(month) - 1, Number(day), 12, 0, 0);

@@ -242,7 +242,7 @@ function NewLoanForm() {
         annualRate: data.data.annualRate,
         schedule: data.data.schedule.map((item: any) => ({
           number: item.number,
-          date: new Date(item.dueDate.replace('Z', '')).toLocaleDateString(),
+          date: item.dueDate.substring(0, 10), // Extract YYYY-MM-DD directly
           payment: item.amount,
           principal: item.principal,
           interest: item.interest,
@@ -285,7 +285,7 @@ function NewLoanForm() {
       // Prepare schedule data from simulation
       const scheduleData = simulation ? simulation.schedule.map(item => ({
         number: item.number,
-        dueDate: item.date.split('/').reverse().join('-'), // Convert DD/MM/YYYY to YYYY-MM-DD
+        dueDate: item.date, // Already YYYY-MM-DD
         amount: item.payment,
         principal: item.principal,
         interest: item.interest,
@@ -585,7 +585,7 @@ function NewLoanForm() {
                     {simulation.schedule.slice(0, 12).map((item) => (
                       <tr key={item.number} className="border-t dark:border-gray-700 text-center">
                         <td className="px-2 py-1 dark:text-white/[.87]">{item.number}</td>
-                        <td className="px-2 py-1 dark:text-white/[.87]">{item.date}</td>
+                        <td className="px-2 py-1 dark:text-white/[.87]">{new Date(item.date + 'T00:00:00').toLocaleDateString()}</td>
                         <td className="px-2 py-1 dark:text-white/[.87]">${item.payment.toFixed(2)}</td>
                       </tr>
                     ))}

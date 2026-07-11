@@ -237,7 +237,7 @@ export default function SimulatorPage() {
         amortizationSystem: backendData.amortizationSystem,
         schedule: backendData.schedule.map((item: any) => ({
           number: item.number,
-          date: new Date(item.dueDate.replace('Z', '')), // Pass raw ISO date to PDF (timezone-safe)
+          date: item.dueDate.substring(0, 10), // Extract YYYY-MM-DD directly (timezone-safe)
           payment: item.amount,
           principal: item.principal,
           interest: item.interest,
@@ -505,7 +505,7 @@ export default function SimulatorPage() {
                   {result.schedule.map((item) => (
                     <tr key={item.number} className="border-t dark:border-gray-700">
                       <td className="px-4 py-2 dark:text-white/[.87]">{item.number}</td>
-                      <td className="px-4 py-2 dark:text-white/[.87]">{new Date(item.date).toLocaleDateString()}</td>
+                      <td className="px-4 py-2 dark:text-white/[.87]">{new Date(item.date + 'T00:00:00').toLocaleDateString()}</td>
                       <td className="px-4 py-2 text-right dark:text-white/[.87]">${roundForDisplay(item.payment, roundingUnit).toLocaleString()}</td>
                       <td className="px-4 py-2 text-right text-green-600 dark:text-green-400">${roundForDisplay(item.principal, roundingUnit).toLocaleString()}</td>
                       <td className="px-4 py-2 text-right text-red-600 dark:text-red-400">${roundForDisplay(item.interest, roundingUnit).toLocaleString()}</td>

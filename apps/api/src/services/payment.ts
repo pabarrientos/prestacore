@@ -51,16 +51,24 @@ function addPeriod(date: Date, frequency: PaymentFrequency, periods: number): Da
   const result = new Date(date);
   switch (frequency) {
     case PaymentFrequency.WEEKLY:
-      result.setDate(result.getDate() + periods * 7);
+      result.setUTCDate(result.getUTCDate() + periods * 7);
       break;
     case PaymentFrequency.BIWEEKLY:
-      result.setDate(result.getDate() + periods * 14);
+      result.setUTCDate(result.getUTCDate() + periods * 14);
       break;
-    case PaymentFrequency.MONTHLY:
-      result.setMonth(result.getMonth() + periods);
+    case PaymentFrequency.MONTHLY: {
+      const y = result.getUTCFullYear();
+      const m = result.getUTCMonth();
+      const d = result.getUTCDate();
+      const totalMonths = m + periods;
+      const targetYear = y + Math.floor(totalMonths / 12);
+      const targetMonth = ((totalMonths % 12) + 12) % 12;
+      const lastDayOfTarget = new Date(Date.UTC(targetYear, targetMonth + 1, 0)).getUTCDate();
+      result.setUTCFullYear(targetYear, targetMonth, Math.min(d, lastDayOfTarget));
       break;
+    }
     case PaymentFrequency.DAILY:
-      result.setDate(result.getDate() + periods);
+      result.setUTCDate(result.getUTCDate() + periods);
       break;
   }
   return result;
