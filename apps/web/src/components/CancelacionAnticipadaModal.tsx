@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { getTodayString } from '@/lib/datetime';
 import { apiFetch } from '@/lib/api';
 
 interface DebtBreakdown {
@@ -27,6 +28,7 @@ export default function CancelacionAnticipadaModal({ loanId, onSuccess, onCancel
   const [preview, setPreview] = useState<CancelacionAnticipadaPreview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [fechaCancelacion, setFechaCancelacion] = useState<string>('');
   
   // Editable field for interesesVencidos
   const [interesesVencidosManual, setInteresesVencidosManual] = useState<string>('');
@@ -54,7 +56,34 @@ export default function CancelacionAnticipadaModal({ loanId, onSuccess, onCancel
         setError('Error al conectar con el servidor');
       })
       .finally(() => setLoading(false));
+
+    setFechaCancelacion(getTodayString());
   }, [loanId]);
+
+  // Fetch debt breakdown when cancellation date changes (auto-recalculate)
+  const fetchDebtBreakdown = async (fecha?: string) => {
+    try {
+      const params = new URLSearchParams();
+      if (fecha) params.set('fechaCancelacion', fecha);
+      const res = await apiFetch(
+        `/api/loans/${loanId}/preview-cancelacion-anticipada?${params.toString()}`,
+        { headers: { 'Content-Type': 'application/json' } }
+      );
+      const data = await res.json();
+      if (data.success) {
+        setPreview(prev => prev ? { ...prev, breakdown: data.data.breakdown } : data.data);
+        setInteresesVencidosModificado(false);
+        setInteresesVencidosManual('');
+      }
+    } catch (err) {
+      console.error('Error fetching breakdown:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (loading || !fechaCancelacion) return;
+    fetchDebtBreakdown(fechaCancelacion);
+  }, [fechaCancelacion]);
 
   // Calculate total with current interesesVencidos
   const getCurrentTotal = (): number => {
@@ -75,9 +104,12 @@ export default function CancelacionAnticipadaModal({ loanId, onSuccess, onCancel
     setError('');
 
     try {
-      const body: { interesesVencidosManual?: number } = {};
+      const body: { interesesVencidosManual?: number; fechaCancelacion?: string } = {};
       if (interesesVencidosModificado) {
         body.interesesVencidosManual = parseFloat(interesesVencidosManual) || 0;
+      }
+      if (fechaCancelacion) {
+        body.fechaCancelacion = fechaCancelacion;
       }
 
       const res = await apiFetch(`/api/loans/${loanId}/execute-cancelacion-anticipada`, {
@@ -181,6 +213,20 @@ export default function CancelacionAnticipadaModal({ loanId, onSuccess, onCancel
             {successMessage}
           </div>
         )}
+
+        {/* Cancellation Date - Controls debt calculation */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white/60">
+            Fecha de Cancelación *
+          </label>
+          <input
+            type="date"
+            value={fechaCancelacion}
+            onChange={(e) => setFechaCancelacion(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-[#2a2a2a] dark:border-[#333333] dark:text-white/[.87] dark:focus:ring-[#39ff14]"
+          />
+          <p className="text-xs text-gray-500 mt-1 dark:text-white/60">Fecha de corte para calcular deuda (mora y cuotas vencidas)</p>
+        </div>
 
         {/* Debt Breakdown Section */}
         <div className="bg-green-50 border border-green-200 rounded-lg p-4 dark:bg-green-950/50 dark:border-green-900">

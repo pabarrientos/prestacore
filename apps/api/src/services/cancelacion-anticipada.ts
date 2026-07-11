@@ -46,7 +46,7 @@ export class CancelacionAnticipadaService {
    * - pagosAtrasados: sum of balances of OVERDUE installments (excluding mora)
    * - totalCancelar: sum of all the above
    */
-  static async calculateDebtBreakdown(loanId: string): Promise<DebtBreakdown | null> {
+  static async calculateDebtBreakdown(loanId: string, referenceDate?: Date): Promise<DebtBreakdown | null> {
     const loan = await prisma.loan.findUnique({
       where: { id: loanId },
       include: {
@@ -60,9 +60,11 @@ export class CancelacionAnticipadaService {
       return null;
     }
 
-    // Get the daily mora rate from settings and today's date (date-only)
+    // Get the daily mora rate from settings and reference date (date-only)
     const dailyRate = await getRate('MORA_RATE');
-    const todayOnly = await getToday();
+    const todayOnly = referenceDate
+      ? new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate())
+      : await getToday();
 
     // Find the first unpaid installment (not PAID, not INTEREST_ONLY, ordered by dueDate)
     const firstUnpaidInstallment = loan.installments.find(
@@ -89,12 +91,15 @@ export class CancelacionAnticipadaService {
       capitalPendiente = Number(loan.amount) - totalPrincipalPaid;
     }
 
-    // Get all overdue installments (not PAID, not INTEREST_ONLY, dueDate < today) - date-only comparison
+    // Get all overdue installments (not PAID, not INTEREST_ONLY, dueDate <= referenceDate)
+    // Use UTC methods for date-only comparison — pg driver returns naive timestamps as UTC
+    const todayOnlyUTC = Date.UTC(todayOnly.getUTCFullYear(), todayOnly.getUTCMonth(), todayOnly.getUTCDate());
     const overdueInstallments = loan.installments.filter(
       (inst) => {
         if (inst.status === InstallmentStatus.PAID || inst.status === InstallmentStatus.INTEREST_ONLY) return false;
-        const dueDateOnly = new Date(new Date(inst.dueDate).getFullYear(), new Date(inst.dueDate).getMonth(), new Date(inst.dueDate).getDate());
-        return dueDateOnly < todayOnly;
+        const dueDateObj = new Date(inst.dueDate);
+        const dueDateOnly = Date.UTC(dueDateObj.getUTCFullYear(), dueDateObj.getUTCMonth(), dueDateObj.getUTCDate());
+        return dueDateOnly <= todayOnlyUTC;
       }
     );
 
@@ -139,7 +144,8 @@ export class CancelacionAnticipadaService {
    */
   static async executeEarlyCancellation(
     loanId: string, 
-    interesesVencidosManual?: number
+    interesesVencidosManual?: number,
+    referenceDate?: Date
   ): Promise<ExecuteCancellationResult> {
     try {
       // Check if loan exists
@@ -171,7 +177,7 @@ export class CancelacionAnticipadaService {
       }
 
       // Calculate debt breakdown
-      const calculation = await this.calculateDebtBreakdown(loanId);
+      const calculation = await this.calculateDebtBreakdown(loanId, referenceDate);
       if (!calculation) {
         return { success: false, error: 'Error al calcular el desglose de deuda' };
       }
@@ -280,7 +286,7 @@ export class CancelacionAnticipadaService {
   /**
    * Get early cancellation preview (for modal display)
    */
-  static async getCancelacionAnticipadaPreview(loanId: string): Promise<{
+  static async getCancelacionAnticipadaPreview(loanId: string, referenceDate?: Date): Promise<{
     loanId: string;
     loanStatus: LoanStatus;
     breakdown?: DebtBreakdown;
@@ -323,7 +329,7 @@ export class CancelacionAnticipadaService {
       };
     }
 
-    const breakdown = await this.calculateDebtBreakdown(loanId);
+    const breakdown = await this.calculateDebtBreakdown(loanId, referenceDate);
 
     return {
       loanId: loan.id,

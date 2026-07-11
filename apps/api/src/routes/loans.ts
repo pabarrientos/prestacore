@@ -1450,8 +1450,12 @@ router.post('/:id/execute-refinancing', authMiddleware, requireAdmin, async (req
 router.get('/:id/preview-cancelacion-anticipada', async (req, res): Promise<void> => {
   try {
     const { id } = req.params;
+    const { fechaCancelacion } = req.query;
 
-    const preview = await CancelacionAnticipadaService.getCancelacionAnticipadaPreview(id);
+    // Parse cancellation date for debt calculation (optional, defaults to today in backend)
+    const refDate = fechaCancelacion ? new Date(`${fechaCancelacion}T00:00:00`) : undefined;
+
+    const preview = await CancelacionAnticipadaService.getCancelacionAnticipadaPreview(id, refDate);
 
     if (!preview) {
       res.status(404).json({
@@ -1490,11 +1494,15 @@ router.get('/:id/preview-cancelacion-anticipada', async (req, res): Promise<void
 router.post('/:id/execute-cancelacion-anticipada', authMiddleware, requireVendor, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id: loanId } = req.params;
-    const { interesesVencidosManual } = req.body;
+    const { interesesVencidosManual, fechaCancelacion } = req.body;
+
+    // Parse cancellation date for debt calculation (optional, defaults to today in backend)
+    const referenceDate = fechaCancelacion ? new Date(`${fechaCancelacion}T00:00:00`) : undefined;
 
     const result = await CancelacionAnticipadaService.executeEarlyCancellation(
       loanId,
-      interesesVencidosManual
+      interesesVencidosManual,
+      referenceDate
     );
 
     if (!result.success) {
