@@ -751,6 +751,10 @@ export default function LoanDetailPage() {
                   ? Math.round(Number(inst.balance) * moraRate * daysOverdue * 100) / 100 
                   : 0;
                 
+                // Round to 2 decimals to avoid floating-point precision issues
+                const roundedTotalPaid = Math.round(totalPaidForInstallment * 100) / 100;
+                const roundedAmount = Math.round(Number(inst.amount) * 100) / 100;
+                
                 let dynamicStatus: string;
                 
                 // First check: if loan is PAID -> all installments are PAID
@@ -762,11 +766,11 @@ export default function LoanDetailPage() {
                   dynamicStatus = 'INTEREST_ONLY';
                 }
                 // Second check: if payment covers the full amount -> PAID (even if loan is refinanced)
-                else if (totalPaidForInstallment >= Number(inst.amount)) {
+                else if (roundedTotalPaid >= roundedAmount) {
                   dynamicStatus = 'PAID';
                 } 
                 // Third check: if partial payment -> PARTIAL
-                else if (totalPaidForInstallment > 0) {
+                else if (roundedTotalPaid > 0) {
                   dynamicStatus = 'PARTIAL';
                 }
                 // Fourth check: if loan is refinanced and installment was cancelled -> show cancelled

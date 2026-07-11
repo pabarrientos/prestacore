@@ -47,15 +47,19 @@ export function calculateInstallmentStatus(
       ? Math.round(Number(installment.balance) * moraRate * daysOverdue * 100) / 100
       : 0;
 
+  // Round to 2 decimals to avoid floating-point precision issues
+  const roundedTotalPaid = Math.round(totalPaidForInstallment * 100) / 100;
+  const roundedAmount = Math.round(Number(installment.amount) * 100) / 100;
+
   let status: string;
 
   if (isPaidLoan) {
     status = 'PAID';
   } else if (installment.status === 'INTEREST_ONLY') {
     status = 'INTEREST_ONLY';
-  } else if (totalPaidForInstallment >= Number(installment.amount)) {
+  } else if (roundedTotalPaid >= roundedAmount) {
     status = 'PAID';
-  } else if (totalPaidForInstallment > 0) {
+  } else if (roundedTotalPaid > 0) {
     status = 'PARTIAL';
   } else if (isRefinanced && installment.status === 'CANCELADA_POR_REFINANCIACION') {
     status = 'CANCELADA_POR_REFINANCIACION';
