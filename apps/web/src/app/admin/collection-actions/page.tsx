@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { apiFetch } from '@/lib/api';
 import { Pagination } from '@/components/Pagination';
@@ -64,6 +65,7 @@ function isOverdue(dateStr: string | null | undefined): boolean {
 }
 
 export default function CollectionActionsPage() {
+  const router = useRouter();
   const { token } = useAuth();
   const [actions, setActions] = useState<CollectionAction[]>([]);
   const [types, setTypes] = useState<CollectionActionType[]>([]);
@@ -204,9 +206,12 @@ export default function CollectionActionsPage() {
   return (
     <div>
       <div className="mb-6">
-        <Link href="/admin" className="text-primary-600 dark:text-[#39ff14] hover:text-primary-800 dark:hover:text-[#32e612]">
-          ← Volver al Dashboard
-        </Link>
+        <button
+          onClick={() => router.back()}
+          className="text-primary-600 dark:text-[#39ff14] hover:text-primary-800 dark:hover:text-[#32e612]"
+        >
+          ← Atrás
+        </button>
         <h1 className="text-2xl font-bold mt-2 dark:text-white/[.87]">Agenda de Cobranzas</h1>
       </div>
 

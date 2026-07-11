@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import PaymentForm from '@/components/PaymentForm';
 import CollectionActionsModal from '@/components/CollectionActionsModal';
 import { apiFetch } from '@/lib/api';
@@ -46,6 +47,7 @@ function formatDate(dateStr: string): string {
 }
 
 export default function OverduePage() {
+  const router = useRouter();
   const [installments, setInstallments] = useState<OverdueInstallment[]>([]);
   const [summary, setSummary] = useState<OverdueSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -118,9 +120,12 @@ export default function OverduePage() {
   return (
     <div>
       <div className="mb-6">
-        <Link href="/admin" className="text-primary-600 dark:text-[#39ff14] hover:text-primary-800 dark:hover:text-[#32e612]">
-          ← Volver al Dashboard
-        </Link>
+        <button
+          onClick={() => router.back()}
+          className="text-primary-600 dark:text-[#39ff14] hover:text-primary-800 dark:hover:text-[#32e612]"
+        >
+          ← Atrás
+        </button>
         <h1 className="text-2xl font-bold mt-2 dark:text-white/[.87]">Cuotas Vencidas</h1>
       </div>
 

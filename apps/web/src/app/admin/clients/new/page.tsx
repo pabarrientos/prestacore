@@ -88,10 +88,10 @@ export default function NewClientPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <button
-            onClick={() => router.push('/admin/clients')}
+            onClick={() => router.back()}
             className="text-primary-600 hover:text-primary-800 mb-2 dark:text-[#39ff14] dark:hover:text-[#32e012]"
           >
-            ← Volver a la lista
+            ← Atrás
           </button>
           <h1 className="text-2xl md:text-3xl font-bold dark:text-white/[.87]">Nuevo Cliente</h1>
         </div>

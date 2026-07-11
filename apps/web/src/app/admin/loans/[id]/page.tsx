@@ -363,10 +363,10 @@ export default function LoanDetailPage() {
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
         <div>
           <button
-            onClick={() => router.push('/admin/loans')}
+            onClick={() => router.back()}
             className="text-primary-600 dark:text-[#39ff14] hover:text-primary-800 dark:hover:text-[#32e612] mb-2"
           >
-            ← Volver a la lista
+            ← Atrás
           </button>
           <h1 className="text-2xl font-bold dark:text-white/[.87]">Detalle del Préstamo</h1>
         </div>
