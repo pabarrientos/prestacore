@@ -1001,6 +1001,9 @@ describe('calculateMoraAcumulada', () => {
       installmentNumber: 1,
       dueDate: '2026-05-15',
       cuota: 5000,
+      principal: 4000,
+      interest: 1000,
+      capitalBalance: 46000,
       paid: 0,
       saldo: 5000,
       mora: 0,
@@ -1623,7 +1626,7 @@ describe('generateAccountStatementPDF', () => {
       const tableConfig = installmentCall![1] as { body?: string[][] };
       const body = tableConfig.body ?? [];
       // Column 6 is Estado, should say "Refinanciada" not "Cancelada"
-      expect(body[0][6]).toContain('Refinanciada');
+      expect(body[0][9]).toContain('Refinanciada');
     });
 
     it('should show "-" for mora and días de vencimiento on PAID installments', () => {
@@ -1658,9 +1661,9 @@ describe('generateAccountStatementPDF', () => {
       expect(installmentCall).toBeDefined();
       const tableConfig = installmentCall![1] as { body?: string[][] };
       const body = tableConfig.body ?? [];
-      // Column 4 is Mora, Column 5 is Días Venc.
-      expect(body[0][4]).toBe('-');
-      expect(body[0][5]).toBe('-');
+      // Column 7 is Mora, Column 8 is Días Venc.
+      expect(body[0][7]).toBe('-');
+      expect(body[0][8]).toBe('-');
     });
 
     it('should show mora and días de vencimiento for OVERDUE installments', () => {
@@ -1690,11 +1693,11 @@ describe('generateAccountStatementPDF', () => {
       expect(installmentCall).toBeDefined();
       const tableConfig = installmentCall![1] as { body?: string[][] };
       const body = tableConfig.body ?? [];
-      // Column 4 is Mora — must NOT be '-' (should show currency value)
-      expect(body[0][4]).not.toBe('-');
-      // Column 5 is Días Venc. — must NOT be '-' (should show number)
-      expect(body[0][5]).not.toBe('-');
-      expect(Number(body[0][5])).toBeGreaterThan(0);
+      // Column 7 is Mora — must NOT be '-' (should show currency value)
+      expect(body[0][7]).not.toBe('-');
+      // Column 8 is Días Venc. — must NOT be '-' (should show number)
+      expect(body[0][8]).not.toBe('-');
+      expect(Number(body[0][8])).toBeGreaterThan(0);
     });
 
     it('should show "-" for mora and días on PENDING (future) installments', () => {
@@ -1724,8 +1727,8 @@ describe('generateAccountStatementPDF', () => {
       expect(installmentCall).toBeDefined();
       const tableConfig = installmentCall![1] as { body?: string[][] };
       const body = tableConfig.body ?? [];
-      expect(body[0][4]).toBe('-');
-      expect(body[0][5]).toBe('-');
+      expect(body[0][7]).toBe('-');
+      expect(body[0][8]).toBe('-');
     });
   });
 
@@ -1766,8 +1769,8 @@ describe('generateAccountStatementPDF', () => {
       expect(installmentCall).toBeDefined();
       const tableConfig = installmentCall![1] as { body?: string[][] };
       const body = tableConfig.body ?? [];
-      // Column 3 is Saldo. API balance=9000 → roundUpInstallment(9000,1000)=9000 → "$9.000"
-      const saldoCell = body[0][3];
+      // Column 6 is Saldo. API balance=9000 → roundUpInstallment(9000,1000)=9000 → "$9.000"
+      const saldoCell = body[0][6];
       expect(saldoCell).toContain('9.000');
     });
 
@@ -1806,8 +1809,8 @@ describe('generateAccountStatementPDF', () => {
       expect(installmentCall).toBeDefined();
       const tableConfig = installmentCall![1] as { body?: string[][] };
       const body = tableConfig.body ?? [];
-      // Column 3 is Saldo. API balance=0 → "$0"
-      expect(body[0][3]).toContain('0');
+      // Column 6 is Saldo. API balance=0 → "$0"
+      expect(body[0][6]).toContain('0');
     });
 
     it('should show full balance when no payment has been made', () => {
@@ -1839,7 +1842,8 @@ describe('generateAccountStatementPDF', () => {
       expect(installmentCall).toBeDefined();
       const tableConfig = installmentCall![1] as { body?: string[][] };
       const body = tableConfig.body ?? [];
-      expect(body[0][3]).toContain('5.000');
+      // Column 6 is Saldo. API balance=5000 → "$5.000"
+      expect(body[0][6]).toContain('5.000');
     });
   });
 
@@ -2037,9 +2041,9 @@ describe('generateAccountStatementPDF', () => {
 
       // The mora column should show a non-zero value (proving moraRate was used)
       // With balance=5000, daysOverdue≈47, moraRate=0.02 → mora ≈ 4700
-      expect(body[0][4]).not.toBe('-');
+      expect(body[0][7]).not.toBe('-');
       // Body uses AR locale formatting: "$1.000" = 1000, "." is thousands sep
-      const moraValue = parseInt(body[0][4].replace(/\D/g, ''), 10);
+      const moraValue = parseInt(body[0][7].replace(/\D/g, ''), 10);
       expect(moraValue).toBeGreaterThan(1000);
     });
 
@@ -2070,7 +2074,7 @@ describe('generateAccountStatementPDF', () => {
       );
       const lowBody = (lowCall![1] as { body?: string[][] }).body ?? [];
       // Body uses AR locale formatting: "$1.000" = 1000, "." is thousands sep
-      const lowMora = parseInt(lowBody[0][4].replace(/\D/g, ''), 10);
+      const lowMora = parseInt(lowBody[0][7].replace(/\D/g, ''), 10);
 
       vi.clearAllMocks();
 
@@ -2083,7 +2087,7 @@ describe('generateAccountStatementPDF', () => {
         },
       );
       const highBody = (highCall![1] as { body?: string[][] }).body ?? [];
-      const highMora = parseInt(highBody[0][4].replace(/\D/g, ''), 10);
+      const highMora = parseInt(highBody[0][7].replace(/\D/g, ''), 10);
 
       // Higher moraRate should produce strictly higher mora
       expect(highMora).toBeGreaterThan(lowMora);

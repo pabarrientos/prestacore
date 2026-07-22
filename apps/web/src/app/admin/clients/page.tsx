@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { apiFetch } from '@/lib/api';
 import { Pagination } from '@/components/Pagination';
+import { BulkAccountStatementButton } from '@/components/loans/BulkAccountStatementButton';
 import Link from 'next/link';
 
 interface Client {
@@ -246,6 +247,7 @@ export default function ClientsPage() {
                     >
                       Crear Préstamo
                     </a>
+                    <BulkAccountStatementButton clientId={client.id} />
                     {user?.role === 'ADMIN' && (
                       <>
                         <a

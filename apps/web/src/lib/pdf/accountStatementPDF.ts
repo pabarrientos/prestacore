@@ -97,11 +97,10 @@ export function calculateMoraPagada(
     // consistent with how they appear in the PDF tables.
     // This ensures mora pagada = displayedPayment - displayedCuota,
     // not rawDBPayment - rawDBCuota which can differ by up to ROUNDING_UNIT-1.
-    //const roundedTotalPaid = roundUpInstallment(totalPaidForThis, roundingUnit);
+    const roundedTotalPaid = roundUpInstallment(totalPaidForThis, roundingUnit);
     const roundedCuota = roundUpInstallment(inst.amount, roundingUnit);
 
-    //const excess = roundedTotalPaid - roundedCuota;
-    const excess = totalPaidForThis - roundedCuota;
+    const excess = roundedTotalPaid - roundedCuota;
     if (excess > 0) {
       total += excess;
     }
@@ -118,8 +117,7 @@ export function calculateMoraPagada(
   // Round the final sum for consistency (edge case: if individual excesses
   // happen to not be multiples of roundingUnit after rounding both operands,
   // which shouldn't occur but provides a safety net).
-  //return roundUpInstallment(total, roundingUnit);
-  return total;
+  return roundUpInstallment(total, roundingUnit);
 }
 
 /**
@@ -530,6 +528,7 @@ function addInstallmentsTable(
   rows: InstallmentRow[],
   roundingUnit: number,
   startY: number,
+  loanId: string,
 ): void {
   const margin = 20;
 
@@ -547,6 +546,9 @@ function addInstallmentsTable(
     String(r.installmentNumber),
     formatDateToDDMMYYYY(r.dueDate),
     formatCurrency(roundUpInstallment(r.cuota, roundingUnit)),
+    formatCurrency(roundUpInstallment(r.principal, roundingUnit)),
+    formatCurrency(roundUpInstallment(r.interest, roundingUnit)),
+    formatCurrency(roundUpInstallment(r.capitalBalance, roundingUnit)),
     formatCurrency((r.status === 'PARTIAL' && r.saldo > 0) ? r.saldo : roundUpInstallment(r.saldo, roundingUnit)),
     (r.status === 'PARTIAL' || r.status === 'OVERDUE')
       ? formatCurrency(roundUpInstallment(r.mora, roundingUnit))
@@ -561,28 +563,31 @@ function addInstallmentsTable(
 
   autoTable(doc, {
     startY: tableStartY,
-    head: [['N°', 'Fecha Venc.', 'Cuota', 'Saldo', 'Mora', 'Días Venc.', 'Estado']],
+    head: [['N°', 'Fecha Venc.', 'Cuota', 'Capital', 'Interés', 'Saldo Capital', 'Saldo', 'Mora', 'Días Venc.', 'Estado']],
     body: tableData,
     headStyles: {
       fillColor: COLORS.primary,
       textColor: COLORS.white,
       fontStyle: 'bold',
-      fontSize: 10,
-      cellPadding: 4,
+      fontSize: 8,
+      cellPadding: 3,
     },
     bodyStyles: {
-      fontSize: 9,
-      cellPadding: 3,
+      fontSize: 7,
+      cellPadding: 2,
       textColor: COLORS.text,
     },
     columnStyles: {
-      0: { cellWidth: 12, halign: 'center' },
-      1: { cellWidth: 26, halign: 'center' },
-      2: { cellWidth: 28, halign: 'right' },
-      3: { cellWidth: 28, halign: 'right' },
-      4: { cellWidth: 28, halign: 'right' },
-      5: { cellWidth: 20, halign: 'center' },
-      6: { cellWidth: 28, halign: 'center' },
+      0: { cellWidth: 10, halign: 'center' },
+      1: { cellWidth: 20, halign: 'center' },
+      2: { cellWidth: 18, halign: 'right' },
+      3: { cellWidth: 17, halign: 'right' },
+      4: { cellWidth: 16, halign: 'right' },
+      5: { cellWidth: 22, halign: 'right' },
+      6: { cellWidth: 20, halign: 'right' },
+      7: { cellWidth: 18, halign: 'right' },
+      8: { cellWidth: 14, halign: 'center' },
+      9: { cellWidth: 15, halign: 'center' },
     },
     alternateRowStyles: {
       fillColor: [249, 250, 251],
@@ -591,7 +596,7 @@ function addInstallmentsTable(
     didDrawPage: () => {
       // Re-draw page header on overflow pages
       // margin.top: 35 ensures table content starts below the header area (0-25mm)
-      addHeader(doc, '');
+      addHeader(doc, loanId);
     },
     didParseCell: (HookData) => {
       if (HookData.section === 'body') {
@@ -610,7 +615,7 @@ function addInstallmentsTable(
   });
 }
 
-function addPaymentsTable(doc: jsPDF, mergedPayments: MergedPaymentRow[]): void {
+function addPaymentsTable(doc: jsPDF, mergedPayments: MergedPaymentRow[], loanId: string): void {
   const docAny = doc as unknown as Record<string, unknown>;
   let lastY = (docAny.lastAutoTable as { finalY: number } | undefined)?.finalY ?? 40;
   const margin = 20;
@@ -691,7 +696,7 @@ function addPaymentsTable(doc: jsPDF, mergedPayments: MergedPaymentRow[]): void 
     didDrawPage: () => {
       // Re-draw page header on overflow pages
       // margin.top: 35 ensures table content starts below the header area (0-25mm)
-      addHeader(doc, '');
+      addHeader(doc, loanId);
     },
   });
 }
@@ -728,18 +733,26 @@ function addFooter(doc: jsPDF): void {
 
 export function generateAccountStatementPDF(data: AccountStatementPDFData, roundingUnit: number, moraRate: number): void {
 
-  // 1. Compute installment status
-  const computedInstallments: InstallmentRow[] = data.installments.map((inst) => {
+  // 1. Compute installment status (reduce to accumulate capitalBalance)
+  const computedInstallments: InstallmentRow[] = data.installments.reduce((acc, inst, idx) => {
     const result = calculateInstallmentStatus(inst, data.payments, data.status, moraRate);
 
     // Total paid for this installment
     const paymentsForThis = data.payments.filter(p => p.installmentId === inst.id);
     const totalPaid = paymentsForThis.reduce((sum, p) => sum + Number(p.amount), 0);
 
-    return {
+    const prevCapitalBalance = idx === 0 ? data.amount : acc[idx - 1].capitalBalance;
+    const capitalBalance = inst.status === 'INTEREST_ONLY'
+      ? prevCapitalBalance
+      : prevCapitalBalance - Number(inst.principal);
+
+    acc.push({
       installmentNumber: inst.installmentNumber,
       dueDate: inst.dueDate,
       cuota: inst.amount,
+      principal: Number(inst.principal),
+      interest: Number(inst.interest),
+      capitalBalance,
       paid: totalPaid,
       saldo: result.status === 'PARTIAL' && Number(inst.balance) > 0
         ? roundUpInstallment(inst.amount, roundingUnit) - totalPaid
@@ -747,8 +760,9 @@ export function generateAccountStatementPDF(data: AccountStatementPDFData, round
       mora: result.mora,
       daysOverdue: result.daysOverdue,
       status: result.status,
-    };
-  });
+    });
+    return acc;
+  }, [] as InstallmentRow[]);
 
   // 2. Merge payments
   const mergedPayments = mergePayments(data.payments);
@@ -778,10 +792,10 @@ export function generateAccountStatementPDF(data: AccountStatementPDFData, round
   y = addFinancialSummary(doc, data, computedInstallments, mergedPayments, 38, roundingUnit);
 
   // Installments table — Y position flows from financial summary
-  addInstallmentsTable(doc, computedInstallments, roundingUnit, y);
+  addInstallmentsTable(doc, computedInstallments, roundingUnit, y, data.id);
 
   // Payments table
-  addPaymentsTable(doc, mergedPayments);
+  addPaymentsTable(doc, mergedPayments, data.id);
 
   // Footer on every page (iterates all pages and draws footer on each)
   addFooter(doc);

@@ -82,6 +82,9 @@ export interface InstallmentRow {
   installmentNumber: number;
   dueDate: string;
   cuota: number;
+  principal: number;
+  interest: number;
+  capitalBalance: number;
   paid: number;
   saldo: number;
   mora: number;
