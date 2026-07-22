@@ -216,12 +216,6 @@ export default function ClientsPage() {
                 Teléfono
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-white/60">
-                Ciudad
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-white/60">
-                Ingreso Mensual
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-white/60">
                 Acciones
               </th>
             </tr>
@@ -235,10 +229,6 @@ export default function ClientsPage() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap dark:text-white/[.87]">{client.email}</td>
                 <td className="px-6 py-4 whitespace-nowrap dark:text-white/[.87]">{client.phone || '-'}</td>
-                <td className="px-6 py-4 whitespace-nowrap dark:text-white/[.87]">{client.city || '-'}</td>
-                <td className="px-6 py-4 whitespace-nowrap dark:text-white/[.87]">
-                  ${client.monthlyIncome.toLocaleString()}
-                </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex flex-wrap gap-1.5">
                     <a
